@@ -1,0 +1,12 @@
+<resources>
+    <item name="bd_dish_name_input" type="id" />
+    <item name="bd_dish_photo_input" type="id" />
+    <item name="bd_dish_primary" type="id" />
+    <item name="bd_dish_secondary" type="id" />
+    <item name="bd_dish_spicy_check" type="id" />
+    <item name="bd_dish_meat_check" type="id" />
+    <item name="bd_dish_quick_check" type="id" />
+    <item name="bd_dish_candidate_name" type="id" />
+    <item name="bd_dish_candidate_plate" type="id" />
+    <item name="bd_dish_details" type="id" />
+</resources>

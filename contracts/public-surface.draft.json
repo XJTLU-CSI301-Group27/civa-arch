@@ -246,6 +246,29 @@
       "thread": "open() must not run on the main thread",
       "members": ["static void setLoader(Loader value)"]
     },    {
+      "type": "edu.xjtlu.civa.core.data.JsonPost",
+      "kind": "class",
+      "owner": "EF/E",
+      "consumers": ["feature-bd"],
+      "thread": "blocking; execute on a background executor, cancel() from any thread",
+      "members": []
+    },
+    {
+      "type": "edu.xjtlu.civa.feature.bd.BdHost",
+      "kind": "interface",
+      "owner": "BD",
+      "consumers": ["app"],
+      "thread": "main",
+      "members": ["SessionStore sessions()"]
+    },
+    {
+      "type": "edu.xjtlu.civa.feature.bd.BdHomeFragment",
+      "kind": "class",
+      "owner": "BD",
+      "consumers": ["app"],
+      "thread": "main",
+      "members": ["BdHomeFragment()"]
+    },    {
       "type": "edu.xjtlu.civa.server.auth.ApiExceptionHandler",
       "kind": "class",
       "owner": "EF/E",

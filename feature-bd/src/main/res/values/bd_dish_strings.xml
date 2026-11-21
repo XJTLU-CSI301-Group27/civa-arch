@@ -1,0 +1,37 @@
+<resources>
+    <string name="bd_dish_choose_title">这顿想吃什么？</string>
+    <string name="bd_dish_idea">我来决定吃什么</string>
+    <string name="bd_dish_hungry">想不出来，饿饿</string>
+    <string name="bd_dish_manual_title">添加你想吃的饭</string>
+    <string name="bd_dish_name_hint">菜的名字</string>
+    <string name="bd_dish_photo_label">菜的照片（可选）</string>
+    <string name="bd_dish_pick_photo">点一下，选张照片</string>
+    <string name="bd_dish_photo_chosen">换一张照片</string>
+    <string name="bd_dish_importing">正在整理照片…</string>
+    <string name="bd_dish_manual_confirm">就它啦</string>
+    <string name="bd_dish_preferences_title">猜你喜欢</string>
+    <string name="bd_dish_spicy">辣度偏好</string>
+    <string name="bd_dish_meat">荤素偏好</string>
+    <string name="bd_dish_quick">只看快手菜</string>
+    <string name="bd_dish_matching">有 %1$d 道菜合你口味</string>
+    <string name="bd_dish_blind_box">开盲盒</string>
+    <string name="bd_dish_recommendation_title">这是你喜欢的菜吗？</string>
+    <string name="bd_dish_accept">就是这个啦</string>
+    <string name="bd_dish_reroll">不！换一个</string>
+    <string name="bd_dish_details">看看食材与做法</string>
+    <string name="bd_dish_hide_details">收起做法</string>
+    <string name="bd_dish_ingredients">食材</string>
+    <string name="bd_dish_steps">做法</string>
+    <string name="bd_dish_source">菜谱来源：HowToCook 开源社区</string>
+    <string name="bd_dish_close">关闭并返回上一页</string>
+    <string name="bd_dish_close_home">关闭并返回首页</string>
+    <string name="bd_dish_no_photo">这道菜还没有照片</string>
+    <string name="bd_dish_plate_description">%1$s的餐盘图片</string>
+    <string name="bd_dish_saving">记进小本子…</string>
+    <string name="bd_dish_loading">正在翻开菜谱…</string>
+    <string name="bd_dish_name_required">先给这道菜起个名字吧（最多60个字）</string>
+    <string name="bd_dish_load_error">厨房手帐暂时打不开，请重新进入后再试；原有记录已保留。</string>
+    <string name="bd_dish_save_error">还没保存成功，请再试一次。</string>
+    <string name="bd_dish_photo_error">这张照片暂时读不了，请换一张20MB以内的图片。</string>
+    <string name="bd_dish_no_match">暂时没有完全符合偏好的菜，换一项口味再试试吧。</string>
+</resources>

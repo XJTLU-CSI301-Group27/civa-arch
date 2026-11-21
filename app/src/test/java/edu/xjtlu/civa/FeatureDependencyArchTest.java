@@ -4,6 +4,7 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.ArchRule;
 import org.junit.Test;
+import static org.junit.Assert.assertTrue;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
@@ -20,5 +21,11 @@ public class FeatureDependencyArchTest {
                 .that().resideInAnyPackage("edu.xjtlu.civa.feature..")
                 .should().dependOnClassesThat().resideInAnyPackage("okhttp3..", "java.net..");
         rule.check(FEATURES);
+    }
+
+    /** A rule that scans an empty classpath passes silently; fail instead of reporting green. */
+    @Test public void featureClassesAreActuallyOnTheTestClasspath() {
+        assertTrue("No classes under edu.xjtlu.civa.feature were imported; the rule would pass vacuously.",
+                FEATURES.size() > 0);
     }
 }

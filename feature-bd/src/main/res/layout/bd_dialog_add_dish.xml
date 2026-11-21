@@ -1,0 +1,20 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:background="@drawable/civa_dish_dialog_background"
+    android:padding="16dp">
+    <FrameLayout android:layout_width="match_parent" android:layout_height="64dp">
+        <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/bd_dish_close"
+            android:layout_width="48dp" android:layout_height="48dp" android:layout_gravity="start|center_vertical"
+            android:padding="16dp" android:background="@drawable/civa_dish_tile_ripple"
+            android:contentDescription="@string/bd_dish_close" app:srcCompat="@drawable/bd_ic_close" />
+        <TextView android:id="@+id/bd_dish_title" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:layout_marginStart="48dp" android:layout_marginEnd="12dp" android:gravity="center_vertical"
+            android:textSize="23sp" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_text" />
+    </FrameLayout>
+    <view class="edu.xjtlu.civa.feature.bd.BdFlowDialog$DialogScroll" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:scrollbars="none" android:clipToPadding="false" android:paddingHorizontal="8dp" android:paddingBottom="8dp">
+        <LinearLayout android:id="@+id/bd_dish_body" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </view>
+</LinearLayout>

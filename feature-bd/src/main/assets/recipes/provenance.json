@@ -1,0 +1,53 @@
+{
+  "repository": "https://github.com/Anduin2017/HowToCook",
+  "revision": "58c1b9af7900a9489c340bca39ef94a9a62314b1",
+  "license": "Unlicense",
+  "importedRecipes": 312,
+  "recipesWithPhotos": 149,
+  "importedCategories": [
+    "aquatic",
+    "breakfast",
+    "meat_dish",
+    "soup",
+    "staple",
+    "vegetable_dish"
+  ],
+  "classification": "Spicy: required and quantified ingredients plus explicit spicy dish names; meat: source category/ingredients; quick: known source estimate <=30 minutes.",
+  "imageProcessing": "Upstream repository photos, EXIF oriented and resized to at most 640px; no generated dish photographs.",
+  "failures": [],
+  "classificationVersion": 2,
+  "filterCounts": {
+    "spicy=False,meat=False,quick=False": {
+      "total": 92,
+      "photos": 36
+    },
+    "spicy=False,meat=False,quick=True": {
+      "total": 52,
+      "photos": 21
+    },
+    "spicy=False,meat=True,quick=False": {
+      "total": 95,
+      "photos": 52
+    },
+    "spicy=False,meat=True,quick=True": {
+      "total": 26,
+      "photos": 18
+    },
+    "spicy=True,meat=False,quick=False": {
+      "total": 40,
+      "photos": 14
+    },
+    "spicy=True,meat=False,quick=True": {
+      "total": 21,
+      "photos": 8
+    },
+    "spicy=True,meat=True,quick=False": {
+      "total": 85,
+      "photos": 47
+    },
+    "spicy=True,meat=True,quick=True": {
+      "total": 21,
+      "photos": 6
+    }
+  }
+}

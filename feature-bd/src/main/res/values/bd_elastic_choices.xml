@@ -1,0 +1,21 @@
+<resources>
+    <item name="bd_dish_spicy_choice" type="id" />
+    <item name="bd_dish_meat_choice" type="id" />
+    <item name="bd_dish_spicy_any" type="id" />
+    <item name="bd_dish_spicy_yes" type="id" />
+    <item name="bd_dish_spicy_no" type="id" />
+    <item name="bd_dish_meat_any" type="id" />
+    <item name="bd_dish_meat_yes" type="id" />
+    <item name="bd_dish_meat_no" type="id" />
+    <string name="bd_dish_any_spicy">都可以</string>
+    <string name="bd_dish_yes_spicy">想吃辣</string>
+    <string name="bd_dish_no_spicy">不吃辣</string>
+    <string name="bd_dish_any_meat">荤素都行</string>
+    <string name="bd_dish_yes_meat">想吃荤菜</string>
+    <string name="bd_dish_no_meat">想吃素菜</string>
+    <item name="bd_dish_quick_choice" type="id" />
+    <item name="bd_dish_quick_any" type="id" />
+    <item name="bd_dish_quick_yes" type="id" />
+    <string name="bd_dish_time">用时偏好</string>
+    <string name="bd_dish_any_time">不限用时</string>
+</resources>

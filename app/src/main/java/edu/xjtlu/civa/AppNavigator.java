@@ -4,6 +4,7 @@ import androidx.fragment.app.FragmentManager;
 import edu.xjtlu.civa.core.ui.NavHost;
 import edu.xjtlu.civa.core.ui.Route;
 import edu.xjtlu.civa.core.data.SessionStore;
+import edu.xjtlu.civa.feature.bd.BdHomeFragment;
 import edu.xjtlu.civa.feature.ef.HouseholdFragment;
 import edu.xjtlu.civa.feature.ef.LoginFragment;
 

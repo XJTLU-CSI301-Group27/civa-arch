@@ -5,7 +5,19 @@ android {
     resourcePrefix 'bd_'
     defaultConfig { minSdk 26 }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-    buildFeatures { viewBinding true }
+    buildFeatures { viewBinding true; buildConfig true }
+    testOptions { unitTests.all { systemProperty 'civa.recipeCatalog', project.file('src/main/assets/recipes/catalog.json').absolutePath } }
     lint { error 'ResourceName' }
 }
-dependencies { implementation project(':api-client'); implementation project(':core-ui'); implementation project(':core-data') }
+dependencies {
+    implementation project(':api-client')
+    implementation project(':core-ui')
+    implementation project(':core-data')
+    implementation libs.appcompat
+    implementation libs.material
+    implementation libs.fragment
+    implementation libs.lifecycle.viewmodel
+    implementation libs.lifecycle.livedata
+    implementation libs.gson
+    testImplementation libs.junit
+}

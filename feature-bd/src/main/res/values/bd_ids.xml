@@ -1,0 +1,4 @@
+<resources>
+    <item name="bd_cat_stage" type="id" />
+    <item name="bd_dish_anchor_id" type="id" />
+</resources>

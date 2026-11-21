@@ -1,0 +1,7 @@
+<resources>
+    <item name="bd_detail_remove" type="id" />
+    <item name="bd_detail_ingredients" type="id" />
+    <item name="bd_detail_steps" type="id" />
+    <item name="bd_detail_nutrition" type="id" />
+    <item name="bd_detail_recipe_text" type="id" />
+</resources>

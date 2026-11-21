@@ -1,0 +1,17 @@
+<resources>
+    <string name="bd_home_breakfast">早餐</string>
+    <string name="bd_home_lunch">午餐</string>
+    <string name="bd_home_dinner">晚餐</string>
+    <string name="bd_home_breakfast_en">breakfast</string>
+    <string name="bd_home_lunch_en">lunch</string>
+    <string name="bd_home_dinner_en">dinner</string>
+    <string name="bd_home_add_dish">加道菜</string>
+    <string name="bd_home_add_breakfast">早餐加道菜</string>
+    <string name="bd_home_add_lunch">午餐加道菜</string>
+    <string name="bd_home_add_dinner">晚餐加道菜</string>
+    <string name="bd_home_calendar">打开日历，选择食谱日期</string>
+    <string name="bd_home_choose_date">选择食谱日期</string>
+    <string name="bd_home_confirm_date">选好这一天</string>
+    <string name="bd_home_cancel">取消</string>
+    <string name="bd_home_selected_date">打开日历，当前为%1$s，%2$s的食谱</string>
+</resources>
