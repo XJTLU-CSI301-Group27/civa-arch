@@ -8,13 +8,21 @@ from pathlib import Path
 from contract_diff import load
 from contract_index import render
 
+METHODS = ('get', 'post', 'put', 'patch', 'delete', 'head', 'options')
+
 
 class ContractIndexTest(unittest.TestCase):
     def test_draft_index_and_invalid_owner(self):
         root = Path(__file__).resolve().parent.parent
         contract = load(root / 'contracts/openapi.json')
         text = render(contract)
-        self.assertEqual(41, sum(line.startswith('| ') for line in text.splitlines()) - 2)
+        # Derive the expectation from the contract: adding an operation must not require
+        # editing this test, it must only require regenerating the index.
+        operations = sum(
+            1 for resource in contract['paths'].values() for method in resource if method in METHODS
+        )
+        rows = sum(line.startswith('| ') for line in text.splitlines()) - 2
+        self.assertEqual(operations, rows)
         self.assertIn('multipart/form-data: object', text)
         self.assertIn('image/jpeg: binary, image/png: binary', text)
         self.assertIn('application/json: PlanSlot[]', text)
