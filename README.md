@@ -19,7 +19,7 @@ CSI301 小组项目：Android（Java + Views，7 个模块）与 Spring Boot 3 �
 | 首页「今天」：日期/星期、日历换日、三餐列表 | ✅ 本地草稿，不写服务端 |
 | 加菜流程：手动录入 / 偏好筛选 / 抽签推荐 | ✅ |
 | 菜品详情：菜谱、编辑做法、移除、用餐选择 | ✅ |
-| 营养估算（DeepSeek，仅 debug 本地 key） | ✅ 可失败降级 |
+| 营养估算（服务端代理：缓存 + 限流 + 供应商抽象） | ✅ 可失败降级 |
 | 菜谱 / 冰箱 / 食记 / 我的 | ⏳ 占位页（AC / EF 组范围） |
 
 首页草稿是**个人本地数据**：按账号 + 家庭做 SHA-256 作用域隔离，不产生做饭记录、
@@ -130,14 +130,16 @@ scripts/       契约门禁与 preflight
 - [数据契约](docs/DATA_CONTRACT.md)｜[UI 规则](docs/UI_RULES.md)｜[测试计划](docs/TEST_PLAN.md)
 - ADR：[001 基线](docs/decisions/ADR-001-baseline.md)、[002 幂等摘要](docs/decisions/ADR-002-idempotency-digest.md)、
   [003 共享视觉系统](docs/decisions/ADR-003-shared-visual-system.md)、
-  [004 BD 模块化](docs/decisions/ADR-004-bd-module-migration.md)
+  [004 BD 模块化](docs/decisions/ADR-004-bd-module-migration.md)、
+  [005 营养服务端代理](docs/decisions/ADR-005-nutrition-proxy.md)
 
 ## 已知限制
 
 - **模拟器黑屏**：API 37.x 预览镜像在 host GPU 下合成器会崩（`android.hardwar` SIGABRT），
   表现为首个 Activity 黑屏、"回桌面再进才显示"。把 AVD 的 Graphics 设为
   `Software - GLES 2.0` 并 **Cold Boot Now** 即可；详见本地栈文档。
-- 营养估算使用 debug 专用的本地 provider key，生产环境应改为服务端代理。
+- 营养估算由服务端代理（`POST /api/v1/nutrition/estimates`）：供应商 key 只存在服务器
+  `CIVA_NUTRITION_API_KEY`；未配置 key 时服务端用确定性 stub，配置了才真正调用模型。
 - 41 个契约操作中 8 个已实现，33 个返回 `CONTRACT_NOT_IMPLEMENTED`（501）。
 - 组员成果以压缩包交接，由本地按模块整合，不直接合并对方分支。
 

@@ -4,6 +4,7 @@ import edu.xjtlu.civa.api.AuthApi;
 import edu.xjtlu.civa.api.HouseholdApi;
 import edu.xjtlu.civa.api.InventoryApi;
 import edu.xjtlu.civa.api.MediaApi;
+import edu.xjtlu.civa.api.NutritionApi;
 import edu.xjtlu.civa.api.PlanningApi;
 import edu.xjtlu.civa.api.ProfileApi;
 import edu.xjtlu.civa.api.RecipeApi;
@@ -94,6 +95,7 @@ public final class RealApiProvider implements ApiProvider {
     @Override public InventoryApi inventory() { return retrofit.create(InventoryApi.class); }
     @Override public PlanningApi planning() { return retrofit.create(PlanningApi.class); }
     @Override public RecordsApi records() { return retrofit.create(RecordsApi.class); }
+    @Override public NutritionApi nutrition() { return retrofit.create(NutritionApi.class); }
     AuthApi auth() { return retrofit.create(AuthApi.class); }
     MediaApi media() { return retrofit.create(MediaApi.class); }
     boolean uses(SessionStore store) { return sessions == store; }

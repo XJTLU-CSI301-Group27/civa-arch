@@ -224,9 +224,9 @@ the authority once `plan_slots` is implemented.
   cannot append the same dish twice. Dish identity within a slot is that id.
 - Image references are validated on decode: only the bundled asset prefix or the
   owning scope's private directory is accepted.
-- Nutrition estimates are app-private: `basis` must be `per_100g`, unknown
-  metrics stay `null` (never `0`), and the cache is keyed by a SHA-256
-  fingerprint of name + ingredients + steps. Editing a recipe invalidates it.
+- Nutrition estimates come from the server endpoint described below; the client keeps a
+  local copy keyed by a SHA-256 fingerprint of name + ingredients + steps so the dish
+  still shows the last estimate offline. Editing a recipe invalidates it.
 - No cooking event, inventory movement, meal entry or shared plan write is
   produced from these drafts. A future sync must go through the existing
   plan/records contract change process (currently 501 placeholders).
@@ -234,3 +234,23 @@ the authority once `plan_slots` is implemented.
   than silently migrated. A format change requires a new version and a
   documented migration.
 
+## Server nutrition estimates (2026-11-21)
+
+The only nutrition path is the contract operation `estimateNutrition`
+(`POST /api/v1/nutrition/estimates`); the client no longer talks to a provider directly and
+no provider key ships with the app.
+
+- Request: `name` (1-60), `ingredients` (1-30 items, each 1-120), optional `steps` (≤60 items,
+  each ≤200). No user id, household id or photo is sent.
+- Response: `basis` = `PER_100G`, nullable metrics (`energyKcal`, `carbsG`, `proteinG`, `fatG`,
+  `fiberG`, `sugarsG`, `saltMg`), `tips` (1-600), `inputHash`, `providerVersion`, `cached`.
+  Unknown stays `null`, never `0`.
+- Cache: canonicalized dish text → SHA-256 → one `nutrition_estimates` row (metrics only, no
+  dish text), 30-day expiry, shared by all accounts. A cache hit does not consume quota.
+- Limits: per-user rolling window (default 60/hour, 20/24h) before a provider call; over the
+  limit returns `429 RATE_LIMITED` with `Retry-After`.
+- Provider: `CIVA_NUTRITION_PROVIDER` = `auto` (default; DeepSeek when a key is configured,
+  deterministic stub otherwise), `deepseek` or `stub`. `CIVA_NUTRITION_API_KEY` never leaves
+  the server. Provider failures return `503 NUTRITION_UNAVAILABLE` with `Retry-After`.
+- Estimate is approximate: the UI labels it as an AI estimate, and the data is not an
+  authoritative calorie record (see product invariants).

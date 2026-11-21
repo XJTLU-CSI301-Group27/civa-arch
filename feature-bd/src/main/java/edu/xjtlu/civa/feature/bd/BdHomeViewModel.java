@@ -6,8 +6,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.MutableLiveData;
+import edu.xjtlu.civa.api.model.NutritionEstimate;
+import edu.xjtlu.civa.core.data.ApiCallback;
+import edu.xjtlu.civa.core.data.ApiCalls;
+import edu.xjtlu.civa.core.data.ApiProvider;
+import edu.xjtlu.civa.core.ui.ApiError;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -19,8 +25,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import retrofit2.Call;
 
-/** Activity-owned add-dish flow and personal local planning drafts. No protected API is called. */
+/** Activity-owned add-dish flow and personal local planning drafts; the nutrition estimate is the only server call. */
 public final class BdHomeViewModel extends AndroidViewModel {
     enum Phase { NONE, CHOOSE, MANUAL, PREFERENCES, RECOMMENDATION, DISH, RECIPE, MISSING_RECIPE, EDIT_RECIPE, NUTRITION }
     final MutableLiveData<Integer> changes = new MutableLiveData<>(0);
@@ -36,8 +43,9 @@ public final class BdHomeViewModel extends AndroidViewModel {
     String selectedDishId, recipeIngredientsDraft = "", recipeStepsDraft = "";
     BdNutrition nutrition;
     boolean nutritionLoading;
-    private final ExecutorService network = Executors.newSingleThreadExecutor();
-    private BdNutritionClient.Call nutritionCall;
+    private final ApiProvider api;
+    private final ApiCalls calls;
+    private Call<NutritionEstimate> nutritionCall;
     private int nutritionRequest;
 
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -51,7 +59,13 @@ public final class BdHomeViewModel extends AndroidViewModel {
     private int generation, sequence, flowGeneration;
     private boolean closed;
 
-    public BdHomeViewModel(@NonNull Application application) { super(application); }
+    public BdHomeViewModel(@NonNull Application application) { this(application, null, null); }
+
+    BdHomeViewModel(@NonNull Application application, @Nullable ApiProvider api, @Nullable ApiCalls calls) {
+        super(application);
+        this.api = api;
+        this.calls = calls;
+    }
 
     void initialize(String nextOwner, Bundle restored) {
         if (nextOwner.equals(owner)) return;
@@ -316,33 +330,52 @@ public final class BdHomeViewModel extends AndroidViewModel {
         nutrition = dish.nutrition != null && dish.nutrition.validFor(dish) ? dish.nutrition : null;
         changed();
         if (nutrition != null) return;
-        BdNutritionClient.Call request = new BdNutritionClient.Call(); nutritionCall = request;
+        if (api == null || calls == null) {
+            message = getApplication().getString(R.string.bd_detail_ai_config);
+            changed();
+            return;
+        }
         int requestId = ++nutritionRequest, targetGeneration = generation;
         String targetId = dish.id;
         nutritionLoading = true; changed();
-        network.execute(() -> {
-            try {
-                BdNutrition result = request.execute(getApplication(), dish);
-                main.post(() -> {
-                    if (closed || generation != targetGeneration || requestId != nutritionRequest || phase != Phase.NUTRITION || !targetId.equals(selectedDishId)) return;
-                    nutritionCall = null; nutritionLoading = false; nutrition = result;
-                    commitDetail(data.withNutrition(targetDate, targetMeal, targetId, result), Phase.NUTRITION, null, true);
-                });
-            } catch (Exception error) {
-                BdNutritionClient.Problem problem = error instanceof BdNutritionClient.Failure
-                        ? ((BdNutritionClient.Failure) error).problem : BdNutritionClient.Problem.NETWORK;
-                main.post(() -> {
-                    if (closed || generation != targetGeneration || requestId != nutritionRequest || phase != Phase.NUTRITION) return;
-                    nutritionCall = null; nutritionLoading = false;
-                    int text = problem == BdNutritionClient.Problem.AUTHORIZATION ? R.string.bd_detail_ai_auth
-                            : problem == BdNutritionClient.Problem.BALANCE ? R.string.bd_detail_ai_balance
-                            : problem == BdNutritionClient.Problem.RATE_LIMIT ? R.string.bd_detail_ai_rate
-                            : problem == BdNutritionClient.Problem.CONFIGURATION ? R.string.bd_detail_ai_config
-                            : problem == BdNutritionClient.Problem.INVALID_RESPONSE ? R.string.bd_detail_ai_invalid : R.string.bd_detail_ai_network;
-                    message = getApplication().getString(text); changed();
-                });
+        Call<NutritionEstimate> call = api.nutrition().estimateNutrition(BdNutritionClient.request(dish));
+        nutritionCall = call;
+        calls.enqueue(call, new ApiCallback<NutritionEstimate>() {
+            @Override public void onSuccess(NutritionEstimate value) {
+                if (closed || generation != targetGeneration || requestId != nutritionRequest
+                        || phase != Phase.NUTRITION || !targetId.equals(selectedDishId)) return;
+                nutritionCall = null; nutritionLoading = false;
+                BdNutrition result;
+                try {
+                    result = BdNutritionClient.map(dish, value);
+                } catch (RuntimeException invalid) {
+                    nutrition = null;
+                    message = getApplication().getString(R.string.bd_detail_ai_invalid);
+                    changed();
+                    return;
+                }
+                nutrition = result;
+                commitDetail(data.withNutrition(targetDate, targetMeal, targetId, result), Phase.NUTRITION, null, true);
+            }
+
+            @Override public void onError(ApiError error) {
+                if (closed || generation != targetGeneration || requestId != nutritionRequest || phase != Phase.NUTRITION) return;
+                nutritionCall = null; nutritionLoading = false;
+                message = getApplication().getString(textFor(BdNutritionClient.problemFor(error == null ? null : error.code)));
+                changed();
             }
         });
+    }
+
+    private static int textFor(BdNutritionClient.Problem problem) {
+        switch (problem) {
+            case AUTHORIZATION: return R.string.bd_detail_ai_auth;
+            case BALANCE: return R.string.bd_detail_ai_balance;
+            case RATE_LIMIT: return R.string.bd_detail_ai_rate;
+            case CONFIGURATION: return R.string.bd_detail_ai_config;
+            case INVALID_RESPONSE: return R.string.bd_detail_ai_invalid;
+            default: return R.string.bd_detail_ai_network;
+        }
     }
 
     private void cancelNutrition() {
@@ -355,5 +388,5 @@ public final class BdHomeViewModel extends AndroidViewModel {
         if (previous != null) io.execute(() -> BdPhotoFiles.discard(getApplication(), previous));
     }
 
-    @Override protected void onCleared() { closed = true; cancelNutrition(); io.shutdown(); network.shutdownNow(); }
+    @Override protected void onCleared() { closed = true; cancelNutrition(); io.shutdown(); }
 }

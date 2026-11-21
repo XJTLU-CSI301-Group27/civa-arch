@@ -91,3 +91,16 @@ docker compose --env-file .env -f infra/compose.yaml down -v
 | 8080 already in use | `.\gradlew.bat serverStop` |
 | app window is black but the launcher renders | emulator compositor bug, not the app: open Settings on the same device - if it is black too, force software graphics. Device Manager -> Edit AVD -> Graphics = "Software - GLES 2.0", then Cold Boot Now. Equivalent: set `hw.gpu.mode=swiftshader_indirect` in `%USERPROFILE%\.android\avd\<avd>.avd\config.ini` and restart. The API 37.x preview system images are the usual culprit; an API 36 image is safer. |
 | only the four placeholder tabs appear | expected: home needs login + household; recipes/inventory/diary/profile are not implemented yet |
+
+## Nutrition provider (optional)
+
+```ini
+CIVA_NUTRITION_PROVIDER=auto        # auto | deepseek | stub
+CIVA_NUTRITION_API_KEY=             # required for deepseek / auto-with-key
+CIVA_NUTRITION_MODEL=deepseek-flash
+CIVA_NUTRITION_HOURLY_LIMIT=60
+CIVA_NUTRITION_DAILY_LIMIT=20
+```
+
+`auto` uses DeepSeek when a key is present and the deterministic stub otherwise, so CI and
+key-less local runs still exercise the endpoint. The key stays on the server.

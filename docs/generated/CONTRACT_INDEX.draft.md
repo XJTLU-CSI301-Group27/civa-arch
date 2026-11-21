@@ -14,6 +14,7 @@
 | createMealEntry | POST | /api/v1/me/meal-entries | D | application/json: CreateMealEntryRequest | 201 application/json: MealEntry |
 | createRecipe | POST | /api/v1/households/{householdId}/recipes | A | application/json: CreateRecipeRequest | 201 application/json: Recipe |
 | deleteMealEntry | DELETE | /api/v1/me/meal-entries/{entryId} | D | — | 204 — |
+| estimateNutrition | POST | /api/v1/nutrition/estimates | B | application/json: NutritionEstimateRequest | 200 application/json: NutritionEstimate |
 | getHousehold | GET | /api/v1/households/{householdId} | E | — | 200 application/json: Household |
 | getMe | GET | /api/v1/me | E | — | 200 application/json: User |
 | getMealSummary | GET | /api/v1/me/meal-summary | D | — | 200 application/json: PeriodSummary |

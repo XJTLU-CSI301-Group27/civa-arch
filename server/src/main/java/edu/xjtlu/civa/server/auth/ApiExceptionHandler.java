@@ -1,5 +1,6 @@
 package edu.xjtlu.civa.server.auth;
 
+import edu.xjtlu.civa.server.nutrition.NutritionErrors;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
@@ -31,6 +32,12 @@ public class ApiExceptionHandler {
         return response(status, status == 500 ? "INTERNAL_ERROR" : error.code, request, headers);
     }
 
+    @ExceptionHandler(NutritionErrors.Failure.class)
+    ResponseEntity<Map<String, Object>> nutritionFailure(NutritionErrors.Failure error, HttpServletRequest request) {
+        HttpHeaders headers = new HttpHeaders();
+        if (error.retryAfterSeconds > 0) headers.set(HttpHeaders.RETRY_AFTER, Long.toString(error.retryAfterSeconds));
+        return response(error.status, error.code, request, headers);
+    }
     @ExceptionHandler({IllegalArgumentException.class, MethodArgumentNotValidException.class,
             HttpMessageNotReadableException.class, ConstraintViolationException.class,
             MissingRequestHeaderException.class, MethodArgumentTypeMismatchException.class})

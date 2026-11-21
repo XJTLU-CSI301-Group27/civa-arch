@@ -43,10 +43,17 @@ public final class BdHomeFragment extends Fragment {
         super.onCreate(savedInstanceState);
         // Dish plates live in core-ui and resolve this feature's photo references through a hook.
         ImageSources.setLoader(BdPhotoFiles::open);
-        model = new ViewModelProvider(requireActivity()).get(BdHomeViewModel.class);
-        String owner = "local-preview";
-        if (requireActivity() instanceof BdHost) {
-            SessionStore sessions = ((BdHost) requireActivity()).sessions();
+        BdHost host = requireActivity() instanceof BdHost ? (BdHost) requireActivity() : null;
+        model = new ViewModelProvider(requireActivity(), new ViewModelProvider.Factory() {
+            @NonNull @Override public <T extends androidx.lifecycle.ViewModel> T create(@NonNull Class<T> type) {
+                if (type != BdHomeViewModel.class) throw new IllegalArgumentException("Unknown ViewModel");
+                return type.cast(new BdHomeViewModel(requireActivity().getApplication(),
+                        host == null ? null : host.api(), host == null ? null : host.calls()));
+            }
+        }).get(BdHomeViewModel.class);
+        String owner = "unavailable";
+        if (host != null) {
+            SessionStore sessions = host.sessions();
             owner = sessions.isLoggedIn() ? "account:" + sessions.currentUserId() + "/" + sessions.currentHouseholdId() : "signed-out";
         }
         model.initialize(owner, savedInstanceState);

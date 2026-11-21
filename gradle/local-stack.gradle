@@ -129,6 +129,7 @@ tasks.register('serverRun', Exec) {
         environment 'DB_PASSWORD', env.getProperty('DB_PASSWORD')
         environment 'CIVA_MEDIA_DIR', media.absolutePath
         environment 'SERVER_PORT', env.getProperty('SERVER_PORT') ?: '8080'
+        env.stringPropertyNames().findAll { it.startsWith('CIVA_') && it != 'CIVA_MEDIA_DIR' }.each { key -> environment key, env.getProperty(key) }
     }
 }
 
@@ -200,6 +201,7 @@ tasks.register('devStackEnsure') {
         childEnv.put('DB_PASSWORD', env.getProperty('DB_PASSWORD'))
         childEnv.put('CIVA_MEDIA_DIR', media.absolutePath)
         childEnv.put('SERVER_PORT', env.getProperty('SERVER_PORT') ?: '8080')
+        env.stringPropertyNames().findAll { it.startsWith('CIVA_') && it != 'CIVA_MEDIA_DIR' }.each { key -> childEnv.put(key, env.getProperty(key)) }
         builder.redirectErrorStream(true)
         builder.redirectOutput(ProcessBuilder.Redirect.appendTo(logFile))
         builder.start()
@@ -220,10 +222,18 @@ tasks.register('serverStop') {
             throw new GradleException('serverStop is Windows-only; use: kill $(lsof -ti tcp:8080)')
         }
         def port = readEnv().getProperty('SERVER_PORT') ?: '8080'
-        exec {
-            commandLine 'powershell', '-NoProfile', '-Command',
-                    "Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | " +
-                    "ForEach-Object { Stop-Process -Id \$_.OwningProcess -Force -ErrorAction SilentlyContinue }"
+        // netstat works in constrained shells where the TCP cmdlets are unavailable.
+        def output = []
+        def listener = new ProcessBuilder('netstat', '-ano').redirectErrorStream(true).start()
+        listener.inputStream.eachLine { output << it }
+        listener.waitFor()
+        def pattern = java.util.regex.Pattern.compile(':${port}\\s+.*LISTENING\\s+(\\d+)')
+        def pids = new LinkedHashSet<String>()
+        output.each { line -> def match = pattern.matcher(line); if (match.find()) pids << match.group(1) }
+        if (pids.isEmpty()) { println "no listener on ${port}" ; return }
+        pids.each { pid ->
+            println "stopping pid ${pid} on ${port}"
+            exec { commandLine 'taskkill', '/PID', pid, '/F'; ignoreExitValue = true }
         }
     }
 }

@@ -16,3 +16,11 @@ server:
   port: ${SERVER_PORT:8080}
 civa:
   media-dir: ${CIVA_MEDIA_DIR}
+  nutrition:
+    provider: ${CIVA_NUTRITION_PROVIDER:auto}
+    api-key: ${CIVA_NUTRITION_API_KEY:}
+    model: ${CIVA_NUTRITION_MODEL:deepseek-flash}
+    endpoint: ${CIVA_NUTRITION_ENDPOINT:https://api.deepseek.com/chat/completions}
+    cache-days: ${CIVA_NUTRITION_CACHE_DAYS:30}
+    hourly-limit: ${CIVA_NUTRITION_HOURLY_LIMIT:60}
+    daily-limit: ${CIVA_NUTRITION_DAILY_LIMIT:20}
