@@ -39,6 +39,7 @@ final class AppNavigator implements NavHost {
         if (primary) fragments.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
         var fragment = route == Route.LOGIN ? new LoginFragment()
                 : route == Route.HOUSEHOLD ? new HouseholdFragment()
+                : route == Route.TODAY ? new BdHomeFragment()
                 : PlaceholderFragment.create(title, entityId);
         var transaction = fragments.beginTransaction().replace(R.id.app_content, fragment);
         if (!primary) transaction.addToBackStack(null);
