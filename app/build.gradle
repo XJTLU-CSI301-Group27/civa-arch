@@ -53,3 +53,10 @@ dependencies {
     testImplementation libs.archunit
     testImplementation libs.gson
 }
+
+// Local acceptance convenience: a debug build (Run app) makes sure the dev database and the
+// Spring Boot backend are running. Skipped on CI and when -PdevStackOff is passed; it never
+// fails the build.
+tasks.matching { it.name == 'preDebugBuild' }.configureEach {
+    dependsOn ':devStackEnsure'
+}

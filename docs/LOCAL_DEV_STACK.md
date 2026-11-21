@@ -44,6 +44,18 @@ If they are not visible after opening the project: **File -> Reload All from Dis
 restart the IDE). Alternatively open **Gradle tool window -> civa -> Tasks -> local** and
 double-click the task — no run configuration needed.
 
+## One-click acceptance (Run app)
+
+:app:preDebugBuild depends on devStackEnsure, so a debug build (Studio *Run app*) already:
+
+1. checks TCP 5432 and starts the container when it is down;
+2. builds the backend jar when it is missing or older than server/src;
+3. starts the jar detached (log: server/build/logs/dev-stack.log) and waits for port 8080.
+
+It never fails the build: when Docker is unavailable it prints [dev-stack] ... warnings and
+the app still installs. CI=true or -PdevStackOff disables it. The database container uses
+estart: unless-stopped, so it comes back when Docker Desktop starts.
+
 ## Typical acceptance flow
 
 1. Start Docker Desktop.

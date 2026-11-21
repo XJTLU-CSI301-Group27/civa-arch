@@ -1,20 +1,46 @@
 // Local development stack entry points: Docker database + Spring Boot backend.
-// These tasks exist so a developer can start everything from the Gradle tool window or a
-// Run configuration in Android Studio. CI never executes them and never needs a .env file.
+// CI never executes these tasks and never needs a .env file.
 //
-//   dbUp / dbPs / dbLogs / dbDown  -> docker compose against infra/compose.yaml
-//   serverJar                      -> build the backend boot jar with its own wrapper
-//   serverRun                      -> run that jar with DB settings read from .env
-//   serverStop                     -> kill a stray listener on SERVER_PORT (Windows)
-//   devDoctor                      -> print diagnostics without failing
+//   devStackEnsure -> best effort: make sure the database and backend run before a debug build
+//   dbUp / dbPs / dbLogs / dbDown -> docker compose against infra/compose.yaml
+//   serverJar      -> build the backend boot jar with its own wrapper
+//   serverRun      -> run that jar with DB settings read from .env (blocking)
+//   serverStop     -> kill a stray listener on SERVER_PORT (Windows)
+//   devDoctor      -> print diagnostics without failing
 
 def repoDir = rootProject.projectDir
 def composeFile = 'infra/compose.yaml'
 def onWindows = org.gradle.internal.os.OperatingSystem.current().isWindows()
+def jarFile = new File(repoDir, 'server/build/libs/civa-server.jar')
 
-// "docker compose" is a CLI plugin that ships with Docker Desktop and only becomes
-// available once the engine is running; older setups only have the standalone binary.
-// Resolve lazily so configuration never depends on Docker being installed.
+def portOpen = { int port ->
+    try {
+        def socket = new Socket('127.0.0.1', port)
+        socket.close()
+        return true
+    } catch (Exception ignored) {
+        return false
+    }
+}
+
+def waitForPort = { int port, int seconds ->
+    def deadline = System.currentTimeMillis() + seconds * 1000L
+    while (System.currentTimeMillis() < deadline) {
+        if (portOpen(port)) return true
+        Thread.sleep(500)
+    }
+    return portOpen(port)
+}
+
+def readEnv = {
+    def file = new File(repoDir, '.env')
+    def env = new Properties()
+    if (file.isFile()) file.withInputStream { env.load(it) }
+    return env
+}
+
+// "docker compose" is a CLI plugin that ships with Docker Desktop; older setups only have
+// the standalone docker-compose binary. Resolve lazily so configuration never needs Docker.
 def composeBase = null
 def resolveCompose = {
     if (composeBase != null) return composeBase
@@ -32,8 +58,26 @@ def resolveCompose = {
         pluginWorks = false
     }
     composeBase = pluginWorks ? ['docker', 'compose'] : ['docker-compose']
-    println "using compose command: ${composeBase.join(' ')}"
+    println "[dev-stack] compose command: ${composeBase.join(' ')}"
     return composeBase
+}
+
+// --env-file/--project-directory are explicit: Compose does not reliably load .env when the
+// compose file lives in a subdirectory.
+def composeArguments = { List<String> subcommand ->
+    resolveCompose() + ['--project-directory', '.', '--env-file', '.env', '-f', composeFile] + subcommand
+}
+
+def runCompose = { List<String> subcommand ->
+    def sink = new ByteArrayOutputStream()
+    def result = exec {
+        workingDir repoDir
+        commandLine composeArguments(subcommand)
+        ignoreExitValue = true
+        standardOutput = sink
+        errorOutput = sink
+    }
+    return [result.exitValue, sink.toString()]
 }
 
 def composeTask = { String name, String description, List<String> subcommand ->
@@ -41,30 +85,8 @@ def composeTask = { String name, String description, List<String> subcommand ->
         group = 'local'
         it.description = description
         workingDir repoDir
-        // .env in the project directory is loaded by Compose automatically.
         doFirst {
-            def base = resolveCompose()
-            if (base[0] == 'docker-compose') {
-                def probe = new ByteArrayOutputStream()
-                def available = false
-                try {
-                    def check = exec {
-                        commandLine 'docker-compose', 'version'
-                        ignoreExitValue = true
-                        standardOutput = probe
-                        errorOutput = probe
-                    }
-                    available = check.exitValue == 0
-                } catch (Exception ignored) {
-                    available = false
-                }
-                if (!available) {
-                    throw new GradleException(
-                            'Docker Compose is not available. Start Docker Desktop and wait for "Engine running"' +
-                                    ' (it installs the "docker compose" plugin), then run this task again.')
-                }
-            }
-            commandLine(base + ['-f', composeFile] + subcommand)
+            commandLine composeArguments(subcommand)
         }
     }
 }
@@ -91,14 +113,12 @@ tasks.register('serverRun', Exec) {
     dependsOn 'serverJar'
     workingDir new File(repoDir, 'server')
     def javaBinary = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-    commandLine javaBinary, '-jar', new File(repoDir, 'server/build/libs/civa-server.jar').absolutePath
+    commandLine javaBinary, '-jar', jarFile.absolutePath
     doFirst {
-        def envFile = new File(repoDir, '.env')
-        if (!envFile.isFile()) {
+        def env = readEnv()
+        if (!new File(repoDir, '.env').isFile()) {
             throw new GradleException('Missing .env. Copy .env.example to .env and set POSTGRES_PASSWORD and DB_PASSWORD.')
         }
-        def env = new Properties()
-        envFile.withInputStream { env.load(it) }
         ['DB_URL', 'DB_USERNAME', 'DB_PASSWORD'].each { key ->
             if (!env.getProperty(key)) throw new GradleException(".env is missing $key")
         }
@@ -112,6 +132,86 @@ tasks.register('serverRun', Exec) {
     }
 }
 
+// One click acceptance: a debug build makes sure Docker has the database and that the backend
+// listens on 8080. It never fails the build; when Docker is unavailable it warns and the app
+// still builds (login/household simply cannot reach a backend).
+tasks.register('devStackEnsure') {
+    group = 'local'
+    description = 'Best effort: start the dev database and backend before a debug build.'
+    onlyIf { System.getenv('CI') == null && !project.hasProperty('devStackOff') }
+    doLast {
+        def env = readEnv()
+        if (!new File(repoDir, '.env').isFile()) {
+            logger.warn('[dev-stack] .env missing; skipping stack startup. Copy .env.example and set the passwords.')
+            return
+        }
+        if (!portOpen(5432)) {
+            println '[dev-stack] database is not listening on 5432, starting the container ...'
+            def (code, output) = runCompose(['up', '-d'])
+            if (code != 0) {
+                logger.warn("[dev-stack] docker compose failed; the app will start without a backend.\n${output.trim()}")
+                return
+            }
+            if (!waitForPort(5432, 90)) {
+                logger.warn('[dev-stack] database container started but 5432 never opened')
+                return
+            }
+        } else {
+            println '[dev-stack] database already listening on 5432'
+        }
+
+        if (portOpen(8080)) {
+            println '[dev-stack] backend already listening on 8080'
+            return
+        }
+        def sources = new File(repoDir, 'server/src')
+        def newestSource = sources.isDirectory()
+                ? (sources.listFiles({ File f -> f.isFile() } as FileFilter)?.max { it.lastModified() }?.lastModified() ?: 0L)
+                : 0L
+        if (!jarFile.isFile() || newestSource > jarFile.lastModified()) {
+            println '[dev-stack] building the backend jar ...'
+            def sink = new ByteArrayOutputStream()
+            def result = exec {
+                workingDir new File(repoDir, 'server')
+                if (onWindows) {
+                    commandLine 'cmd', '/c', '.\\gradlew.bat', 'bootJar'
+                } else {
+                    commandLine './gradlew', 'bootJar'
+                }
+                ignoreExitValue = true
+                standardOutput = sink
+                errorOutput = sink
+            }
+            if (result.exitValue != 0 || !jarFile.isFile()) {
+                logger.warn("[dev-stack] backend jar build failed.\n${sink.toString().trim()}")
+                return
+            }
+        }
+        def media = new File(repoDir, 'server/build/media')
+        media.mkdirs()
+        def logFile = new File(repoDir, 'server/build/logs/dev-stack.log')
+        logFile.parentFile.mkdirs()
+        def builder = new ProcessBuilder(new File(System.getProperty('java.home'), 'bin/java').absolutePath,
+                '-jar', jarFile.absolutePath)
+        builder.directory(new File(repoDir, 'server'))
+        def childEnv = builder.environment()
+        childEnv.put('DB_URL', env.getProperty('DB_URL'))
+        childEnv.put('DB_USERNAME', env.getProperty('DB_USERNAME'))
+        childEnv.put('DB_PASSWORD', env.getProperty('DB_PASSWORD'))
+        childEnv.put('CIVA_MEDIA_DIR', media.absolutePath)
+        childEnv.put('SERVER_PORT', env.getProperty('SERVER_PORT') ?: '8080')
+        builder.redirectErrorStream(true)
+        builder.redirectOutput(ProcessBuilder.Redirect.appendTo(logFile))
+        builder.start()
+        println "[dev-stack] backend starting, log: ${logFile}"
+        if (!waitForPort(8080, 120)) {
+            logger.warn("[dev-stack] backend did not open 8080; see ${logFile}")
+        } else {
+            println '[dev-stack] backend is up on 8080'
+        }
+    }
+}
+
 tasks.register('serverStop') {
     group = 'local'
     description = 'Stop a stray backend process listening on SERVER_PORT (Windows helper).'
@@ -119,13 +219,7 @@ tasks.register('serverStop') {
         if (!onWindows) {
             throw new GradleException('serverStop is Windows-only; use: kill $(lsof -ti tcp:8080)')
         }
-        def envFile = new File(repoDir, '.env')
-        def port = '8080'
-        if (envFile.isFile()) {
-            def env = new Properties()
-            envFile.withInputStream { env.load(it) }
-            port = env.getProperty('SERVER_PORT') ?: port
-        }
+        def port = readEnv().getProperty('SERVER_PORT') ?: '8080'
         exec {
             commandLine 'powershell', '-NoProfile', '-Command',
                     "Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | " +
@@ -136,7 +230,7 @@ tasks.register('serverStop') {
 
 tasks.register('devDoctor') {
     group = 'local'
-    description = 'Print local stack diagnostics without failing (Docker, .env, jar, port 8080).'
+    description = 'Print local stack diagnostics without failing (Docker, .env, jar, ports).'
     doLast {
         def probe = { String label, List<String> command ->
             println "\n--- ${label} ---"
@@ -144,7 +238,6 @@ tasks.register('devDoctor') {
                 exec {
                     commandLine command
                     ignoreExitValue = true
-                    // One stream keeps stdout/stderr in the order the tools printed them.
                     standardOutput = System.out
                     errorOutput = System.out
                 }
@@ -158,19 +251,15 @@ tasks.register('devDoctor') {
         probe('docker context', ['docker', 'context', 'ls'])
         probe('docker server', ['docker', 'info', '--format', 'server={{.ServerVersion}} os={{.OSType}}'])
         probe('docker ps', ['docker', 'ps'])
-        def base = resolveCompose()
-        probe('compose ps', base + ['-f', composeFile, 'ps'])
+        probe('compose ps', composeArguments(['ps']))
 
-        println '\n--- files ---'
+        println '\n--- ports / files ---'
+        println "5432 database:   ${portOpen(5432) ? 'OPEN' : 'closed'}"
+        println "8080 backend:    ${portOpen(8080) ? 'OPEN' : 'closed'}"
         println ".env:            ${new File(repoDir, '.env').isFile() ? 'present' : 'MISSING (copy .env.example)'}"
-        println "backend jar:     ${new File(repoDir, 'server/build/libs/civa-server.jar').isFile() ? 'present' : 'missing (run serverJar)'}"
-        if (onWindows) {
-            probe('port 8080 listener', ['powershell', '-NoProfile', '-Command',
-                    'Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalAddress,LocalPort,OwningProcess'])
-        }
-        println '\nRead the first failure top-down:'
-        println '1. "docker compose version" fails  -> Docker Desktop is not running/finished starting; it also installs the compose plugin.'
-        println '2. "docker server" or "docker ps" permission denied / cannot connect -> the engine is not running yet.'
-        println '3. "docker context" shows only default -> after the engine starts, Docker Desktop adds desktop-linux.'
+        println "backend jar:     ${jarFile.isFile() ? 'present' : 'missing (run serverJar)'}"
+        println '\nIf docker ps reports "permission denied" the caller cannot open the engine pipe:'
+        println '  - start Docker Desktop normally (not "Run as administrator"), or start Android Studio as administrator;'
+        println '  - then run this task again: context must be desktop-linux and "docker ps" must print a table.'
     }
 }
