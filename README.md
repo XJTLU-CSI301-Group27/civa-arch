@@ -1,161 +1,150 @@
-# Civa Android
+# Civa — 家庭菜谱、排餐与做饭记录
 
-CSI301 Android group project for household recipes, meal planning, inventory,
-cooking records, personal meal logs, and shared household access.
+CSI301 小组项目：Android（Java + Views，7 个模块）与 Spring Boot 3 后端，
+以 `contracts/openapi.json` 为唯一契约来源，客户端与服务端均由它生成。
 
-This repository currently contains the collaboration and delivery baseline:
+| 登录 | 首页（今天） | 加道菜 |
+| --- | --- | --- |
+| ![登录](docs/screenshots/login.png) | ![首页](docs/screenshots/home.png) | ![加道菜](docs/screenshots/add-dish.png) |
 
-- mandatory AI development rules;
-- product, data, UI, integration, and test contracts;
-- GitHub Issue and pull request templates;
-- local preflight scripts;
-- an Android CI workflow that becomes an active build gate after the unified
-  Android project is added.
+截图来自真实运行的 debug 包（Android 模拟器，软件渲染）。
 
-An initial Java/Android Views module layout is being prepared against
-`PROJECT_DOC.md`. Android and server builds exist, but the complete API contract,
-tests and server implementation are incomplete and the baseline is not approved.
-See `docs/verification/BOOTSTRAP.md` and `OPEN_QUESTIONS.md` for current status
-and the outstanding team contract decision. Do not create competing projects.
+## 现在能做什么
 
-The single `contracts/openapi.json` is an unapproved candidate. Check it from the
-root with `./gradlew validateContract generateClient generateServerApi
-:api-client:testCandidateClient` and from `server/` with `./gradlew
-testCandidateContract`. Generated interfaces are compiled into both projects;
-successful generation does not mean the team has approved the contract.
-
-The server's `unitTest` task runs the explicitly isolated unit tests without a
-database. Its `test` task requires `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD`
-in the running shell and connects to verify that the actual PostgreSQL database
-matches the URL and ends in `_test` before starting tests. This guard does not
-yet replace the required database integration suite or full preflight.
-
-`python scripts/contract_diff.py --base <old.json> --head <new.json> --output <report.json>`
-reports candidate OpenAPI file changes and returns a nonzero exit code when
-changes are found. `python scripts/contract_guard.py check|draft` adds the IC
-authorization gate (a change must be covered by an ACCEPTED interface-change
-record) and digest verification; neither replaces the full preflight.
-
-## Required reading
-
-Read these before changing code:
-
-- `AGENTS.md`
-- `docs/PRODUCT_RULES.md`
-- `docs/DATA_CONTRACT.md`
-- `docs/UI_RULES.md`
-- `docs/INTEGRATION_RULES.md`
-- `docs/TEST_PLAN.md`
-
-## Team groups
-
-| Group | Scope |
+| 功能 | 状态 |
 | --- | --- |
-| AC | Recipes, ingredients, inventory, wishlist, and cooked history |
-| BD | Meal planning, recommendation, cooking confirmation, and meal records |
-| EF | Android foundation, accounts, household access, shared UI, and integration |
+| 注册 / 登录 / 登出（真实后端，Bearer + 会话代数隔离） | ✅ |
+| 创建家庭 | ✅ 幂等键 + 待确认写入 |
+| 加入家庭（邀请码） | ✅ 需服务端预置邀请记录（`createInvitation` 仍是 501） |
+| 首页「今天」：日期/星期、日历换日、三餐列表 | ✅ 本地草稿，不写服务端 |
+| 加菜流程：手动录入 / 偏好筛选 / 抽签推荐 | ✅ |
+| 菜品详情：菜谱、编辑做法、移除、用餐选择 | ✅ |
+| 营养估算（DeepSeek，仅 debug 本地 key） | ✅ 可失败降级 |
+| 菜谱 / 冰箱 / 食记 / 我的 | ⏳ 占位页（AC / EF 组范围） |
 
-## Branch workflow
+首页草稿是**个人本地数据**：按账号 + 家庭做 SHA-256 作用域隔离，不产生做饭记录、
+不扣库存、不写共享排餐。详见 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md)。
 
-1. Pick an Issue and confirm its acceptance criteria.
-2. Update `main`.
-3. Create `feature/<issue-number>-<short-name>`.
-4. Implement only the assigned scope.
-5. Integrate the latest `origin/main`.
-6. Run the preflight checks on the feature branch.
-7. Open a pull request and report the real commands and results.
-8. Merge only after required checks pass.
+## 架构
 
-PowerShell:
+```mermaid
+graph TD
+    app[":app<br/>装配 + 导航 + 唯一入口 MainActivity"]
+    ef[":feature-ef<br/>登录 / 家庭"]
+    bd[":feature-bd<br/>首页 / 排餐 / 菜品 / 营养"]
+    ac[":feature-ac<br/>（待实现）"]
+    ui[":core-ui<br/>视觉系统 + UI 基元<br/>Route / NavHost / ApiError"]
+    data[":core-data<br/>SessionStore / ApiCalls / 缓存 / 幂等写入 / JsonPost"]
+    api[":api-client<br/>由 OpenAPI 生成的 Retrofit 客户端"]
+    contract[["contracts/openapi.json<br/>33 paths / 41 operations / 64 schemas"]]
+    server[["server/ Spring Boot<br/>auth · household · 33 个 501 占位"]]
 
-```powershell
-.\scripts\preflight.ps1
+    app --> ef & bd & ac & ui & data
+    ef --> ui & data
+    bd --> ui & data
+    data --> ui & api
+    api -. 生成 .-> contract
+    server -. 生成 .-> contract
 ```
 
-macOS or Linux:
+规则（由测试强制执行）：
 
-```bash
-./scripts/preflight.sh
-```
+- feature 只依赖 `core-ui` / `core-data` / `api-client`，不依赖 `app`、不互相依赖；
+- feature 不直接开网络连接，HTTP 走 `ApiCalls`（`core.data.JsonPost` 用于非契约通道）；
+- 共享主题与组件只属于 `core-ui`，feature 不得重定义 `civa_*` 主题 token；
+- 公开类型必须登记在 `contracts/public-surface.draft.json`，或显式标注为内部。
 
-The preflight scripts run the configured gates from `PROJECT_DOC.md` section 15:
-a Python 3.11+/PyYAML check, `validateContract generateClient generateServerApi
-checkContracts`, `assembleDebug testDebugUnitTest lint`, the contract tool
-self-tests, and the server `bootJar`. Server integration tests (`test`) need a
-running `_test` PostgreSQL database and are run separately.
+## 快速开始
 
-## Building and running locally
-
-Windows teammates: [另一台电脑快速测试](docs/QUICK_START.md). The repository-root
-`start-civa.bat` detects local tools; use `-CheckOnly`, `-Stop`, `-BuildServer`,
-`-BuildApp`, or `-NoStudio` as needed. No developer-specific drive paths are required.
-
-Windows local debugging and developer handoff: [本地调试与运行交接](docs/LOCAL_RUN_HANDOFF.md).
-
-Prerequisites: JDK 17, Android SDK with platform 36, Python 3.11+, and either
-Docker Compose or a local PostgreSQL 16 instance. The debug app defaults to
-`http://10.0.2.2:8080/` (the emulator's route to the host).
+前置：JDK 17、Android SDK（platform 36）、Docker Desktop。Python 3.11 仅在跑契约工具时需要。
 
 ```powershell
-# Root: install the pinned contract tooling, then validate and generate.
-python --version                  # must be 3.11+
-python -m pip install -r scripts/requirements.txt
-.\gradlew.bat validateContract generateClient generateServerApi checkContracts
+git clone https://github.com/XJTLU-CSI301-Group27/civa-arch.git
+cd civa-arch
+Copy-Item .env.example .env      # 填 POSTGRES_PASSWORD 与 DB_PASSWORD（两处保持一致）
+```
+
+然后用 Android Studio 打开工程，直接 **Run app** 即可。
+
+debug 构建会自动准备本地环境（`devStackEnsure`）：
+
+1. 检查 5432，必要时 `docker compose` 启动 PostgreSQL 容器；
+2. 后端 jar 缺失或比源码旧时用 `server/build` 的 wrapper 重新构建；
+3. 以 detached 进程启动后端（日志 `server/build/logs/dev-stack.log`），等待 8080。
+
+它不会让构建失败：Docker 不可用时打印 `[dev-stack] ...` 警告，App 仍可安装。
+`CI` 环境或 `-PdevStackOff` 会跳过。模拟器访问后端用 `10.0.2.2:8080`（debug 默认）。
+
+命令行等价入口（`local` 任务组，详见 [`docs/LOCAL_DEV_STACK.md`](docs/LOCAL_DEV_STACK.md)）：
+
+```powershell
+.\gradlew.bat devDoctor        # 一次性打印 Docker/端口/配置诊断
+.\gradlew.bat dbUp             # 只起数据库
+.\gradlew.bat serverRun        # 只起后端（阻塞，Run 窗口停止）
+.\gradlew.bat :app:assembleDebug
+```
+
+> 单入口：`MainActivity` 是唯一 launcher。首页在**登录并加入家庭后**出现在「今天」，
+> 其余四个 tab 目前是占位页。测试账号：`verify_1209` / `Passw0rd2026`。
+
+## 契约与门禁
+
+| 门禁 | 作用 |
+| --- | --- |
+| `validateContract` / `generateClient` / `generateServerApi` / `checkContracts` | OpenAPI 结构、客户端与服务端生成一致性 |
+| `scripts/contract_guard.py` | 契约变更必须有 IC 记录授权 |
+| `FeatureDependencyArchTest` | feature 包不得出现 `okhttp3` / `java.net`；并断言被测包非空 |
+| `ModuleBoundaryArchTest` | feature↛app、feature↛feature、core-ui↛core-data、core-data↛feature |
+| `ResourceOwnershipTest` | feature 不得引用 `app_*`、不得重定义 `civa_*`/`Civa*`、app 不得直用 feature 资源 |
+| `PublicSurfaceArchTest` + `PublicSurfaceCompletenessTest` | 已登记符号存在；新 public 类型必须登记或声明内部 |
+| `AppWiringTest` | `Route.TODAY` 必须接到 `BdHomeFragment`（防止退化成占位页） |
+| `lint { error 'ResourceName' }`（各模块） | `app_` / `civa_` / `bd_` / `ef_` 前缀 |
+
+CI：`.github/workflows/ci.yml`，三个作业（契约 / Android / 服务端集成）+ `CI gate`。
+本地一次性校验：
+
+```powershell
 .\gradlew.bat assembleDebug testDebugUnitTest lint
-
-# Start only the development database (server runs on the host).
-docker compose --env-file .env -f infra/compose.yaml up -d
-
-# Server: set your own database/media variables, then run or test.
-$env:DB_URL='jdbc:postgresql://localhost:5432/civa'
-$env:DB_USERNAME='civa'
-$env:DB_PASSWORD='<your password>'
-$env:CIVA_MEDIA_DIR='<local media directory>'
-cd server; .\gradlew.bat bootRun      # or: .\gradlew.bat test bootJar
+cd server; .\gradlew.bat test bootJar    # 需要以 _test 结尾的 PostgreSQL
 ```
 
-Server integration tests (`test`) require a PostgreSQL database whose name ends
-in `_test`; the test guard refuses any other name. macOS/Linux use `./gradlew`
-and `export` instead of `.\gradlew.bat` and `$env:`.
+## 目录结构
 
-The release build requires an explicit HTTPS `CIVA_API_BASE_URL`; plain HTTP is
-allowed only for debug on a trusted local machine or network.
+```
+app/           装配：CivaApplication、AppContainer、MainActivity、AppNavigator
+api-client/    OpenAPI 生成的 Retrofit 客户端（唯一网络契约产物）
+core-ui/       视觉系统（civa_* 色板、KuaiLe 字体、Civa* 样式）+ UI 基元 + Route/NavHost
+core-data/     SessionStore、ApiCalls（缓存/401/吊销）、PendingWriteStore、ApiProvider、JsonPost
+feature-ef/    登录、家庭（LoginHost / HouseholdHost）
+feature-bd/    首页、加菜、菜谱、营养（312 道菜谱与 149 张图随模块打包）
+feature-ac/    空模块，等 AC 组按同一套基元填充
+server/        Spring Boot：auth、household、application、config、web(501)
+contracts/     OpenAPI、生成器配置、fixtures、IC 记录、公共面清单
+docs/          规格、ADR 001–004、本地栈、验证记录、截图
+scripts/       契约门禁与 preflight
+```
 
-## Local API address
+## 文档
 
-The debug app defaults to `http://10.0.2.2:8080/`, the Android emulator's route
-to a server on the host. To use another reachable server, set
-`CIVA_API_BASE_URL` in `~/.gradle/gradle.properties` or pass, for example,
-`-PCIVA_API_BASE_URL=http://192.168.1.20:8080/`. The address must be an origin
-ending in `/`. Use plain HTTP only on a trusted local machine or network; do not
-expose the database port or disable the firewall. The debug manifest alone
-permits cleartext. Release tasks require an explicitly supplied HTTPS address.
+- [架构基线](ARCHITECTURE_BASELINE.md)｜[本地栈与排错](docs/LOCAL_DEV_STACK.md)
+- [数据契约](docs/DATA_CONTRACT.md)｜[UI 规则](docs/UI_RULES.md)｜[测试计划](docs/TEST_PLAN.md)
+- ADR：[001 基线](docs/decisions/ADR-001-baseline.md)、[002 幂等摘要](docs/decisions/ADR-002-idempotency-digest.md)、
+  [003 共享视觉系统](docs/decisions/ADR-003-shared-visual-system.md)、
+  [004 BD 模块化](docs/decisions/ADR-004-bd-module-migration.md)
 
-Start the server separately with its documented database and media settings;
-the debug APK does not start the server. Account and household creation work
-only with a running backend. Invitation creation and most business screens are
-still incomplete; see `docs/verification/BOOTSTRAP.md`.
+## 已知限制
 
-The following operations are placeholders and return `CONTRACT_NOT_IMPLEMENTED`
-when reached with a valid authenticated request: `addWishlist`,
-`changeInventory`, `commitPlan`, `confirmCooking`, `createInventoryBatch`,
-`createInvitation`, `createMealEntry`, `createRecipe`, `deleteMealEntry`,
-`getMealSummary`, `getMediaContent`, `getPreferences`, `getRecipe`,
-`listCookingEvents`, `listIngredients`, `listInventoryBatches`,
-`listInventoryMovements`, `listMealEntries`, `listPlanSlots`, `listRecipes`,
-`listWishlist`, `matchRecipes`, `previewCooking`, `removeMember`,
-`removeWishlist`, `replacePlanSlot`, `setPlanSlotLock`, `setRecipeArchived`,
-`updateInventoryBatch`, `updateMealEntry`, `updatePreferences`, `updateRecipe`,
-and `uploadMedia`. Authentication and request validation still run first.
+- **模拟器黑屏**：API 37.x 预览镜像在 host GPU 下合成器会崩（`android.hardwar` SIGABRT），
+  表现为首个 Activity 黑屏、"回桌面再进才显示"。把 AVD 的 Graphics 设为
+  `Software - GLES 2.0` 并 **Cold Boot Now** 即可；详见本地栈文档。
+- 营养估算使用 debug 专用的本地 provider key，生产环境应改为服务端代理。
+- 41 个契约操作中 8 个已实现，33 个返回 `CONTRACT_NOT_IMPLEMENTED`（501）。
+- 组员成果以压缩包交接，由本地按模块整合，不直接合并对方分支。
 
-## Current bootstrap status
+## 团队分工
 
-- [x] Repository governance files
-- [x] Product and integration contracts
-- [x] Issue, pull request, and CI templates
-- [ ] Unified Android project
-- [ ] Real Android build and unit-test CI
-- [ ] Branch rules that require the real Android CI check
-- [x] Organization Project
-- [x] Project marked as an organization template
-- [ ] Project added to the organization's recommended-template list
+| 组 | 范围 |
+| --- | --- |
+| AC | 菜谱、食材、库存、收藏、做饭历史 |
+| BD | 排餐、推荐、做饭确认、用餐记录 |
+| EF | Android 基础、账号、家庭、共享 UI 与集成 |
