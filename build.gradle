@@ -57,3 +57,6 @@ tasks.register('checkContracts', Exec) {
     dependsOn 'validateContract', 'checkCandidateIndex'
     commandLine 'python', 'scripts/check_contracts.py'
 }
+
+// Local Docker/PostgreSQL + backend entry points for Android Studio run configurations.
+apply from: 'gradle/local-stack.gradle'

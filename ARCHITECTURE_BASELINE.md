@@ -50,6 +50,21 @@
 - `refactor/arch-alignment` —— 2026-11-20 的四项"架构归位"，未合入基线，需要时再合；
 - 标签 `pr10-backup-20261120` —— 被回退的 BD 实现，仅作历史留存。
 
+## 本地起后端（一键）
+
+`gradle/local-stack.gradle` 注册了 `local` 任务组，Android Studio 里直接用 Run 配置或
+Gradle 工具窗运行即可，不需要把 `server/` 作为第二个 Gradle 工程挂进 IDE：
+
+| 任务 | 作用 |
+| --- | --- |
+| `dbUp` / `dbPs` / `dbLogs` / `dbDown` | Docker 里的 PostgreSQL 开发库 |
+| `serverJar` | 用 `server/` 自己的 wrapper 构建 `civa-server.jar` |
+| `serverRun` | 用 `.env` 里的 DB 配置运行该 jar（阻塞，Run 窗口停止） |
+| `serverStop` | 杀掉占用 `SERVER_PORT` 的残留进程（Windows） |
+
+`.env` 只在任务执行时读取，CI 不需要 `.env` 也不会执行这些任务。完整说明见
+`docs/LOCAL_DEV_STACK.md`。
+
 ## 组员代码怎么进这个仓库
 
 1. 解压对方的压缩包到临时目录（不要覆盖整个仓库）；

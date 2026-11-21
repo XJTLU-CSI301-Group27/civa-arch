@@ -1,0 +1,100 @@
+// Local development stack entry points: Docker database + Spring Boot backend.
+// These tasks exist so a developer can start everything from the Gradle tool window or a
+// Run configuration in Android Studio. CI never executes them and never needs a .env file.
+//
+//   dbUp / dbPs / dbLogs / dbDown  -> docker compose against infra/compose.yaml
+//   serverJar                      -> build the backend boot jar with its own wrapper
+//   serverRun                      -> run that jar with DB settings read from .env
+//   serverStop                     -> kill a stray listener on SERVER_PORT (Windows)
+
+def repoDir = rootProject.projectDir
+def compose = ['docker', 'compose', '--env-file', '.env', '-f', 'infra/compose.yaml']
+def onWindows = org.gradle.internal.os.OperatingSystem.current().isWindows()
+
+tasks.register('dbUp', Exec) {
+    group = 'local'
+    description = 'Start the development PostgreSQL container (docker compose up -d).'
+    workingDir repoDir
+    commandLine compose + ['up', '-d']
+}
+
+tasks.register('dbPs', Exec) {
+    group = 'local'
+    description = 'Show the development database container status.'
+    workingDir repoDir
+    commandLine compose + ['ps']
+}
+
+tasks.register('dbLogs', Exec) {
+    group = 'local'
+    description = 'Follow the development database logs (blocking; stop with the Run window).'
+    workingDir repoDir
+    commandLine compose + ['logs', '-f', 'db']
+}
+
+tasks.register('dbDown', Exec) {
+    group = 'local'
+    description = 'Stop the development database container (keeps the data volume).'
+    workingDir repoDir
+    commandLine compose + ['down']
+}
+
+tasks.register('serverJar', Exec) {
+    group = 'local'
+    description = 'Build the backend boot jar with the server Gradle wrapper.'
+    workingDir new File(repoDir, 'server')
+    if (onWindows) {
+        commandLine 'cmd', '/c', '.\\gradlew.bat', 'bootJar'
+    } else {
+        commandLine './gradlew', 'bootJar'
+    }
+}
+
+tasks.register('serverRun', Exec) {
+    group = 'local'
+    description = 'Run the backend jar with DB settings from .env (blocking; stop with the Run window).'
+    dependsOn 'serverJar'
+    workingDir new File(repoDir, 'server')
+    def javaBinary = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+    commandLine javaBinary, '-jar', new File(repoDir, 'server/build/libs/civa-server.jar').absolutePath
+    doFirst {
+        def envFile = new File(repoDir, '.env')
+        if (!envFile.isFile()) {
+            throw new GradleException('Missing .env. Copy .env.example to .env and set POSTGRES_PASSWORD and DB_PASSWORD.')
+        }
+        def env = new Properties()
+        envFile.withInputStream { env.load(it) }
+        ['DB_URL', 'DB_USERNAME', 'DB_PASSWORD'].each { key ->
+            if (!env.getProperty(key)) throw new GradleException(".env is missing $key")
+        }
+        def media = new File(repoDir, 'server/build/media')
+        media.mkdirs()
+        environment 'DB_URL', env.getProperty('DB_URL')
+        environment 'DB_USERNAME', env.getProperty('DB_USERNAME')
+        environment 'DB_PASSWORD', env.getProperty('DB_PASSWORD')
+        environment 'CIVA_MEDIA_DIR', media.absolutePath
+        environment 'SERVER_PORT', env.getProperty('SERVER_PORT') ?: '8080'
+    }
+}
+
+tasks.register('serverStop') {
+    group = 'local'
+    description = 'Stop a stray backend process listening on SERVER_PORT (Windows helper).'
+    doLast {
+        if (!onWindows) {
+            throw new GradleException('serverStop is Windows-only; use: kill $(lsof -ti tcp:8080)')
+        }
+        def envFile = new File(repoDir, '.env')
+        def port = '8080'
+        if (envFile.isFile()) {
+            def env = new Properties()
+            envFile.withInputStream { env.load(it) }
+            port = env.getProperty('SERVER_PORT') ?: port
+        }
+        exec {
+            commandLine 'powershell', '-NoProfile', '-Command',
+                    "Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | " +
+                    "ForEach-Object { Stop-Process -Id \$_.OwningProcess -Force -ErrorAction SilentlyContinue }"
+        }
+    }
+}
