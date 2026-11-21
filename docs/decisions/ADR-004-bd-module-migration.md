@@ -57,9 +57,7 @@ prototype bypassed the module rules entirely — it even opened its own
    error taxonomy. This is what makes the ArchUnit rule pass for the first time
    over real feature code instead of being silently blind.
 
-5. The debug-only visual entry becomes `BdPreviewActivity` and is a **second**
-   launcher icon. `MainActivity` keeps its launcher entry, so login and household
-   navigation remain reachable — the prototype had removed them.
+5. Superseded on 2026-11-21: the preview activity and its second launcher were removed;`MainActivity` is the single entry point (see the amendment at the end).
 
 ## Consequences
 
@@ -74,3 +72,15 @@ prototype bypassed the module rules entirely — it even opened its own
 - The nutrition estimate still depends on a debug-only provider key under
   `getNoBackupFilesDir()`; production wiring needs a server-side proxy, tracked
   separately.
+
+## Amendment (2026-11-21): single entry point
+
+The debug-only preview activity (a second launcher icon) was removed. It existed to show the
+home screen without a backend, but it also meant the real flow (login -> household -> home)
+stayed unverified and the app looked featureless when the preview was opened by mistake.
+
+- MainActivity is the only launcher entry.
+- A debug build starts the local stack automatically (devStackEnsure), so the real flow is
+  reachable with a single Run.
+- Remaining placeholder destinations (recipes, inventory, meal log, profile) stay placeholders
+  until their features land; that is scope, not a defect.

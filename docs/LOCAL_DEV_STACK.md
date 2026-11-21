@@ -89,3 +89,5 @@ docker compose --env-file .env -f infra/compose.yaml down -v
 | `ports are not available: 5432` | a local PostgreSQL service or a WinNAT excluded range owns the port |
 | backend starts but the app shows a network error | wrong base URL; emulators use `10.0.2.2`, real devices need `-PCIVA_API_BASE_URL=http://<host-ip>:8080/` |
 | 8080 already in use | `.\gradlew.bat serverStop` |
+| app window is black but the launcher renders | emulator surface bug: Device Manager -> Cold Boot Now, or start with `emulator -avd Medium_Phone -gpu swiftshader_indirect` |
+| only the four placeholder tabs appear | expected: home needs login + household; recipes/inventory/diary/profile are not implemented yet |

@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Civa</string>
-    <string name="app_preview_label">Civa 首页预览</string>
     <string name="app_today">今天</string>
     <string name="app_recipes">菜谱</string>
     <string name="app_inventory">冰箱</string>

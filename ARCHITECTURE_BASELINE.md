@@ -17,7 +17,7 @@
 
 | 内容 | 说明 |
 | --- | --- |
-| `app/` | 装配与导航壳：`CivaApplication`、`AppContainer`、`MainActivity`、`AppNavigator`、`PlaceholderFragment`；debug 有独立的 `BdPreviewActivity` 预览入口 |
+| `app/` | 装配与导航壳：`CivaApplication`、`AppContainer`、`MainActivity`、`AppNavigator`、`PlaceholderFragment`；唯一入口是 MainActivity（首页在登录并加入家庭后由 `feature-bd` 提供） |
 | `api-client/` | 由 `contracts/openapi.json` 生成的 Retrofit 客户端（唯一网络契约产物） |
 | `core-ui/` | **共享视觉系统**：`civa_*` 色板、`civa_kuaile` 字体、`CivaText/CivaWidget/CivaShape` 样式 token，以及 `PaperBackdropView`、`BakeryCatStage`、`DishPlateView`、`DishActionOverlay`、`DishPopoverPlacement`、`ElasticChoiceView`、`PressBounce`、`CivaWindow`、`ImageSources` 等 UI 基元；另有 `Route`、`NavHost`、`ApiError`、`QuantityInputs` |
 | `core-data/` | `SessionStore`、`ApiCalls`（缓存与 401/吊销处理）、`PendingWriteStore`、`ApiProvider`、`AuthRepository`、`JsonPost`（非契约 HTTPS 通道）、Room |
