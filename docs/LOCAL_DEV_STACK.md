@@ -24,6 +24,7 @@ without linking the `server/` build as a second IDE project.
 | `serverJar` | build `server/build/libs/civa-server.jar` with the server wrapper |
 | `serverRun` | run that jar with `DB_URL`/`DB_USERNAME`/`DB_PASSWORD`/`CIVA_MEDIA_DIR`/`SERVER_PORT` read from `.env` |
 | `serverStop` | Windows helper that kills a stray listener on `SERVER_PORT` |
+| `devDoctor` | prints Docker/context/.env/jar/port diagnostics and never fails the build |
 
 `serverRun` never hard-codes credentials: it loads `.env` at execution time and creates
 `server/build/media` before starting.
@@ -37,6 +38,7 @@ contains them under `.idea/runConfigurations/`:
 - `Civa DB ps` -> `dbPs`
 - `Civa DB down` -> `dbDown`
 - `Civa Backend (bootRun)` -> `serverRun`
+- `Civa Doctor` -> `devDoctor` (run this first when something does not start)
 
 If they are not visible after opening the project: **File -> Reload All from Disk** (or
 restart the IDE). Alternatively open **Gradle tool window -> civa -> Tasks -> local** and

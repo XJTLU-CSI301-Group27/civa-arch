@@ -98,3 +98,38 @@ tasks.register('serverStop') {
         }
     }
 }
+
+tasks.register('devDoctor') {
+    group = 'local'
+    description = 'Print local stack diagnostics without failing (Docker, .env, jar, port 8080).'
+    doLast {
+        def probe = { String label, List<String> command ->
+            println "\n--- ${label} ---"
+            try {
+                exec {
+                    commandLine command
+                    ignoreExitValue = true
+                    standardOutput = System.out
+                    errorOutput = System.err
+                }
+            } catch (Exception error) {
+                println "could not run ${command.join(' ')}: ${error.message}"
+            }
+        }
+        println 'Civa local stack diagnostics'
+        probe('docker version', ['docker', '--version'])
+        probe('docker context', ['docker', 'context', 'ls'])
+        probe('docker ps', ['docker', 'ps'])
+        probe('compose ps', ['docker', 'compose', '--env-file', '.env', '-f', 'infra/compose.yaml', 'ps'])
+
+        println '\n--- files ---'
+        println ".env:            ${new File(repoDir, '.env').isFile() ? 'present' : 'MISSING (copy .env.example)'}"
+        println "backend jar:     ${new File(repoDir, 'server/build/libs/civa-server.jar').isFile() ? 'present' : 'missing (run serverJar)'}"
+        if (onWindows) {
+            probe('port 8080 listener', ['powershell', '-NoProfile', '-Command',
+                    'Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalAddress,LocalPort,OwningProcess'])
+        }
+        println '\nIf "docker ps" reports permission denied or cannot connect, the Docker engine is not running yet:'
+        println 'start Docker Desktop, wait for "Engine running", then run dbUp again.'
+    }
+}
