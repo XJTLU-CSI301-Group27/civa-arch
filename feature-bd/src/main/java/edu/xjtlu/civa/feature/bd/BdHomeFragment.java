@@ -1,5 +1,6 @@
 package edu.xjtlu.civa.feature.bd;
 
+import edu.xjtlu.civa.core.ui.ImageSources;
 import edu.xjtlu.civa.core.ui.PressBounce;
 import edu.xjtlu.civa.core.ui.DishPlateView;
 import edu.xjtlu.civa.core.data.SessionStore;
@@ -40,6 +41,8 @@ public final class BdHomeFragment extends Fragment {
 
     @Override public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Dish plates live in core-ui and resolve this feature's photo references through a hook.
+        ImageSources.setLoader(BdPhotoFiles::open);
         model = new ViewModelProvider(requireActivity()).get(BdHomeViewModel.class);
         String owner = "local-preview";
         if (requireActivity() instanceof BdHost) {

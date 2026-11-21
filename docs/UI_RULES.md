@@ -50,6 +50,32 @@ One visual system, owned by `core-ui` (see
 - Account for keyboard visibility in forms.
 - Test both empty and populated states.
 
+## Home screen (BD)
+
+`feature-bd` owns the home screen; the app only places it in the `TODAY`
+destination.
+
+- Layout: paper backdrop, weekday/date header with a calendar button, the cat
+  hero (`BakeryCatStage` + bundled artwork), then breakfast / lunch / dinner
+  cards. `layout-w600dp` arranges the three meals side by side instead of
+  stacking them. The screen never scrolls vertically; `BdHomeLayout` shrinks
+  meal cards to fit short windows and keeps the Add button visible.
+- States: loading, ready, empty slot (card hidden), message/error toast, saving,
+  importing a photo, and the add-dish flow phases (choose, manual entry,
+  preferences, recommendation, dish actions, recipe, missing recipe, recipe
+  editor, nutrition).
+- Add-dish flow is a `DialogFragment` (`BdFlowDialog`): close (X) returns Home
+  from the detail flow and steps back one phase inside the add flow; system back
+  follows the same rule; a drag outside the anchored popover dismisses it.
+- Actions: dish tap opens recipe / nutrition / remove; manual dishes require a
+  name and accept one optional photo; recommendation rerolls never repeat the
+  current dish and never relax the chosen filters.
+- Copy belongs to the feature; every string is `bd_*` and every label is
+  localized, so no user-visible text is hard-coded in Java.
+- Accessibility: interactive tiles expose content descriptions, the cat bubble
+  is a polite live region, and press feedback never consumes clicks or ignores
+  keyboard activation.
+
 ## Pull request evidence
 
 User-interface changes must include:

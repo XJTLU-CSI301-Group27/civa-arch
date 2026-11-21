@@ -11,6 +11,20 @@
     "feature-bd": ["api-client", "core-ui", "core-data"],
     "feature-ef": ["api-client", "core-ui", "core-data"]
   },
+  "internalSymbols": [
+    {
+      "type": "edu.xjtlu.civa.feature.bd.BdFlowDialog",
+      "reason": "DialogFragment must stay public for framework recreation; not a cross-module API."
+    },
+    {
+      "type": "edu.xjtlu.civa.feature.bd.BdHomeLayout",
+      "reason": "Inflated from the feature layout by class name; not a cross-module API."
+    },
+    {
+      "type": "edu.xjtlu.civa.feature.bd.BdHomeViewModel",
+      "reason": "ViewModel reflection needs a public type; owned by BdHomeFragment."
+    }
+  ],
   "symbols": [
     {
       "type": "edu.xjtlu.civa.core.ui.Route",

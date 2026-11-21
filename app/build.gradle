@@ -25,7 +25,7 @@ android {
         release { buildConfigField 'String', 'API_BASE_URL', groovy.json.JsonOutput.toJson(configuredApiUrl ?: 'https://invalid.invalid/') }
     }
     lint { error 'ResourceName' }
-    testOptions { unitTests.all { systemProperty 'civa.publicSurface', rootProject.file('contracts/public-surface.draft.json').absolutePath } }
+    testOptions { unitTests.all { systemProperty 'civa.publicSurface', rootProject.file('contracts/public-surface.draft.json').absolutePath; systemProperty 'civa.repoRoot', rootProject.projectDir.absolutePath } }
 }
 
 def verifyReleaseApiUrl = tasks.register('verifyReleaseApiUrl') {
