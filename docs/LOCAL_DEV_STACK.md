@@ -104,3 +104,15 @@ CIVA_NUTRITION_DAILY_LIMIT=20
 
 `auto` uses DeepSeek when a key is present and the deterministic stub otherwise, so CI and
 key-less local runs still exercise the endpoint. The key stays on the server.
+
+## Gradle JDK
+
+Android Studio / Gradle 必须指向一个**独立安装的 JDK 17**（或在 Studio 里选
+`Embedded JDK`）。不要使用仓库 `build/jdk17/` 下的 JDK 副本作为 Gradle JDK：
+本机实测该路径里的 `java.exe` 无法写入 `%TEMP%`，会让 Room 的 sqlite 校验
+（`DatabaseVerifier`）和 AGP 的 `compressDebugAssets` 报 `AccessDeniedException`，
+而 Build 窗口里只显示一个 `...\Temp\<uuid>.tmp` 路径。
+
+切换方式：`File > Sync Project with Gradle Files` 前，在
+`Settings > Build, Execution, Deployment > Build Tools > Gradle > Gradle JDK`
+选择独立 JDK（Studio 会写进不入库的 `<project>/.gradle/config.properties`）。
