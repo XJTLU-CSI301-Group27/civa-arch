@@ -8,4 +8,12 @@ android {
     buildFeatures { viewBinding true }
     lint { error 'ResourceName' }
 }
-dependencies { implementation libs.material; implementation libs.annotation; testImplementation libs.junit }
+dependencies {
+    // Theme, fonts and shared primitives are public API of this module: consumers need
+    // AppCompatActivity in their own signatures (CivaWindow, PressBounce).
+    api libs.appcompat
+    implementation libs.material
+    implementation libs.fragment
+    implementation libs.annotation
+    testImplementation libs.junit
+}

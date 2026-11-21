@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.View;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.navigation.NavigationBarView;
+import edu.xjtlu.civa.core.ui.CivaWindow;
 import edu.xjtlu.civa.core.ui.Route;
 import edu.xjtlu.civa.core.data.ApiCalls;
 import edu.xjtlu.civa.core.data.ApiProvider;
@@ -23,6 +24,7 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
         boolean restore = container.sessions.isLoggedIn() || getLastCustomNonConfigurationInstance() != null;
         super.onCreate(restore ? savedInstanceState : null);
         setContentView(R.layout.app_activity_main);
+        CivaWindow.apply(this);
         navigator = new AppNavigator(getSupportFragmentManager(), container.sessions);
         navigation = findViewById(R.id.app_navigation);
         navigation.setOnItemSelectedListener(item -> {

@@ -1,0 +1,11 @@
+<resources>
+    <!-- Tags/ids owned by the shared UI primitives. Feature layouts reference them
+         through @id/civa_* (for example the cat artwork inside BakeryCatStage). -->
+    <item name="civa_press_bounce_binding" type="id" />
+    <item name="civa_press_bounce_installed" type="id" />
+    <item name="civa_cat_art" type="id" />
+    <item name="civa_cat_meow_bubble" type="id" />
+    <item name="civa_dish_action_overlay" type="id" />
+    <item name="civa_dish_action_menu" type="id" />
+    <item name="civa_dish_peek_cat" type="id" />
+</resources>

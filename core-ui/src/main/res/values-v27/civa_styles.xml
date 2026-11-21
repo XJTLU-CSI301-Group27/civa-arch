@@ -1,0 +1,6 @@
+<resources>
+    <style name="CivaTheme.Civa" parent="CivaTheme.Base">
+        <item name="android:navigationBarColor">@color/civa_background</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

@@ -175,6 +175,77 @@
       "incomplete": ["public surface approval"]
     },
     {
+      "type": "edu.xjtlu.civa.core.ui.CivaWindow",
+      "kind": "class",
+      "owner": "EF/F",
+      "consumers": ["app"],
+      "thread": "main; call after setContentView",
+      "members": ["static void apply(AppCompatActivity activity)"]
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.PaperBackdropView",
+      "kind": "class",
+      "owner": "EF/F",
+      "consumers": ["app", "feature-ac", "feature-bd", "feature-ef"],
+      "thread": "main",
+      "members": []
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.PressBounce",
+      "kind": "class",
+      "owner": "EF/F",
+      "consumers": ["app", "feature-ac", "feature-bd", "feature-ef"],
+      "thread": "main",
+      "members": ["static void bind(View view)", "static void bindButtons(View root)", "static void install(AppCompatActivity activity)"]
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.BakeryCatStage",
+      "kind": "class",
+      "owner": "EF/F",
+      "consumers": ["feature-bd"],
+      "thread": "main",
+      "members": []
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.DishPlateView",
+      "kind": "class",
+      "owner": "EF/F",
+      "consumers": ["feature-bd"],
+      "thread": "main; images load on a background pool",
+      "members": ["void setImageReference(@Nullable String value)"]
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.DishPopoverPlacement",
+      "kind": "class",
+      "owner": "EF/F",
+      "consumers": ["feature-bd"],
+      "thread": "pure functions",
+      "members": ["static Position place(int width, int height, int left, int top, int right, int bottom, int menuWidth, int menuHeight, int margin, int gap)"]
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.DishActionOverlay",
+      "kind": "class",
+      "owner": "EF/F",
+      "consumers": ["feature-bd"],
+      "thread": "main",
+      "members": ["void setAnchored(boolean value)"]
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.ElasticChoiceView",
+      "kind": "class",
+      "owner": "EF/F",
+      "consumers": ["feature-ac", "feature-bd"],
+      "thread": "main",
+      "members": []
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.ImageSources",
+      "kind": "class",
+      "owner": "EF/F",
+      "consumers": ["app", "feature-bd"],
+      "thread": "open() must not run on the main thread",
+      "members": ["static void setLoader(Loader value)"]
+    },    {
       "type": "edu.xjtlu.civa.server.auth.ApiExceptionHandler",
       "kind": "class",
       "owner": "EF/E",

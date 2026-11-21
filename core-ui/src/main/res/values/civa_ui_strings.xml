@@ -1,0 +1,5 @@
+<resources>
+    <string name="civa_cat_meow">喵</string>
+    <string name="civa_cat_greeting">点击和烘焙小猫打个招呼</string>
+    <string name="civa_dish_no_photo">这道菜还没有照片</string>
+</resources>

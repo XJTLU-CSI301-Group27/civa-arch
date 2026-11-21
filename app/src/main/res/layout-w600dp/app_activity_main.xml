@@ -1,10 +1,29 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/app_root"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="horizontal">
-    <com.google.android.material.navigationrail.NavigationRailView android:id="@+id/app_navigation"
-        android:layout_width="wrap_content" android:layout_height="match_parent"
-        app:labelVisibilityMode="labeled" app:menu="@menu/app_navigation" />
-    <androidx.fragment.app.FragmentContainerView android:id="@+id/app_content"
-        android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
-</LinearLayout>
+    android:background="@color/civa_background">
+
+    <edu.xjtlu.civa.core.ui.PaperBackdropView
+        android:layout_width="match_parent" android:layout_height="match_parent" />
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <com.google.android.material.navigationrail.NavigationRailView
+            android:id="@+id/app_navigation"
+            android:layout_width="wrap_content" android:layout_height="match_parent"
+            android:layout_margin="8dp"
+            android:background="@drawable/civa_navigation_background" android:elevation="0dp"
+            app:itemIconSize="24dp" app:itemIconTint="@color/app_navigation_icon"
+            app:itemTextColor="@color/app_navigation_text"
+            app:itemTextAppearanceActive="@style/CivaText.Navigation"
+            app:itemTextAppearanceInactive="@style/CivaText.Navigation"
+            app:itemActiveIndicatorStyle="@style/CivaWidget.NavigationIndicator"
+            app:itemRippleColor="#18AA7048"
+            app:labelVisibilityMode="labeled" app:menu="@menu/app_navigation" />
+
+        <androidx.fragment.app.FragmentContainerView android:id="@+id/app_content"
+            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+    </LinearLayout>
+</FrameLayout>
