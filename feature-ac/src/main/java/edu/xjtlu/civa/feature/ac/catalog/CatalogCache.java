@@ -5,8 +5,9 @@ import android.content.SharedPreferences;
 import com.google.gson.Gson;
 import edu.xjtlu.civa.api.model.CatalogRecipe;
 import edu.xjtlu.civa.api.model.CatalogRecipePage;
+import edu.xjtlu.civa.api.model.PersonalRecipe;
 
-/** Read-only cache of catalogue responses so the recipe tab opens offline. */
+/** Read-only cache of catalogue and personal recipe responses so the tab opens offline. */
 final class CatalogCache {
     private static final String PREFS = "ac_catalog_cache_v1";
     private static final String LIST_KEY = "list";
@@ -28,6 +29,18 @@ final class CatalogCache {
 
     static void saveDetail(Context context, CatalogRecipe recipe) {
         write(context, "detail:" + recipe.getId(), recipe);
+    }
+
+    static PersonalRecipe loadPersonal(Context context, String id) {
+        return read(context, "personal:" + id, PersonalRecipe.class);
+    }
+
+    static void savePersonal(Context context, PersonalRecipe recipe) {
+        write(context, "personal:" + recipe.getId(), recipe);
+    }
+
+    static void clearPersonal(Context context, String id) {
+        prefs(context).edit().remove("personal:" + id).apply();
     }
 
     private static <T> T read(Context context, String key, Class<T> type) {

@@ -30,5 +30,31 @@
     <string name="ac_catalog_section_steps">做法</string>
     <string name="ac_catalog_section_nutrition">营养</string>
     <string name="ac_catalog_readonly">公共菜谱，只读；收藏、加入家庭与编辑将在后续版本提供。</string>
+    <!-- Personal recipes, favourites and editor (P2) -->
+    <string name="ac_catalog_favorite">想吃</string>
+    <string name="ac_catalog_favorited">已想吃</string>
+    <string name="ac_catalog_save_to_mine">保存到我的菜谱</string>
+    <string name="ac_catalog_saved">已保存</string>
+    <string name="ac_catalog_saved_toast">已保存到我的菜谱</string>
+    <string name="ac_catalog_archive">归档 / 恢复</string>
+    <string name="ac_catalog_archived">已归档</string>
+    <string name="ac_catalog_restored">已恢复</string>
+    <string name="ac_catalog_delete">删除菜谱</string>
+    <string name="ac_catalog_delete_confirm">删除这道菜谱？历史记录不受影响。</string>
+    <string name="ac_editor_new_title">新建菜谱</string>
+    <string name="ac_editor_edit_title">编辑菜谱</string>
+    <string name="ac_editor_name">菜名，例如 番茄炒蛋</string>
+    <string name="ac_editor_category">分类（可选），例如 家常菜</string>
+    <string name="ac_editor_description">介绍（可选）</string>
+    <string name="ac_editor_ingredients_label">食材（每行一条）</string>
+    <string name="ac_editor_ingredients_hint">番茄 2 个\n鸡蛋 3 个</string>
+    <string name="ac_editor_steps_label">做法（每行一步）</string>
+    <string name="ac_editor_steps_hint">番茄切块\n热锅下油炒蛋\n合炒调味</string>
+    <string name="ac_editor_save">保存</string>
+    <string name="ac_editor_cancel">取消</string>
+    <string name="ac_editor_saved">已保存</string>
+    <string name="ac_editor_incomplete">菜名、食材和做法都必须填写</string>
+    <string name="ac_catalog_personal_note">个人菜谱，跟随账号；可编辑、归档或删除。</string>
 </resources>
+
 

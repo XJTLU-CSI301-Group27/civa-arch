@@ -6,13 +6,21 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import edu.xjtlu.civa.api.model.CatalogRecipe;
 import edu.xjtlu.civa.api.model.CatalogRecipeIngredient;
+import edu.xjtlu.civa.api.model.CreatePersonalRecipeRequest;
+import edu.xjtlu.civa.api.model.PersonalRecipe;
+import edu.xjtlu.civa.api.model.RecipeFavorite;
+import edu.xjtlu.civa.api.model.RecipeFavoriteKind;
 import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.ui.ApiError;
+import edu.xjtlu.civa.core.ui.Route;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.R;
 import java.util.ArrayList;
@@ -20,12 +28,17 @@ import java.util.List;
 import java.util.UUID;
 import retrofit2.Call;
 
-/** Read-only detail of one public recipe; unknown nutrition stays "未提供", never zero. */
+/** Recipe detail for public and personal recipes, with favourites and the personal actions. */
 public final class RecipeCatalogDetailFragment extends Fragment {
     private static final String ARG_ID = "recipeId";
 
-    private CatalogRecipe recipe;
-    private Call<CatalogRecipe> call;
+    private AcHost host;
+    private String entityId, recipeId;
+    private boolean personal;
+    private Call<?> call;
+    private PersonalRecipe personalRecipe;
+    private CatalogRecipe catalogRecipe;
+    private boolean favorite;
 
     public static RecipeCatalogDetailFragment create(@Nullable String recipeId) {
         RecipeCatalogDetailFragment fragment = new RecipeCatalogDetailFragment();
@@ -41,32 +54,60 @@ public final class RecipeCatalogDetailFragment extends Fragment {
     }
 
     @Override public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        String id = getArguments() == null ? null : getArguments().getString(ARG_ID);
-        if (id == null) {
+        host = (AcHost) requireActivity();
+        entityId = getArguments() == null ? null : getArguments().getString(ARG_ID);
+        if (entityId == null) {
             render(view, null);
             return;
         }
-        CatalogRecipe cached = CatalogCache.loadDetail(requireContext(), id);
-        if (cached != null) render(view, cached);
-        AcHost host = (AcHost) requireActivity();
-        call = host.api().recipeCatalog().getCatalogRecipe(UUID.fromString(id));
-        host.calls().enqueue(call, new ApiCallback<CatalogRecipe>() {
+        personal = RecipeCard.isPersonal(entityId);
+        recipeId = RecipeCard.idOf(entityId);
+        if (personal) {
+            PersonalRecipe cached = CatalogCache.loadPersonal(requireContext(), recipeId);
+            if (cached != null) {
+                personalRecipe = cached;
+                render(view, cached);
+            }
+            loadPersonal(view);
+        } else {
+            CatalogRecipe cached = CatalogCache.loadDetail(requireContext(), recipeId);
+            if (cached != null) {
+                catalogRecipe = cached;
+                render(view, cached);
+            }
+            loadCatalog(view);
+        }
+    }
+
+    private void loadCatalog(View view) {
+        call = host.api().recipeCatalog().getCatalogRecipe(UUID.fromString(recipeId));
+        host.calls().enqueue((Call<CatalogRecipe>) call, new ApiCallback<CatalogRecipe>() {
             @Override public void onSuccess(@Nullable CatalogRecipe value) {
-                call = null;
-                if (value != null) {
-                    CatalogCache.saveDetail(requireContext(), value);
-                    render(view, value);
-                }
+                if (value == null) return;
+                catalogRecipe = value;
+                CatalogCache.saveDetail(requireContext(), value);
+                render(view, value);
             }
 
-            @Override public void onError(ApiError error) {
-                call = null;
+            @Override public void onError(ApiError error) { }
+        });
             }
+
+    private void loadPersonal(View view) {
+        call = host.api().personalRecipes().getPersonalRecipe(UUID.fromString(recipeId));
+        host.calls().enqueue((Call<PersonalRecipe>) call, new ApiCallback<PersonalRecipe>() {
+            @Override public void onSuccess(@Nullable PersonalRecipe value) {
+                if (value == null) return;
+                personalRecipe = value;
+                CatalogCache.savePersonal(requireContext(), value);
+                render(view, value);
+            }
+
+            @Override public void onError(ApiError error) { }
         });
     }
 
-    private void render(View view, CatalogRecipe value) {
-        recipe = value;
+    private void render(View view, Object value) {
         TextView emoji = view.findViewById(R.id.ac_detail_emoji);
         TextView name = view.findViewById(R.id.ac_detail_name);
         TextView meta = view.findViewById(R.id.ac_detail_meta);
@@ -79,46 +120,243 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             name.setText(R.string.ac_catalog_missing);
             return;
         }
-        emoji.setText(value.getEmoji() == null ? "🍽️" : value.getEmoji());
-        name.setText(value.getName());
+        String emojiText, title, category, cuisine, kcal, servingSize, protein, carbs, fat, protein100, carbs100, fat100, descriptionText;
+        List<String> stepList, methods = List.of(), flavors = List.of(), meals = List.of();
+        List<?> ingredientList;
+        Integer minutes;
+        if (value instanceof CatalogRecipe recipe) {
+            emojiText = recipe.getEmoji(); title = recipe.getName(); category = recipe.getCategory();
+            cuisine = recipe.getCuisine(); kcal = recipe.getKcal(); minutes = recipe.getEstimatedMinutes();
+            descriptionText = recipe.getDescription();
+            stepList = recipe.getSteps(); ingredientList = recipe.getIngredients();
+            methods = recipe.getMethods(); flavors = recipe.getFlavors(); meals = recipe.getMealTypes();
+            protein = recipe.getProtein(); carbs = recipe.getCarbs(); fat = recipe.getFat();
+            protein100 = recipe.getProteinPer100g(); carbs100 = recipe.getCarbsPer100g(); fat100 = recipe.getFatPer100g();
+            servingSize = null;
+        } else if (value instanceof PersonalRecipe recipe) {
+            emojiText = recipe.getEmoji(); title = recipe.getName(); category = recipe.getCategory();
+            cuisine = ""; kcal = recipe.getKcal(); minutes = recipe.getEstimatedMinutes();
+            descriptionText = recipe.getDescription();
+            stepList = recipe.getSteps(); ingredientList = recipe.getIngredients();
+            methods = recipe.getMethods(); flavors = recipe.getFlavors(); meals = recipe.getMealTypes();
+            protein = recipe.getProtein(); carbs = recipe.getCarbs(); fat = recipe.getFat();
+            protein100 = recipe.getProteinPer100g(); carbs100 = recipe.getCarbsPer100g(); fat100 = recipe.getFatPer100g();
+            servingSize = recipe.getServingSize();
+        } else {
+            return;
+        }
+        emoji.setText(emojiText == null ? "🍽️" : emojiText);
+        name.setText(title);
         List<String> metaParts = new ArrayList<>();
-        if (has(value.getCategory())) metaParts.add(value.getCategory());
-        if (has(value.getCuisine())) metaParts.add(value.getCuisine());
-        if (value.getKcal() != null) metaParts.add(value.getKcal() + " kcal / 份");
-        if (value.getEstimatedMinutes() != null) metaParts.add(value.getEstimatedMinutes() + " 分钟");
+        if (has(category)) metaParts.add(category);
+        if (has(cuisine)) metaParts.add(cuisine);
+        if (kcal != null) metaParts.add(kcal + " kcal / 份");
+        if (minutes != null) metaParts.add(minutes + " 分钟");
+        if (has(servingSize)) metaParts.add(servingSize);
         meta.setText(String.join(" · ", metaParts));
-        List<String> tagParts = new ArrayList<>(value.getMethods());
-        tagParts.addAll(value.getFlavors());
-        tagParts.addAll(value.getMealTypes());
+        List<String> tagParts = new ArrayList<>(methods);
+        tagParts.addAll(flavors);
+        tagParts.addAll(meals);
         tags.setText(String.join(" · ", tagParts));
         tags.setVisibility(tagParts.isEmpty() ? View.GONE : View.VISIBLE);
-        description.setText(has(value.getDescription()) ? value.getDescription() : getString(R.string.ac_catalog_no_description));
-        description.setVisibility(has(value.getDescription()) ? View.VISIBLE : View.GONE);
+        boolean hasDescription = has(descriptionText);
+        description.setText(hasDescription ? descriptionText : getString(R.string.ac_catalog_no_description));
+        description.setVisibility(hasDescription ? View.VISIBLE : View.GONE);
 
         ingredients.removeAllViews();
-        for (CatalogRecipeIngredient item : value.getIngredients()) {
-            String amount = joinAmount(item);
-            TextView row = line(getString(R.string.ac_catalog_ingredient, item.getName(), amount), 15, R.color.ac_catalog_ink);
-            ingredients.addView(row);
-        }
-        if (value.getIngredients().isEmpty()) ingredients.addView(line(getString(R.string.ac_catalog_missing), 15, R.color.ac_catalog_muted));
-
+        for (Object item : ingredientList) ingredients.addView(line(display(item), 15, R.color.ac_catalog_ink));
         steps.removeAllViews();
         int number = 1;
-        for (String step : value.getSteps()) {
-            steps.addView(line(number++ + ". " + step, 15, R.color.ac_catalog_ink));
-        }
-        if (value.getSteps().isEmpty()) steps.addView(line(getString(R.string.ac_catalog_missing), 15, R.color.ac_catalog_muted));
-
+        for (String step : stepList) steps.addView(line(number++ + ". " + step, 15, R.color.ac_catalog_ink));
         nutrition.removeAllViews();
         boolean any = false;
-        if (value.getProtein() != null) { nutrition.addView(nutritionRow(R.string.ac_catalog_protein, value.getProtein())); any = true; }
-        if (value.getCarbs() != null) { nutrition.addView(nutritionRow(R.string.ac_catalog_carbs, value.getCarbs())); any = true; }
-        if (value.getFat() != null) { nutrition.addView(nutritionRow(R.string.ac_catalog_fat, value.getFat())); any = true; }
-        if (value.getProteinPer100g() != null) { nutrition.addView(nutritionRow(R.string.ac_catalog_protein100, value.getProteinPer100g())); any = true; }
-        if (value.getCarbsPer100g() != null) { nutrition.addView(nutritionRow(R.string.ac_catalog_carbs100, value.getCarbsPer100g())); any = true; }
-        if (value.getFatPer100g() != null) { nutrition.addView(nutritionRow(R.string.ac_catalog_fat100, value.getFatPer100g())); any = true; }
+        any |= addNutrition(nutrition, R.string.ac_catalog_protein, protein);
+        any |= addNutrition(nutrition, R.string.ac_catalog_carbs, carbs);
+        any |= addNutrition(nutrition, R.string.ac_catalog_fat, fat);
+        any |= addNutrition(nutrition, R.string.ac_catalog_protein100, protein100);
+        any |= addNutrition(nutrition, R.string.ac_catalog_carbs100, carbs100);
+        any |= addNutrition(nutrition, R.string.ac_catalog_fat100, fat100);
         if (!any) nutrition.addView(line(getString(R.string.ac_catalog_no_nutrition), 15, R.color.ac_catalog_muted));
+
+        TextView footer = view.findViewById(R.id.ac_detail_footer);
+        footer.setText(personal ? R.string.ac_catalog_personal_note : R.string.ac_catalog_readonly);
+        bindActions(view);
+        loadFavoriteState(view);
+    }
+
+    private boolean addNutrition(LinearLayout container, int label, String value) {
+        if (value == null) return false;
+        container.addView(nutritionRow(label, value));
+        return true;
+    }
+
+    private void bindActions(View view) {
+        MaterialButton favoriteButton = view.findViewById(R.id.ac_detail_favorite);
+        MaterialButton save = view.findViewById(R.id.ac_detail_save);
+        MaterialButton edit = view.findViewById(R.id.ac_detail_edit);
+        MaterialButton archive = view.findViewById(R.id.ac_detail_archive);
+        MaterialButton delete = view.findViewById(R.id.ac_detail_delete);
+        favoriteButton.setOnClickListener(ignored -> toggleFavorite(view));
+        save.setVisibility(personal ? View.GONE : View.VISIBLE);
+        edit.setVisibility(personal ? View.VISIBLE : View.GONE);
+        archive.setVisibility(personal ? View.VISIBLE : View.GONE);
+        delete.setVisibility(personal ? View.VISIBLE : View.GONE);
+        save.setOnClickListener(ignored -> saveToMine(save));
+        edit.setOnClickListener(ignored -> host.navigate(Route.RECIPE_EDIT, RecipeCard.personalKey(recipeId)));
+        archive.setOnClickListener(ignored -> archivePersonal());
+        delete.setOnClickListener(ignored -> confirmDelete());
+    }
+
+    private void loadFavoriteState(View view) {
+        RecipeFavoriteKind kind = personal ? RecipeFavoriteKind.PERSONAL : RecipeFavoriteKind.CATALOG;
+        host.calls().enqueue(host.api().recipeFavorites().getRecipeFavorite(kind, UUID.fromString(recipeId)),
+                new ApiCallback<RecipeFavorite>() {
+                    @Override public void onSuccess(@Nullable RecipeFavorite value) {
+                        favorite = value != null;
+                        paintFavorite(view);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        favorite = false;
+                        paintFavorite(view);
+                    }
+                });
+    }
+
+    private void paintFavorite(View view) {
+        MaterialButton button = view.findViewById(R.id.ac_detail_favorite);
+        button.setText(favorite ? R.string.ac_catalog_favorited : R.string.ac_catalog_favorite);
+    }
+
+    private void toggleFavorite(View view) {
+        RecipeFavoriteKind kind = personal ? RecipeFavoriteKind.PERSONAL : RecipeFavoriteKind.CATALOG;
+        UUID id = UUID.fromString(recipeId);
+        Call<Void> request = favorite ? host.api().recipeFavorites().removeRecipeFavorite(kind, id)
+                : host.api().recipeFavorites().addRecipeFavorite(kind, id);
+        boolean target = !favorite;
+        host.calls().enqueue(request, new ApiCallback<Void>() {
+            @Override public void onSuccess(@Nullable Void value) {
+                favorite = target;
+                paintFavorite(view);
+            }
+
+            @Override public void onError(ApiError error) { }
+        });
+    }
+
+    private void saveToMine(MaterialButton save) {
+        if (!(catalogRecipe != null)) return;
+        CreatePersonalRecipeRequest request = new CreatePersonalRecipeRequest()
+                .name(catalogRecipe.getName())
+                .category(catalogRecipe.getCategory())
+                .description(catalogRecipe.getDescription())
+                .emoji(catalogRecipe.getEmoji())
+                .steps(catalogRecipe.getSteps())
+                .ingredients(toPersonalIngredients(catalogRecipe.getIngredients()))
+                .methods(catalogRecipe.getMethods())
+                .flavors(catalogRecipe.getFlavors())
+                .mealTypes(catalogRecipe.getMealTypes())
+                .estimatedMinutes(catalogRecipe.getEstimatedMinutes())
+                .kcal(catalogRecipe.getKcal())
+                .protein(catalogRecipe.getProtein())
+                .carbs(catalogRecipe.getCarbs())
+                .fat(catalogRecipe.getFat())
+                .proteinPer100g(catalogRecipe.getProteinPer100g())
+                .carbsPer100g(catalogRecipe.getCarbsPer100g())
+                .fatPer100g(catalogRecipe.getFatPer100g());
+        save.setEnabled(false);
+        host.calls().enqueue(host.api().personalRecipes().createPersonalRecipe(UUID.randomUUID(), request),
+                new ApiCallback<PersonalRecipe>() {
+                    @Override public void onSuccess(@Nullable PersonalRecipe value) {
+                        save.setText(R.string.ac_catalog_saved);
+                        toast(R.string.ac_catalog_saved_toast);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        save.setEnabled(true);
+                        toast(R.string.ac_catalog_error);
+                    }
+                });
+    }
+
+    private List<edu.xjtlu.civa.api.model.PersonalRecipeIngredient> toPersonalIngredients(
+            List<CatalogRecipeIngredient> source) {
+        List<edu.xjtlu.civa.api.model.PersonalRecipeIngredient> result = new ArrayList<>();
+        for (CatalogRecipeIngredient item : source) {
+            result.add(new edu.xjtlu.civa.api.model.PersonalRecipeIngredient()
+                    .name(item.getName())
+                    .quantity(item.getQuantity())
+                    .quantityPrefix(item.getQuantityPrefix())
+                    .unit(item.getUnit())
+                    .note(item.getNote()));
+        }
+        return result;
+    }
+
+    private void archivePersonal() {
+        if (personalRecipe == null) return;
+        host.calls().enqueue(host.api().personalRecipes().setPersonalRecipeArchived(
+                personalRecipe.getId(), new edu.xjtlu.civa.api.model.ArchivePersonalRecipeRequest()
+                        .archived(!Boolean.TRUE.equals(personalRecipe.getArchived()))
+                        .expectedVersion(personalRecipe.getVersion())),
+                new ApiCallback<PersonalRecipe>() {
+                    @Override public void onSuccess(@Nullable PersonalRecipe value) {
+                        personalRecipe = value;
+                        CatalogCache.savePersonal(requireContext(), value);
+                        toast(value != null && Boolean.TRUE.equals(value.getArchived())
+                                ? R.string.ac_catalog_archived : R.string.ac_catalog_restored);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        toast(R.string.ac_catalog_error);
+                    }
+                });
+    }
+
+    private void confirmDelete() {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setMessage(R.string.ac_catalog_delete_confirm)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.ac_catalog_delete, (dialog, which) -> deletePersonal())
+                .show();
+    }
+
+    private void deletePersonal() {
+        host.calls().enqueue(host.api().personalRecipes().deletePersonalRecipe(UUID.fromString(recipeId)),
+                new ApiCallback<Void>() {
+                    @Override public void onSuccess(@Nullable Void value) {
+                        CatalogCache.clearPersonal(requireContext(), recipeId);
+                        requireActivity().getOnBackPressedDispatcher().onBackPressed();
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        toast(R.string.ac_catalog_error);
+                    }
+                });
+    }
+
+    private void toast(int text) {
+        Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show();
+    }
+
+    private String display(Object item) {
+        if (item instanceof CatalogRecipeIngredient value) return displayIngredient(value.getName(), value.getQuantity(),
+                value.getQuantityPrefix(), value.getUnit(), value.getNote());
+        if (item instanceof edu.xjtlu.civa.api.model.PersonalRecipeIngredient value) {
+            return displayIngredient(value.getName(), value.getQuantity(), value.getQuantityPrefix(),
+                    value.getUnit(), value.getNote());
+        }
+        return String.valueOf(item);
+    }
+
+    private String displayIngredient(String name, String quantity, String prefix, String unit, String note) {
+        List<String> parts = new ArrayList<>();
+        if (has(name)) parts.add(name);
+        if (has(prefix)) parts.add(prefix);
+        if (has(quantity)) parts.add(quantity);
+        if (has(unit)) parts.add(unit);
+        if (has(note)) parts.add("（" + note + "）");
+        return String.join(" ", parts);
     }
 
     private TextView nutritionRow(int label, String value) {
@@ -133,15 +371,6 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         view.setPadding(0, 6, 0, 6);
         view.setLineSpacing(0f, 1.25f);
         return view;
-    }
-
-    private String joinAmount(CatalogRecipeIngredient item) {
-        List<String> parts = new ArrayList<>();
-        if (has(item.getQuantityPrefix())) parts.add(item.getQuantityPrefix());
-        if (has(item.getQuantity())) parts.add(item.getQuantity());
-        if (has(item.getUnit())) parts.add(item.getUnit());
-        if (has(item.getNote())) parts.add("（" + item.getNote() + "）");
-        return String.join(" ", parts);
     }
 
     private static boolean has(String value) { return value != null && !value.trim().isEmpty(); }

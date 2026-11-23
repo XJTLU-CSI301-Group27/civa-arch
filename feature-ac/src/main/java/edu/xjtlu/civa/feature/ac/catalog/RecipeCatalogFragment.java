@@ -18,8 +18,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
-import edu.xjtlu.civa.api.model.CatalogRecipe;
 import edu.xjtlu.civa.api.model.CatalogRecipePage;
+import edu.xjtlu.civa.api.model.PersonalRecipePage;
+import edu.xjtlu.civa.api.model.RecipeFavoritePage;
 import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.core.ui.Route;
@@ -29,26 +30,30 @@ import java.util.ArrayList;
 import java.util.List;
 import retrofit2.Call;
 
-/** Read-only public recipe catalogue: search, category/high-protein filters, paged grid. */
+/** Recipe tab: public catalogue, my personal recipes, and my "want to eat" list. */
 public final class RecipeCatalogFragment extends Fragment {
     private static final String[] CATEGORIES = {"全部", "家常菜", "减脂", "增肌", "营养", "保持", "食疗", "小吃", "烘焙"};
     private static final int PAGE_SIZE = 60;
-    private static final String SEARCH = "ac_catalog_search";
 
-    private final List<CatalogRecipe> loaded = new ArrayList<>();
-    private final CatalogAdapter adapter = new CatalogAdapter(this::openDetail);
+    private enum Source { PUBLIC, PERSONAL, FAVORITES }
+
+    private final List<RecipeCard> loaded = new ArrayList<>();
+    private final RecipeCard.RecipeCards cards = RecipeCard.cards();
+    private final CatalogAdapter adapter = new CatalogAdapter(this::open);
     private final Handler debounce = new Handler(Looper.getMainLooper());
 
+    private AcHost host;
     private RecyclerView grid;
     private TextView status;
-    private MaterialButton more;
-    private AcHost host;
-    private Call<CatalogRecipePage> call;
+    private MaterialButton more, create;
+    private EditText search;
+    private ChipGroup chips, sources;
+    private Call<?> call;
+    private Source source = Source.PUBLIC;
     private String query = "", category = "";
-    private boolean highProtein;
+    private boolean highProtein, loading, updatingChips;
     private int page;
     private long total;
-    private boolean loading, updatingChips;
 
     @Nullable @Override public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState) {
@@ -60,15 +65,18 @@ public final class RecipeCatalogFragment extends Fragment {
         grid = view.findViewById(R.id.ac_catalog_grid);
         status = view.findViewById(R.id.ac_catalog_status);
         more = view.findViewById(R.id.ac_catalog_more);
-        EditText search = view.findViewById(R.id.ac_catalog_search);
-        ChipGroup chips = view.findViewById(R.id.ac_catalog_chips);
+        create = view.findViewById(R.id.ac_catalog_create);
+        search = view.findViewById(R.id.ac_catalog_search);
+        chips = view.findViewById(R.id.ac_catalog_chips);
+        sources = view.findViewById(R.id.ac_catalog_sources);
 
         int columns = getResources().getConfiguration().screenWidthDp >= 600 ? 3 : 2;
         grid.setLayoutManager(new GridLayoutManager(requireContext(), columns));
         grid.setAdapter(adapter);
-        buildChips(chips);
         more.setOnClickListener(ignored -> load(false));
-        search.setText(query);
+        create.setOnClickListener(ignored -> host.navigate(Route.RECIPE_EDIT, "new"));
+        buildSources();
+        buildCategoryChips();
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
@@ -83,31 +91,53 @@ public final class RecipeCatalogFragment extends Fragment {
         load(true);
     }
 
-    private void buildChips(ChipGroup chips) {
+    private void buildSources() {
+        String[][] labels = {{"公共", "PUBLIC"}, {"我的", "PERSONAL"}, {"想吃", "FAVORITES"}};
+        for (String[] entry : labels) {
+            Chip chip = new Chip(requireContext());
+            chip.setText(entry[0]);
+            chip.setCheckable(true);
+            chip.setTag(entry[1]);
+            chip.setChecked("PUBLIC".equals(entry[1]));
+            chip.setOnCheckedChangeListener((button, checked) -> {
+                if (updatingChips || !checked) return;
+                updatingChips = true;
+                for (int i = 0; i < sources.getChildCount(); i++) {
+                    View child = sources.getChildAt(i);
+                    if (child instanceof Chip other && other != button) other.setChecked(false);
+                }
+                updatingChips = false;
+                source = Source.valueOf(entry[1]);
+                search.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
+                chips.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
+                create.setVisibility(source == Source.PERSONAL ? View.VISIBLE : View.GONE);
+                load(true);
+            });
+            sources.addView(chip);
+        }
+    }
+
+    private void buildCategoryChips() {
         for (String name : CATEGORIES) {
             Chip chip = new Chip(requireContext());
             chip.setText(name);
             chip.setCheckable(true);
-            chip.setChecked("全部".equals(name));
             chip.setTag(name);
+            chip.setChecked("全部".equals(name));
             chip.setOnCheckedChangeListener((button, checked) -> {
                 if (updatingChips) return;
-                boolean anyCategory = false;
+                boolean any = false;
                 for (int i = 0; i < chips.getChildCount(); i++) {
                     View child = chips.getChildAt(i);
-                    if (child instanceof Chip chipChild && chipChild.getTag() != null) {
-                        if (chipChild.isChecked()) anyCategory = true;
-                    }
+                    if (child instanceof Chip chipChild && chipChild.getTag() != null && chipChild.isChecked()) any = true;
                 }
                 updatingChips = true;
                 if (checked) {
                     for (int i = 0; i < chips.getChildCount(); i++) {
                         View child = chips.getChildAt(i);
-                        if (child instanceof Chip other && other != button && other.getTag() != null) {
-                            other.setChecked(false);
-                        }
+                        if (child instanceof Chip other && other != button && other.getTag() != null) other.setChecked(false);
                     }
-                } else if (!anyCategory) {
+                } else if (!any) {
                     updatingChips = false;
                     chip.setChecked(true);
                     return;
@@ -129,8 +159,12 @@ public final class RecipeCatalogFragment extends Fragment {
         chips.addView(protein);
     }
 
-    private void openDetail(CatalogRecipe recipe) {
-        host.navigate(Route.RECIPE_DETAIL, recipe.getId() == null ? null : recipe.getId().toString());
+    private void open(RecipeCard card) {
+        if (source == Source.PERSONAL) {
+            host.navigate(Route.RECIPE_DETAIL, RecipeCard.personalKey(card.id()));
+        } else {
+            host.navigate(Route.RECIPE_DETAIL, card.id());
+        }
     }
 
     private void load(boolean reset) {
@@ -145,47 +179,80 @@ public final class RecipeCatalogFragment extends Fragment {
         status.setText(R.string.ac_catalog_loading);
         more.setVisibility(View.GONE);
         int requestPage = page;
-        call = host.api().recipeCatalog().listCatalogRecipes(
-                query.isEmpty() ? null : query,
-                category.isEmpty() ? null : category,
-                null,
-                highProtein,
-                requestPage,
-                PAGE_SIZE);
-        host.calls().enqueue(call, new ApiCallback<CatalogRecipePage>() {
-            @Override public void onSuccess(@Nullable CatalogRecipePage value) {
-                loading = false;
-                call = null;
-                if (value == null || value.getItems() == null) {
-                    failed();
-                    return;
+        if (source == Source.PUBLIC) {
+            Call<CatalogRecipePage> request = host.api().recipeCatalog().listCatalogRecipes(
+                    query.isEmpty() ? null : query,
+                    category.isEmpty() ? null : category, null, highProtein, requestPage, PAGE_SIZE);
+            call = request;
+            host.calls().enqueue(request, new ApiCallback<CatalogRecipePage>() {
+                @Override public void onSuccess(@Nullable CatalogRecipePage value) {
+                    loading = false;
+                    if (value == null || value.getItems() == null) { failed(); return; }
+                    loaded.addAll(cards.fromCatalog(value.getItems()));
+                    total = value.getTotal() == null ? loaded.size() : value.getTotal();
+                    if (requestPage == 0) CatalogCache.saveList(requireContext(), value);
+                    render(requestPage);
                 }
-                loaded.addAll(value.getItems());
-                total = value.getTotal() == null ? loaded.size() : value.getTotal();
-                adapter.submit(loaded);
-                page = requestPage + 1;
-                CatalogCache.saveList(requireContext(), value);
-                status.setText(getString(R.string.ac_catalog_total, (int) total));
-                more.setVisibility(loaded.size() < total ? View.VISIBLE : View.GONE);
-                more.setText(getString(R.string.ac_catalog_more, (int) Math.max(0, total - loaded.size())));
-            }
 
-            @Override public void onError(ApiError error) {
-                loading = false;
-                call = null;
-                if (loaded.isEmpty()) {
-                    CatalogRecipePage cached = CatalogCache.loadList(requireContext());
-                    if (cached != null && cached.getItems() != null && !cached.getItems().isEmpty()) {
-                        loaded.addAll(cached.getItems());
-                        total = cached.getTotal() == null ? loaded.size() : cached.getTotal();
-                        adapter.submit(loaded);
-                        status.setText(R.string.ac_catalog_offline);
-                        return;
+                @Override public void onError(ApiError error) {
+                    loading = false;
+                    if (requestPage == 0 && loaded.isEmpty()) {
+                        CatalogRecipePage cached = CatalogCache.loadList(requireContext());
+                        if (cached != null && cached.getItems() != null && !cached.getItems().isEmpty()) {
+                            loaded.addAll(cards.fromCatalog(cached.getItems()));
+                            total = cached.getTotal() == null ? loaded.size() : cached.getTotal();
+                            adapter.submit(loaded);
+                            status.setText(R.string.ac_catalog_offline);
+                            return;
+                        }
                     }
+                    failed();
                 }
-                failed();
-            }
-        });
+            });
+        } else if (source == Source.PERSONAL) {
+            Call<PersonalRecipePage> request = host.api().personalRecipes().listPersonalRecipes(
+                    query.isEmpty() ? null : query, category.isEmpty() ? null : category, false, requestPage, PAGE_SIZE);
+            call = request;
+            host.calls().enqueue(request, new ApiCallback<PersonalRecipePage>() {
+                @Override public void onSuccess(@Nullable PersonalRecipePage value) {
+                    loading = false;
+                    if (value == null || value.getItems() == null) { failed(); return; }
+                    loaded.addAll(cards.fromPersonal(value.getItems()));
+                    total = value.getTotal() == null ? loaded.size() : value.getTotal();
+                    render(requestPage);
+                }
+
+                @Override public void onError(ApiError error) {
+                    loading = false;
+                    failed();
+                }
+            });
+        } else {
+            Call<RecipeFavoritePage> request = host.api().recipeFavorites().listRecipeFavorites(null, requestPage, PAGE_SIZE);
+            call = request;
+            host.calls().enqueue(request, new ApiCallback<RecipeFavoritePage>() {
+                @Override public void onSuccess(@Nullable RecipeFavoritePage value) {
+                    loading = false;
+                    if (value == null || value.getItems() == null) { failed(); return; }
+                    loaded.addAll(cards.fromFavorites(value.getItems()));
+                    total = value.getTotal() == null ? loaded.size() : value.getTotal();
+                    render(requestPage);
+                }
+
+                @Override public void onError(ApiError error) {
+                    loading = false;
+                    failed();
+                }
+            });
+        }
+    }
+
+    private void render(int requestPage) {
+        adapter.submit(loaded);
+        page = requestPage + 1;
+        status.setText(getString(R.string.ac_catalog_total, (int) total));
+        more.setVisibility(loaded.size() < total ? View.VISIBLE : View.GONE);
+        more.setText(getString(R.string.ac_catalog_more, (int) Math.max(0, total - loaded.size())));
     }
 
     private void failed() {

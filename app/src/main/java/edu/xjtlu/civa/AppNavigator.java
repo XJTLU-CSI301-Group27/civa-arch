@@ -5,6 +5,7 @@ import edu.xjtlu.civa.core.ui.NavHost;
 import edu.xjtlu.civa.core.ui.Route;
 import edu.xjtlu.civa.core.data.SessionStore;
 import edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogDetailFragment;
+import edu.xjtlu.civa.feature.ac.catalog.PersonalRecipeEditorFragment;
 import edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogFragment;
 import edu.xjtlu.civa.feature.ac.inventory.InventoryFragment;
 import edu.xjtlu.civa.feature.bd.BdHomeFragment;
@@ -45,6 +46,7 @@ final class AppNavigator implements NavHost {
                 : route == Route.TODAY ? new BdHomeFragment()
                 : route == Route.RECIPES ? new RecipeCatalogFragment()
                 : route == Route.RECIPE_DETAIL ? RecipeCatalogDetailFragment.create(entityId)
+                : route == Route.RECIPE_EDIT ? PersonalRecipeEditorFragment.create(entityId)
                 : route == Route.INVENTORY ? new InventoryFragment()
                 : PlaceholderFragment.create(title, entityId);
         var transaction = fragments.beginTransaction().replace(R.id.app_content, fragment);

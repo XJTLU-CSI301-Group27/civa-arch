@@ -8,6 +8,7 @@ CSI301 小组项目：Android（Java + Views，7 个模块）与 Spring Boot 3 �
 | ![登录](docs/screenshots/login.png) | ![首页](docs/screenshots/home.png) | ![加道菜](docs/screenshots/add-dish.png) |
 | ![冰箱](docs/screenshots/fridge.png) | ![冰箱详情](docs/screenshots/fridge-detail.png) | |
 | ![菜谱](docs/screenshots/catalog.png) | ![菜谱详情](docs/screenshots/catalog-detail.png) | |
+| ![我的菜谱](docs/screenshots/recipes-mine.png) | ![想吃](docs/screenshots/recipes-favorites.png) | |
 
 截图来自真实运行的 debug 包（Android 模拟器）。
 
@@ -23,7 +24,7 @@ CSI301 小组项目：Android（Java + Views，7 个模块）与 Spring Boot 3 �
 | 菜品详情：菜谱、编辑做法、移除、用餐选择 | ✅ |
 | 营养估算（服务端代理：缓存 + 限流 + 供应商抽象） | ✅ 可失败降级 |
 | 冰箱（库存）：批次录入、消耗/丢弃/修正、临期筛选、英文食材名 | ✅ 服务端 8 个操作 + 原生冰箱页 |
-| 菜谱（公共目录）：1307 道合并菜谱、搜索/分类/高蛋白筛选、离线缓存 | ✅ 服务端只读目录 + 缓存 |
+| 菜谱：公共目录（1307 道，搜索/筛选/缓存）+ 我的菜谱（新建/编辑/删除/归档）+ 想吃 | ✅ 公共只读 + 个人菜谱 + 统一收藏 |
 | 食记 / 我的 | ⏳ 占位页（EF 组范围） |
 
 首页草稿是**个人本地数据**：按账号 + 家庭做 SHA-256 作用域隔离，不产生做饭记录、

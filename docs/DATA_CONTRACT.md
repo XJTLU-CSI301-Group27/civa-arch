@@ -288,3 +288,13 @@ A 组 1093 道与 BD 组 312 道的合并目录（去重后 1307 道）作为**�
 - 客户端菜谱 Tab 读该接口并做只读缓存（离线可看已缓存页）；今天页推荐池改为公共目录，
   BD 的 `recipes/catalog.json` 仅作为首次启动的离线兜底。
 - 用户自建/家庭菜谱仍是后续阶段（P2/P3），届时通过现有 household recipe 接口并强制标准食材 ID。
+
+## Personal recipes and favourites (2026-11-23)
+
+- 个人菜谱：/api/v1/me/recipes（IC-20261123-PERSONAL-01），表 user_recipes，按 user_id 归属；
+  自由文本食材；expectedVersion 乐观并发；Idempotency-Key 保证创建幂等；删除时清理该用户的个人收藏。
+- 想吃：/api/v1/me/recipe-favorites（IC-20261123-FAVORITES-01），表 
+ecipe_favorites(kind, recipe_id)，
+  kind ∈ CATALOG/PERSONAL/HOUSEHOLD；列表内嵌名称/emoji/分类；家庭菜谱收藏校验成员身份。
+- 客户端菜谱Tab 提供 公共/我的/想吃 三个来源；公共详情可保存到我的菜谱并收藏；个人详情可编辑/归档/删除。
+- 旧 wishlists 仅覆盖家庭菜谱，保留给 P3 家庭菜谱接线时迁移。

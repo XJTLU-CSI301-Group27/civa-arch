@@ -101,7 +101,49 @@
             android:layout_marginTop="4dp"
             android:orientation="vertical" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_detail_favorite"
+            style="@style/CivaWidget.PrimaryButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/ac_catalog_favorite" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_detail_save"
+            style="@style/CivaWidget.SecondaryButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/ac_catalog_save_to_mine" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_detail_edit"
+            style="@style/CivaWidget.SecondaryButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/ac_editor_edit_title"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_detail_archive"
+            style="@style/CivaWidget.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ac_catalog_archive"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_detail_delete"
+            style="@style/CivaWidget.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ac_catalog_delete"
+            android:visibility="gone" />
+
         <TextView
+            android:id="@+id/ac_detail_footer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"

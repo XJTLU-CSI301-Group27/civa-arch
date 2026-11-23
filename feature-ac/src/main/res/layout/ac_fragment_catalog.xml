@@ -22,6 +22,30 @@
         android:layout_height="wrap_content"
         android:text="@string/ac_catalog_subtitle" />
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/ac_catalog_sources"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            app:chipSpacingHorizontal="8dp"
+            app:singleLine="true" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_catalog_create"
+            style="@style/CivaWidget.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ac_editor_new_title"
+            android:visibility="gone" />
+    </LinearLayout>
+
     <EditText
         android:id="@+id/ac_catalog_search"
         android:layout_width="match_parent"

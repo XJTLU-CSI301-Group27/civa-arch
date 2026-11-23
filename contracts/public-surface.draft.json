@@ -49,6 +49,21 @@
   ],
   "symbols": [
     {
+      "type": "edu.xjtlu.civa.feature.ac.catalog.PersonalRecipeEditorFragment",
+      "kind": "class",
+      "owner": "A",
+      "consumers": [
+        "app"
+      ],
+      "thread": "main",
+      "members": [
+        "static PersonalRecipeEditorFragment create(@Nullable String recipeId)"
+      ],
+      "incomplete": [
+        "IC-20261123-PERSONAL-01 is IMPLEMENTING; device validation pending"
+      ]
+    },
+    {
       "type": "edu.xjtlu.civa.feature.ac.AcHost",
       "kind": "interface",
       "owner": "A",
