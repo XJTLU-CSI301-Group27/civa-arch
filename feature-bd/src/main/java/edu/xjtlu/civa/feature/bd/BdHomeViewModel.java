@@ -14,6 +14,11 @@ import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.data.ApiCalls;
 import edu.xjtlu.civa.core.data.ApiProvider;
 import edu.xjtlu.civa.core.ui.ApiError;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import edu.xjtlu.civa.api.model.CatalogRecipe;
+import edu.xjtlu.civa.api.model.CatalogRecipePage;
+import java.io.StringReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -53,6 +58,8 @@ public final class BdHomeViewModel extends AndroidViewModel {
     private final Random random = new Random();
     private final Set<String> seen = new HashSet<>();
     private BdRecipeCatalog catalog;
+    private static final String CATALOG_CACHE = "bd_catalog_cache_v2", CATALOG_KEY = "recipes";
+    private boolean catalogRefreshStarted;
     private BdDraftStore store;
     private BdDraft data;
     private String owner, scope, operationId;
@@ -90,9 +97,19 @@ public final class BdHomeViewModel extends AndroidViewModel {
                 try (InputStreamReader reader = new InputStreamReader(getApplication().getAssets().open("recipes/catalog.json"), StandardCharsets.UTF_8)) {
                     loadedCatalog = new BdRecipeCatalog(reader);
                 }
+                String cached = getApplication().getSharedPreferences(CATALOG_CACHE, android.content.Context.MODE_PRIVATE)
+                        .getString(CATALOG_KEY, null);
+                if (cached != null) {
+                    try {
+                        loadedCatalog = new BdRecipeCatalog(new StringReader(cached));
+                    } catch (RuntimeException ignored) {
+                        // A corrupt cache falls back to the bundled cards.
+                    }
+                }
+                final BdRecipeCatalog resolvedCatalog = loadedCatalog;
                 main.post(() -> {
                     if (closed || generation != loadingGeneration) return;
-                    store = loadedStore; data = loaded; catalog = loadedCatalog; ready = true;
+                    store = loadedStore; data = loaded; catalog = resolvedCatalog; ready = true;
                     if (candidate != null) candidate = catalog.byId(candidate.id);
                     if (operationId != null) {
                         for (List<BdDraft.Dish> list : data.meals.values()) {
@@ -103,6 +120,7 @@ public final class BdHomeViewModel extends AndroidViewModel {
                     if (detailFlow() && selectedDish() == null) phase = Phase.NONE;
                     planVersion++; changed();
                     if (phase == Phase.NUTRITION) showNutrition();
+                    refreshCatalog(loadingGeneration);
                 });
             } catch (Exception error) {
                 main.post(() -> {
@@ -389,4 +407,44 @@ public final class BdHomeViewModel extends AndroidViewModel {
     }
 
     @Override protected void onCleared() { closed = true; cancelNutrition(); io.shutdown(); }
+
+    /** Refreshes the prompt pool from the public catalogue; keeps the cached cards on failure. */
+    private void refreshCatalog(int targetGeneration) {
+        if (catalogRefreshStarted || api == null || calls == null) return;
+        catalogRefreshStarted = true;
+        fetchCatalogPage(0, new ArrayList<>(), targetGeneration);
+    }
+
+    private void fetchCatalogPage(int page, List<CatalogRecipe> collected, int targetGeneration) {
+        if (closed || generation != targetGeneration) return;
+        calls.enqueue(api.recipeCatalog().listCatalogRecipes(null, null, null, false, page, 100),
+                new ApiCallback<CatalogRecipePage>() {
+                    @Override public void onSuccess(CatalogRecipePage value) {
+                        if (closed || generation != targetGeneration) return;
+                        if (value == null || value.getItems() == null) return;
+                        collected.addAll(value.getItems());
+                        long total = value.getTotal() == null ? collected.size() : value.getTotal();
+                        if (collected.size() < total && page < 20) {
+                            fetchCatalogPage(page + 1, collected, targetGeneration);
+                            return;
+                        }
+                        List<BdRecipeCatalog.Recipe> mapped = BdRecipeCatalog.fromCatalog(collected);
+                        if (mapped.isEmpty()) return;
+                        try {
+                            catalog = new BdRecipeCatalog(mapped);
+                        } catch (RuntimeException invalid) {
+                            return;
+                        }
+                        getApplication().getSharedPreferences(CATALOG_CACHE, android.content.Context.MODE_PRIVATE)
+                                .edit().putString(CATALOG_KEY, new Gson().toJson(mapped)).apply();
+                        if (candidate != null) candidate = catalog.byId(candidate.id);
+                        planVersion++;
+                        changed();
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        // Keep the cached or bundled pool; a failed refresh must not block the flow.
+                    }
+                });
+    }
 }

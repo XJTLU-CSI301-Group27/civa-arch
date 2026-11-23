@@ -7,6 +7,7 @@ CSI301 小组项目：Android（Java + Views，7 个模块）与 Spring Boot 3 �
 | --- | --- | --- |
 | ![登录](docs/screenshots/login.png) | ![首页](docs/screenshots/home.png) | ![加道菜](docs/screenshots/add-dish.png) |
 | ![冰箱](docs/screenshots/fridge.png) | ![冰箱详情](docs/screenshots/fridge-detail.png) | |
+| ![菜谱](docs/screenshots/catalog.png) | ![菜谱详情](docs/screenshots/catalog-detail.png) | |
 
 截图来自真实运行的 debug 包（Android 模拟器）。
 
@@ -22,7 +23,8 @@ CSI301 小组项目：Android（Java + Views，7 个模块）与 Spring Boot 3 �
 | 菜品详情：菜谱、编辑做法、移除、用餐选择 | ✅ |
 | 营养估算（服务端代理：缓存 + 限流 + 供应商抽象） | ✅ 可失败降级 |
 | 冰箱（库存）：批次录入、消耗/丢弃/修正、临期筛选、英文食材名 | ✅ 服务端 8 个操作 + 原生冰箱页 |
-| 菜谱 / 食记 / 我的 | ⏳ 占位页（AC / EF 组范围） |
+| 菜谱（公共目录）：1307 道合并菜谱、搜索/分类/高蛋白筛选、离线缓存 | ✅ 服务端只读目录 + 缓存 |
+| 食记 / 我的 | ⏳ 占位页（EF 组范围） |
 
 首页草稿是**个人本地数据**：按账号 + 家庭做 SHA-256 作用域隔离，不产生做饭记录、
 不扣库存、不写共享排餐。详见 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md)。
@@ -34,12 +36,12 @@ graph TD
     app[":app<br/>装配 + 导航 + 唯一入口 MainActivity"]
     ef[":feature-ef<br/>登录 / 家庭"]
     bd[":feature-bd<br/>首页 / 排餐 / 菜品 / 营养"]
-    ac[":feature-ac<br/>（待实现）"]
+    ac[":feature-ac<br/>菜谱目录 / 冰箱"]
     ui[":core-ui<br/>视觉系统 + UI 基元<br/>Route / NavHost / ApiError"]
     data[":core-data<br/>SessionStore / ApiCalls / 缓存 / 幂等写入 / JsonPost"]
     api[":api-client<br/>由 OpenAPI 生成的 Retrofit 客户端"]
     contract[["contracts/openapi.json<br/>33 paths / 41 operations / 64 schemas"]]
-    server[["server/ Spring Boot<br/>auth · household · inventory · nutrition · 22 个 501 占位"]]
+    server[["server/ Spring Boot<br/>auth · household · inventory · nutrition · recipe · 22 个 501 占位"]]
 
     app --> ef & bd & ac & ui & data
     ef --> ui & data
@@ -119,7 +121,7 @@ core-ui/       视觉系统（civa_* 色板、KuaiLe 字体、Civa* 样式）+ U
 core-data/     SessionStore、ApiCalls（缓存/401/吊销）、PendingWriteStore、ApiProvider、JsonPost
 feature-ef/    登录、家庭（LoginHost / HouseholdHost）
 feature-bd/    首页、加菜、菜谱、营养（312 道菜谱与 149 张图随模块打包）
-feature-ac/    冰箱库存页（inventory：批次/消耗/临期筛选），UI 用 civa_* 设计令牌
+feature-ac/    公共菜谱目录（catalog）+ 冰箱库存（inventory），UI 用 civa_* 设计令牌
 server/        Spring Boot：auth、household、inventory、nutrition、application、config、web(501)
 contracts/     OpenAPI、生成器配置、fixtures、IC 记录、公共面清单
 docs/          规格、ADR 001–004、本地栈、验证记录、截图

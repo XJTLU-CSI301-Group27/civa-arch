@@ -16,6 +16,7 @@
 | createRecipe | POST | /api/v1/households/{householdId}/recipes | A | application/json: CreateRecipeRequest | 201 application/json: Recipe |
 | deleteMealEntry | DELETE | /api/v1/me/meal-entries/{entryId} | D | — | 204 — |
 | estimateNutrition | POST | /api/v1/nutrition/estimates | B | application/json: NutritionEstimateRequest | 200 application/json: NutritionEstimate |
+| getCatalogRecipe | GET | /api/v1/recipe-catalog/{recipeId} | A | — | 200 application/json: CatalogRecipe |
 | getHousehold | GET | /api/v1/households/{householdId} | E | — | 200 application/json: Household |
 | getMe | GET | /api/v1/me | E | — | 200 application/json: User |
 | getMealSummary | GET | /api/v1/me/meal-summary | D | — | 200 application/json: PeriodSummary |
@@ -23,6 +24,7 @@
 | getPreferences | GET | /api/v1/me/preferences | E | — | 200 application/json: Preference |
 | getRecipe | GET | /api/v1/households/{householdId}/recipes/{recipeId} | A | — | 200 application/json: Recipe |
 | joinHousehold | POST | /api/v1/households/join | E | application/json: JoinHouseholdRequest | 201 application/json: Membership |
+| listCatalogRecipes | GET | /api/v1/recipe-catalog | A | — | 200 application/json: CatalogRecipePage |
 | listCookingEvents | GET | /api/v1/households/{householdId}/cooking-events | D | — | 200 application/json: CookingEventPage |
 | listIngredients | GET | /api/v1/ingredients | C | — | 200 application/json: IngredientPage |
 | listInventoryBatches | GET | /api/v1/households/{householdId}/inventory-batches | C | — | 200 application/json: InventoryBatchPage |

@@ -2,6 +2,8 @@ package edu.xjtlu.civa.feature.bd;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import edu.xjtlu.civa.api.model.CatalogRecipe;
+import edu.xjtlu.civa.api.model.CatalogRecipeIngredient;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,7 +37,15 @@ final class BdRecipeCatalog {
     final List<Recipe> recipes;
 
     BdRecipeCatalog(Reader reader) {
+        this(parse(reader));
+    }
+
+    private static List<Recipe> parse(Reader reader) {
         List<Recipe> parsed = new Gson().fromJson(reader, new TypeToken<List<Recipe>>() { }.getType());
+        return parsed;
+    }
+
+    BdRecipeCatalog(List<Recipe> parsed) {
         if (parsed == null || parsed.isEmpty()) throw new IllegalArgumentException("Empty recipe catalog");
         Set<String> ids = new HashSet<>();
         for (Recipe r : parsed) {
@@ -77,4 +87,48 @@ final class BdRecipeCatalog {
         seen.add(selected.id);
         return selected;
     }
+
+    /** Maps the server-side public catalogue into the existing prompt-card shape. */
+    static List<Recipe> fromCatalog(List<CatalogRecipe> rows) {
+        List<Recipe> result = new ArrayList<>();
+        for (CatalogRecipe row : rows) {
+            Recipe recipe = new Recipe();
+            recipe.id = row.getId() == null ? null : row.getId().toString();
+            recipe.name = row.getName();
+            recipe.image = row.getImageKey() == null ? null : "asset:" + row.getImageKey();
+            for (CatalogRecipeIngredient item : row.getIngredients()) recipe.ingredients.add(display(item));
+            recipe.steps.addAll(row.getSteps());
+            recipe.spicy = contains(row.getFlavors(), "辣") || safe(row.getName()).contains("辣")
+                    || safe(row.getName()).contains("麻");
+            recipe.meat = looksMeat(row.getName(), recipe.ingredients);
+            recipe.minutes = row.getEstimatedMinutes();
+            if (recipe.id != null && recipe.name != null && !recipe.ingredients.isEmpty() && !recipe.steps.isEmpty()) {
+                result.add(recipe);
+            }
+        }
+        return result;
+    }
+
+    private static String display(CatalogRecipeIngredient item) {
+        List<String> parts = new ArrayList<>();
+        if (item.getName() != null) parts.add(item.getName());
+        if (item.getQuantity() != null && !item.getQuantity().isEmpty()) parts.add(item.getQuantity());
+        if (item.getUnit() != null && !item.getUnit().isEmpty()) parts.add(item.getUnit());
+        return String.join(" ", parts);
+    }
+
+    private static boolean contains(List<String> values, String needle) {
+        for (String value : values) if (value != null && value.contains(needle)) return true;
+        return false;
+    }
+
+    private static boolean looksMeat(String name, List<String> ingredients) {
+        String text = safe(name) + " " + String.join(" ", ingredients);
+        for (String word : new String[]{"肉", "鸡", "牛", "猪", "羊", "鱼", "虾", "蟹", "贝", "排骨", "火腿", "培根"}) {
+            if (text.contains(word)) return true;
+        }
+        return false;
+    }
+
+    private static String safe(String value) { return value == null ? "" : value; }
 }

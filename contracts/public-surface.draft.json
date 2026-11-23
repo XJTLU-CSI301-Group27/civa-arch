@@ -49,6 +49,53 @@
   ],
   "symbols": [
     {
+      "type": "edu.xjtlu.civa.feature.ac.AcHost",
+      "kind": "interface",
+      "owner": "A",
+      "consumers": [
+        "app"
+      ],
+      "thread": "main; network work is submitted through existing ApiCalls",
+      "members": [
+        "ApiProvider api()",
+        "ApiCalls calls()",
+        "void navigate(Route route, @Nullable String entityId)"
+      ],
+      "incomplete": [
+        "IC-20261123-CATALOG-01 is IMPLEMENTING; device validation pending"
+      ]
+    },
+    {
+      "type": "edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogFragment",
+      "kind": "class",
+      "owner": "A",
+      "consumers": [
+        "app"
+      ],
+      "thread": "main",
+      "members": [
+        "RecipeCatalogFragment()"
+      ],
+      "incomplete": [
+        "read-only public catalogue; personal/household recipes arrive in P2/P3"
+      ]
+    },
+    {
+      "type": "edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogDetailFragment",
+      "kind": "class",
+      "owner": "A",
+      "consumers": [
+        "app"
+      ],
+      "thread": "main",
+      "members": [
+        "static RecipeCatalogDetailFragment create(@Nullable String recipeId)"
+      ],
+      "incomplete": [
+        "read-only public catalogue; personal/household recipes arrive in P2/P3"
+      ]
+    },
+    {
       "type": "edu.xjtlu.civa.feature.ac.inventory.InventoryHost",
       "kind": "interface",
       "owner": "AC/C",

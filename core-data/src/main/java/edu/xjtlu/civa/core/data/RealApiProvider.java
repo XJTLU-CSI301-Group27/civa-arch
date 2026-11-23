@@ -8,6 +8,7 @@ import edu.xjtlu.civa.api.NutritionApi;
 import edu.xjtlu.civa.api.PlanningApi;
 import edu.xjtlu.civa.api.ProfileApi;
 import edu.xjtlu.civa.api.RecipeApi;
+import edu.xjtlu.civa.api.RecipeCatalogApi;
 import edu.xjtlu.civa.api.RecordsApi;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
@@ -92,6 +93,7 @@ public final class RealApiProvider implements ApiProvider {
     @Override public HouseholdApi household() { return retrofit.create(HouseholdApi.class); }
     @Override public ProfileApi profile() { return retrofit.create(ProfileApi.class); }
     @Override public RecipeApi recipe() { return retrofit.create(RecipeApi.class); }
+    @Override public RecipeCatalogApi recipeCatalog() { return retrofit.create(RecipeCatalogApi.class); }
     @Override public InventoryApi inventory() { return retrofit.create(InventoryApi.class); }
     @Override public PlanningApi planning() { return retrofit.create(PlanningApi.class); }
     @Override public RecordsApi records() { return retrofit.create(RecordsApi.class); }

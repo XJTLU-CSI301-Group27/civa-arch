@@ -6,4 +6,29 @@
     <string name="ac_refresh">刷新</string>
     <string name="ac_retry_write">核对并重试原请求</string>
     <string name="ac_abandon_write">已核对结果，结束待确认记录</string>
+    <!-- Public recipe catalogue (P1) -->
+    <string name="ac_catalog_title">菜谱</string>
+    <string name="ac_catalog_subtitle">公共菜谱 · 与家人一起慢慢吃</string>
+    <string name="ac_catalog_search">搜索菜名、食材、做法</string>
+    <string name="ac_catalog_loading">加载中…</string>
+    <string name="ac_catalog_total">共 %1$d 道菜</string>
+    <string name="ac_catalog_more_plain">加载更多</string>
+    <string name="ac_catalog_more">加载更多（还有 %1$d 道）</string>
+    <string name="ac_catalog_offline">当前展示离线缓存（网络不可用）</string>
+    <string name="ac_catalog_error">加载失败，请检查网络后重试</string>
+    <string name="ac_catalog_missing">暂无数据</string>
+    <string name="ac_catalog_no_description">暂无介绍</string>
+    <string name="ac_catalog_ingredient">%1$s  %2$s</string>
+    <string name="ac_catalog_protein">蛋白质（每份）</string>
+    <string name="ac_catalog_carbs">碳水（每份）</string>
+    <string name="ac_catalog_fat">脂肪（每份）</string>
+    <string name="ac_catalog_protein100">蛋白质 / 100g</string>
+    <string name="ac_catalog_carbs100">碳水 / 100g</string>
+    <string name="ac_catalog_fat100">脂肪 / 100g</string>
+    <string name="ac_catalog_no_nutrition">暂无营养数据（未知值不按 0 显示）</string>
+    <string name="ac_catalog_section_ingredients">食材</string>
+    <string name="ac_catalog_section_steps">做法</string>
+    <string name="ac_catalog_section_nutrition">营养</string>
+    <string name="ac_catalog_readonly">公共菜谱，只读；收藏、加入家庭与编辑将在后续版本提供。</string>
 </resources>
+

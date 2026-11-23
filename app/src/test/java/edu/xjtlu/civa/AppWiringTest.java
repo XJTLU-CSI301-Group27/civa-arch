@@ -13,6 +13,10 @@ import static org.junit.Assert.assertTrue;
  * screen, which is exactly the failure this test exists to prevent.
  */
 public class AppWiringTest {
+    @Test public void recipesRouteIsWiredToTheCatalogFragment() {
+        assertNavigatorDependsOn("edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogFragment");
+    }
+
     @Test public void inventoryRouteIsWiredToTheInventoryFragment() {
         assertNavigatorDependsOn("edu.xjtlu.civa.feature.ac.inventory.InventoryFragment");
     }

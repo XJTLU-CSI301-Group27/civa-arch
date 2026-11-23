@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Aliases to the shared bakery palette so Java code in this module can resolve tokens
+         without a transitive R class. -->
+    <color name="ac_catalog_ink">@color/civa_text</color>
+    <color name="ac_catalog_muted">@color/civa_muted</color>
+    <color name="ac_catalog_accent">@color/civa_primary_dark</color>
+</resources>

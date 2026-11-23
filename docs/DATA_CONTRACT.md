@@ -273,3 +273,18 @@ C 组的库存功能已并入主体：`server/.../inventory/` 实现 7 个既有
   仍属 records，服务端 501，待后续阶段。
 - 客户端：`feature-ac/inventory` 的原生冰箱页；视觉使用 `civa_*` 颜色与 `CivaWidget`
   按钮令牌（C 组 demo 的绿色配色已按共享设计系统重映射）。
+
+## Public recipe catalogue (2026-11-23)
+
+A 组 1093 道与 BD 组 312 道的合并目录（去重后 1307 道）作为**只读**资源放在服务端：
+`GET /api/v1/recipe-catalog`（q / category / tag / highProtein / page / size）与
+`GET /api/v1/recipe-catalog/{recipeId}`（IC-20261123-CATALOG-01）。
+
+- 表 `recipe_catalog`：无家庭/用户外键；保留 A 组富字段（分类/菜系/口味/餐次/每份与每100g 营养/emoji）
+  与自由文本食材（展示用，不强制映射标准食材）。
+- 数据由 `scripts/merge_recipe_catalogs.py` 生成，id 为名称派生的确定性 UUID；重名去重优先保留 A 条目，
+  并采用 BD 图片（`imageKey=recipes/images/*.jpg`，客户端资源）。
+- 未知值（热量/营养/时长）保持 `null`；客户端渲染为"未提供"，不按 0 计算。
+- 客户端菜谱 Tab 读该接口并做只读缓存（离线可看已缓存页）；今天页推荐池改为公共目录，
+  BD 的 `recipes/catalog.json` 仅作为首次启动的离线兜底。
+- 用户自建/家庭菜谱仍是后续阶段（P2/P3），届时通过现有 household recipe 接口并强制标准食材 ID。
