@@ -22,4 +22,9 @@ class RecipeCatalogConfiguration {
     @Bean RecipeFavoriteService recipeFavoriteService(JdbcTemplate jdbc) {
         return new RecipeFavoriteService(jdbc);
     }
+
+    @Bean HouseholdRecipeService householdRecipeService(JdbcTemplate jdbc, ObjectMapper json,
+            IdempotencyExecutor executor, PlatformTransactionManager manager) {
+        return new HouseholdRecipeService(jdbc, json, executor, manager);
+    }
 }

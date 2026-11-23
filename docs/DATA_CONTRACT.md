@@ -298,3 +298,11 @@ ecipe_favorites(kind, recipe_id)，
   kind ∈ CATALOG/PERSONAL/HOUSEHOLD；列表内嵌名称/emoji/分类；家庭菜谱收藏校验成员身份。
 - 客户端菜谱Tab 提供 公共/我的/想吃 三个来源；公共详情可保存到我的菜谱并收藏；个人详情可编辑/归档/删除。
 - 旧 wishlists 仅覆盖家庭菜谱，保留给 P3 家庭菜谱接线时迁移。
+
+## Household recipes (2026-11-23)
+
+既有 RecipeApi 的 8 个操作已实现（契约无改动）：家庭菜谱以标准食材 ID 存储，任意 active 成员可读、
+写；创建使用 Idempotency-Key，更新/归档使用 expectedVersion；wishlist 三件套保留。
+创建家庭菜谱时在同一事务内把快照写入作者的 user_recipes（在家庭里添加的菜同时进入私人菜谱）。
+V20261123203000__BD_starter_ingredient_dictionary.sql 恢复 26 条标准食材字典（此前为空）。
+客户端家庭菜谱页面与加入家庭动作在 P3 客户端阶段接入。

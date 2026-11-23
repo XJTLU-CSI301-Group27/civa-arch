@@ -2,7 +2,6 @@ package edu.xjtlu.civa.server.web;
 
 import edu.xjtlu.civa.server.api.MediaApi;
 import edu.xjtlu.civa.server.api.PlanningApi;
-import edu.xjtlu.civa.server.api.RecipeApi;
 import edu.xjtlu.civa.server.api.RecordsApi;
 import edu.xjtlu.civa.server.api.model.*;
 import java.util.List;
@@ -14,15 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 /** Explicit 501 placeholders for the generated contracts that do not yet have implementations. */
 @RestController
-class UnimplementedController implements RecipeApi, PlanningApi, RecordsApi, MediaApi {
-    @Override public ResponseEntity<Void> addWishlist(UUID recipeId) { throw new NotImplemented(); }
-    @Override public ResponseEntity<Recipe> createRecipe(UUID householdId, UUID key, CreateRecipeRequest body) { throw new NotImplemented(); }
-    @Override public ResponseEntity<Recipe> getRecipe(UUID householdId, UUID recipeId) { throw new NotImplemented(); }
-    @Override public ResponseEntity<RecipePage> listRecipes(UUID householdId, String q, String tag, UUID ingredientId, Boolean archived, Integer page, Integer size) { throw new NotImplemented(); }
-    @Override public ResponseEntity<RecipePage> listWishlist(Integer page, Integer size) { throw new NotImplemented(); }
-    @Override public ResponseEntity<Void> removeWishlist(UUID recipeId) { throw new NotImplemented(); }
-    @Override public ResponseEntity<Recipe> setRecipeArchived(UUID householdId, UUID recipeId, ArchiveRecipeRequest body) { throw new NotImplemented(); }
-    @Override public ResponseEntity<Recipe> updateRecipe(UUID householdId, UUID recipeId, UpdateRecipeRequest body) { throw new NotImplemented(); }
+class UnimplementedController implements PlanningApi, RecordsApi, MediaApi {
 
     @Override public ResponseEntity<List<PlanSlot>> commitPlan(UUID householdId, UUID key, PlanCommitRequest body) { throw new NotImplemented(); }
     @Override public ResponseEntity<PlanSlotPage> listPlanSlots(UUID householdId, String from, String to, Integer page, Integer size) { throw new NotImplemented(); }

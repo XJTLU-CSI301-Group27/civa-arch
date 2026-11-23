@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = {PersonalRecipeController.class, RecipeFavoriteController.class})
+@RestControllerAdvice(assignableTypes = {PersonalRecipeController.class, RecipeFavoriteController.class, HouseholdRecipeController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 class RecipeWriteErrors {
     @ExceptionHandler(PersonalRecipeFault.class)

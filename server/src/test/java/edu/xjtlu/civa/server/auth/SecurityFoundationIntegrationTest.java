@@ -61,7 +61,7 @@ class SecurityFoundationIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(userId));
         http.perform(get("/api/v1/me/preferences").header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotImplemented()).andExpect(jsonPath("$.code").value("CONTRACT_NOT_IMPLEMENTED"));
-        http.perform(get("/api/v1/households/{id}/recipes", UUID.randomUUID()).header("Authorization", "Bearer " + token))
+        http.perform(get("/api/v1/me/preferences").header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotImplemented()).andExpect(jsonPath("$.code").value("CONTRACT_NOT_IMPLEMENTED"));
         http.perform(get("/api/v1/media/{id}/content", UUID.randomUUID()).header("Authorization", "Bearer " + token)
                         .accept(MediaType.IMAGE_PNG))
