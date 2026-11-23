@@ -57,8 +57,8 @@
     <string name="ac_catalog_personal_note">个人菜谱，跟随账号；可编辑、归档或删除。</string>
     <string name="ac_catalog_add_to_home">加入家庭</string>
     <string name="ac_catalog_added_to_home">已加入家庭菜谱</string>
-    <string name="ac_catalog_home_missing">你还没有一个「家」可以搬进去，先去「我的 → 家庭设置」建一个吧～</string>
-    <string name="ac_catalog_ingredient_unknown">有几个食材还在系统里“查无此菜”，先去冰箱给它们报个到，再回来一键搬家吧～</string>
+    <string name="ac_catalog_home_missing">先建个家，再来搬家～</string>
+    <string name="ac_catalog_ingredient_unknown">有几位食材还没上户口，先去冰箱报个到～</string>
     <string name="ac_catalog_household_shared">家庭菜谱，成员共享；可编辑与归档。</string>
     <string name="ac_household_recipe_new">新建家庭菜谱</string>
     <string name="ac_household_recipe_edit">编辑家庭菜谱</string>
