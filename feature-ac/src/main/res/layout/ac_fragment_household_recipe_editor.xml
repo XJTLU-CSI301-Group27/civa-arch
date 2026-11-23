@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="28dp">
+
+        <TextView
+            android:id="@+id/ac_household_recipe_heading"
+            style="@style/CivaText.Title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ac_household_recipe_new" />
+
+        <EditText
+            android:id="@+id/ac_household_recipe_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/ac_catalog_search"
+            android:hint="@string/ac_editor_name"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+            android:textColor="@color/civa_text"
+            android:textColorHint="@color/civa_muted"
+            android:textSize="15sp" />
+
+        <TextView
+            style="@style/CivaText.Section"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="@string/ac_household_recipe_ingredients_label" />
+
+        <EditText
+            android:id="@+id/ac_household_recipe_ingredients"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/ac_catalog_search"
+            android:gravity="top"
+            android:hint="@string/ac_household_recipe_ingredients_hint"
+            android:inputType="textMultiLine"
+            android:minLines="3"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+            android:textColor="@color/civa_text"
+            android:textColorHint="@color/civa_muted"
+            android:textSize="15sp" />
+
+        <TextView
+            style="@style/CivaText.Section"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="@string/ac_editor_steps_label" />
+
+        <EditText
+            android:id="@+id/ac_household_recipe_steps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/ac_catalog_search"
+            android:gravity="top"
+            android:hint="@string/ac_editor_steps_hint"
+            android:inputType="textMultiLine"
+            android:minLines="3"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+            android:textColor="@color/civa_text"
+            android:textColorHint="@color/civa_muted"
+            android:textSize="15sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_household_recipe_save"
+            style="@style/CivaWidget.PrimaryButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/ac_editor_save" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_household_recipe_cancel"
+            style="@style/CivaWidget.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ac_editor_cancel" />
+    </LinearLayout>
+</ScrollView>

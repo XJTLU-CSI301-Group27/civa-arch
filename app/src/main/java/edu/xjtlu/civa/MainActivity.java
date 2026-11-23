@@ -14,10 +14,11 @@ import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.inventory.InventoryHost;
 import edu.xjtlu.civa.feature.bd.BdHost;
 import edu.xjtlu.civa.feature.ef.HouseholdHost;
+import edu.xjtlu.civa.feature.ef.ProfileHost;
 import edu.xjtlu.civa.feature.ef.LoginFragment;
 import edu.xjtlu.civa.feature.ef.LoginHost;
 
-public class MainActivity extends AppCompatActivity implements LoginHost, HouseholdHost, BdHost, InventoryHost, AcHost {
+public class MainActivity extends AppCompatActivity implements LoginHost, HouseholdHost, BdHost, InventoryHost, AcHost, ProfileHost {
     private AppContainer container;
     private AppNavigator navigator;
     private NavigationBarView navigation;

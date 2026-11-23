@@ -49,6 +49,44 @@
   ],
   "symbols": [
     {
+      "type": "edu.xjtlu.civa.feature.ef.ProfileHost",
+      "kind": "interface",
+      "owner": "EF/F",
+      "consumers": [
+        "app"
+      ],
+      "thread": "main",
+      "members": [
+        "SessionStore sessions()",
+        "AuthRepository authRepository()",
+        "void navigate(Route route, @Nullable String entityId)"
+      ]
+    },
+    {
+      "type": "edu.xjtlu.civa.feature.ef.ProfileFragment",
+      "kind": "class",
+      "owner": "EF/F",
+      "consumers": [
+        "app"
+      ],
+      "thread": "main",
+      "members": [
+        "ProfileFragment()"
+      ]
+    },
+    {
+      "type": "edu.xjtlu.civa.feature.ac.catalog.HouseholdRecipeEditorFragment",
+      "kind": "class",
+      "owner": "A",
+      "consumers": [
+        "app"
+      ],
+      "thread": "main",
+      "members": [
+        "static HouseholdRecipeEditorFragment create(@Nullable String entityId)"
+      ]
+    },
+    {
       "type": "edu.xjtlu.civa.feature.ac.catalog.PersonalRecipeEditorFragment",
       "kind": "class",
       "owner": "A",

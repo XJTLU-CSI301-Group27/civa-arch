@@ -60,6 +60,10 @@
     <string name="ac_catalog_home_missing">需要先加入或创建家庭</string>
     <string name="ac_catalog_ingredient_unknown">食材不在标准字典中，可先在冰箱里添加</string>
     <string name="ac_catalog_household_shared">家庭菜谱，成员共享；可编辑与归档。</string>
+    <string name="ac_household_recipe_new">新建家庭菜谱</string>
+    <string name="ac_household_recipe_edit">编辑家庭菜谱</string>
+    <string name="ac_household_recipe_ingredients_label">食材（每行：名称 数量）</string>
+    <string name="ac_household_recipe_ingredients_hint">鸡蛋 3\n番茄 2</string>
 </resources>
 
 

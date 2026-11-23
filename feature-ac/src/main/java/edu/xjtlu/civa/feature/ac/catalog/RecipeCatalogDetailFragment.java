@@ -263,12 +263,12 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         save.setVisibility((personal || household) ? View.GONE : View.VISIBLE);
         addHome.setVisibility(household ? View.GONE : View.VISIBLE);
         addHome.setOnClickListener(ignored -> addToHousehold());
-        edit.setVisibility(personal ? View.VISIBLE : View.GONE);
-        archive.setVisibility(personal ? View.VISIBLE : View.GONE);
+        edit.setVisibility(personal || household ? View.VISIBLE : View.GONE);
+        archive.setVisibility(personal || household ? View.VISIBLE : View.GONE);
         delete.setVisibility(personal ? View.VISIBLE : View.GONE);
         save.setOnClickListener(ignored -> saveToMine(save));
-        edit.setOnClickListener(ignored -> host.navigate(Route.RECIPE_EDIT, RecipeCard.personalKey(recipeId)));
-        archive.setOnClickListener(ignored -> archivePersonal());
+        edit.setOnClickListener(ignored -> host.navigate(Route.RECIPE_EDIT, household ? RecipeCard.householdKey(recipeId) : RecipeCard.personalKey(recipeId)));
+        archive.setOnClickListener(ignored -> { if (household) archiveHousehold(); else archivePersonal(); });
         delete.setOnClickListener(ignored -> confirmDelete());
     }
 
@@ -389,6 +389,27 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                         }
                     });
         });
+    }
+
+    private void archiveHousehold() {
+        if (householdRecipe == null || host.sessions() == null) return;
+        java.util.UUID home = uuidOrNull(host.sessions().currentHouseholdId());
+        if (home == null) { toast(R.string.ac_catalog_home_missing); return; }
+        host.calls().enqueue(host.api().recipe().setRecipeArchived(home, householdRecipe.getId(),
+                new edu.xjtlu.civa.api.model.ArchiveRecipeRequest()
+                        .archived(!Boolean.TRUE.equals(householdRecipe.getArchived()))
+                        .expectedVersion(householdRecipe.getVersion())),
+                new ApiCallback<Recipe>() {
+                    @Override public void onSuccess(@Nullable Recipe value) {
+                        householdRecipe = value;
+                        toast(value != null && Boolean.TRUE.equals(value.getArchived())
+                                ? R.string.ac_catalog_archived : R.string.ac_catalog_restored);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        toast(R.string.ac_catalog_error);
+                    }
+                });
     }
 
     private void archivePersonal() {

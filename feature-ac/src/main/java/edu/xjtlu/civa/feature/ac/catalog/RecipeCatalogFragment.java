@@ -74,7 +74,7 @@ public final class RecipeCatalogFragment extends Fragment {
         grid.setLayoutManager(new GridLayoutManager(requireContext(), columns));
         grid.setAdapter(adapter);
         more.setOnClickListener(ignored -> load(false));
-        create.setOnClickListener(ignored -> host.navigate(Route.RECIPE_EDIT, "new"));
+        create.setOnClickListener(ignored -> host.navigate(Route.RECIPE_EDIT, source == Source.HOUSEHOLD ? "hnew" : "new"));
         buildSources();
         buildCategoryChips();
         search.addTextChangedListener(new TextWatcher() {
@@ -110,7 +110,7 @@ public final class RecipeCatalogFragment extends Fragment {
                 source = Source.valueOf(entry[1]);
                 search.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
                 chips.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
-                create.setVisibility(source == Source.PERSONAL ? View.VISIBLE : View.GONE);
+                create.setVisibility(source == Source.PERSONAL || source == Source.HOUSEHOLD ? View.VISIBLE : View.GONE);
                 load(true);
             });
             sources.addView(chip);
