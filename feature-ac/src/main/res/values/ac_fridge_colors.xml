@@ -1,0 +1,23 @@
+<resources>
+    <!-- Inventory illustration colours, expressed with the shared bakery tokens so the fridge
+         reads as part of the same visual system as the rest of the app. -->
+    <color name="ac_fridge_background">@color/civa_background</color>
+    <color name="ac_fridge_panel">@color/civa_surface</color>
+    <color name="ac_fridge_muted">@color/civa_muted</color>
+    <color name="ac_fridge_line">@color/civa_outline</color>
+    <color name="ac_fridge_accent">@color/civa_primary</color>
+    <color name="ac_fridge_door_light">#EFD9BC</color>
+    <color name="ac_fridge_door_dark">#C79A6B</color>
+    <color name="ac_fridge_drawer">#F7EBD9</color>
+    <color name="ac_fridge_selected">#F2E0C6</color>
+    <color name="ac_fridge_soon">#A96822</color>
+    <color name="ac_fridge_soon_background">#F8EBD4</color>
+    <color name="ac_fridge_expired">#B35B4D</color>
+    <color name="ac_fridge_expired_background">#F7E7E1</color>
+    <color name="ac_fridge_shell">#EAD9BF</color>
+    <color name="ac_fridge_edge">#C9A87D</color>
+    <color name="ac_fridge_inside">#FDF6EA</color>
+    <color name="ac_fridge_door">#D9B283</color>
+    <color name="ac_fridge_ink">@color/civa_text</color>
+    <color name="ac_fridge_shelf">#E6CDAA</color>
+</resources>

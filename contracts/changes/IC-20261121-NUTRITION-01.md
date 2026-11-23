@@ -1,7 +1,7 @@
 ---
 id: IC-20261121-NUTRITION-01
 type: NORMAL
-status: IMPLEMENTING
+status: VERIFIED
 allowedOperations:
   - estimateNutrition
 allowedSchemas:
@@ -11,7 +11,7 @@ allowedSchemas:
 allowedSymbols: []
 contractDigest: sha256:679c8cecb9253c9c1a9950d85194daefde6391a97b429385f4571904836bb14f
 baseSha: ae60b66ad4255663b26c30061766848971caf99e
-headSha: null
+headSha: 6a03211bea8db95adde6c89de267f5632d21af71
 ---
 # IC-20261121-NUTRITION-01 营养估算改由服务端代理
 

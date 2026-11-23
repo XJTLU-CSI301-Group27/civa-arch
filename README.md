@@ -6,8 +6,9 @@ CSI301 小组项目：Android（Java + Views，7 个模块）与 Spring Boot 3 �
 | 登录 | 首页（今天） | 加道菜 |
 | --- | --- | --- |
 | ![登录](docs/screenshots/login.png) | ![首页](docs/screenshots/home.png) | ![加道菜](docs/screenshots/add-dish.png) |
+| ![冰箱](docs/screenshots/fridge.png) | ![冰箱详情](docs/screenshots/fridge-detail.png) | |
 
-截图来自真实运行的 debug 包（Android 模拟器，软件渲染）。
+截图来自真实运行的 debug 包（Android 模拟器）。
 
 ## 现在能做什么
 
@@ -20,7 +21,8 @@ CSI301 小组项目：Android（Java + Views，7 个模块）与 Spring Boot 3 �
 | 加菜流程：手动录入 / 偏好筛选 / 抽签推荐 | ✅ |
 | 菜品详情：菜谱、编辑做法、移除、用餐选择 | ✅ |
 | 营养估算（服务端代理：缓存 + 限流 + 供应商抽象） | ✅ 可失败降级 |
-| 菜谱 / 冰箱 / 食记 / 我的 | ⏳ 占位页（AC / EF 组范围） |
+| 冰箱（库存）：批次录入、消耗/丢弃/修正、临期筛选、英文食材名 | ✅ 服务端 8 个操作 + 原生冰箱页 |
+| 菜谱 / 食记 / 我的 | ⏳ 占位页（AC / EF 组范围） |
 
 首页草稿是**个人本地数据**：按账号 + 家庭做 SHA-256 作用域隔离，不产生做饭记录、
 不扣库存、不写共享排餐。详见 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md)。
@@ -37,7 +39,7 @@ graph TD
     data[":core-data<br/>SessionStore / ApiCalls / 缓存 / 幂等写入 / JsonPost"]
     api[":api-client<br/>由 OpenAPI 生成的 Retrofit 客户端"]
     contract[["contracts/openapi.json<br/>33 paths / 41 operations / 64 schemas"]]
-    server[["server/ Spring Boot<br/>auth · household · 33 个 501 占位"]]
+    server[["server/ Spring Boot<br/>auth · household · inventory · nutrition · 22 个 501 占位"]]
 
     app --> ef & bd & ac & ui & data
     ef --> ui & data
@@ -85,7 +87,7 @@ debug 构建会自动准备本地环境（`devStackEnsure`）：
 ```
 
 > 单入口：`MainActivity` 是唯一 launcher。首页在**登录并加入家庭后**出现在「今天」，
-> 其余四个 tab 目前是占位页。测试账号：`verify_1209` / `Passw0rd2026`。
+> 冰箱 tab 已接入（需要后端 + 登录 + 家庭）；其余三个 tab 仍是占位页。测试账号：`verify_1209` / `Passw0rd2026`。
 
 ## 契约与门禁
 
@@ -97,7 +99,7 @@ debug 构建会自动准备本地环境（`devStackEnsure`）：
 | `ModuleBoundaryArchTest` | feature↛app、feature↛feature、core-ui↛core-data、core-data↛feature |
 | `ResourceOwnershipTest` | feature 不得引用 `app_*`、不得重定义 `civa_*`/`Civa*`、app 不得直用 feature 资源 |
 | `PublicSurfaceArchTest` + `PublicSurfaceCompletenessTest` | 已登记符号存在；新 public 类型必须登记或声明内部 |
-| `AppWiringTest` | `Route.TODAY` 必须接到 `BdHomeFragment`（防止退化成占位页） |
+| `AppWiringTest` | `Route.TODAY`/`Route.INVENTORY` 必须接到真实 Fragment（防止退化成占位页） |
 | `lint { error 'ResourceName' }`（各模块） | `app_` / `civa_` / `bd_` / `ef_` 前缀 |
 
 CI：`.github/workflows/ci.yml`，三个作业（契约 / Android / 服务端集成）+ `CI gate`。
@@ -117,8 +119,8 @@ core-ui/       视觉系统（civa_* 色板、KuaiLe 字体、Civa* 样式）+ U
 core-data/     SessionStore、ApiCalls（缓存/401/吊销）、PendingWriteStore、ApiProvider、JsonPost
 feature-ef/    登录、家庭（LoginHost / HouseholdHost）
 feature-bd/    首页、加菜、菜谱、营养（312 道菜谱与 149 张图随模块打包）
-feature-ac/    空模块，等 AC 组按同一套基元填充
-server/        Spring Boot：auth、household、application、config、web(501)
+feature-ac/    冰箱库存页（inventory：批次/消耗/临期筛选），UI 用 civa_* 设计令牌
+server/        Spring Boot：auth、household、inventory、nutrition、application、config、web(501)
 contracts/     OpenAPI、生成器配置、fixtures、IC 记录、公共面清单
 docs/          规格、ADR 001–004、本地栈、验证记录、截图
 scripts/       契约门禁与 preflight

@@ -13,7 +13,15 @@ import static org.junit.Assert.assertTrue;
  * screen, which is exactly the failure this test exists to prevent.
  */
 public class AppWiringTest {
+    @Test public void inventoryRouteIsWiredToTheInventoryFragment() {
+        assertNavigatorDependsOn("edu.xjtlu.civa.feature.ac.inventory.InventoryFragment");
+    }
+
     @Test public void todayRouteIsWiredToTheBdHomeFragment() {
+        assertNavigatorDependsOn("edu.xjtlu.civa.feature.bd.BdHomeFragment");
+    }
+
+    private static void assertNavigatorDependsOn(String target) {
         JavaClasses classes = new ClassFileImporter().importPackages("edu.xjtlu.civa");
         JavaClass navigator = classes.stream()
                 .filter(type -> type.getName().equals("edu.xjtlu.civa.AppNavigator"))
@@ -21,12 +29,12 @@ public class AppWiringTest {
                 .orElseThrow(() -> new AssertionError("AppNavigator is missing from the classpath"));
         boolean wired = false;
         for (Dependency dependency : navigator.getDirectDependenciesFromSelf()) {
-            if (dependency.getTargetClass().getName().equals("edu.xjtlu.civa.feature.bd.BdHomeFragment")) {
+            if (dependency.getTargetClass().getName().equals(target)) {
                 wired = true;
                 break;
             }
         }
-        assertTrue("AppNavigator does not reference BdHomeFragment; Route.TODAY would fall back to a placeholder",
+        assertTrue("AppNavigator does not reference " + target + "; that route would fall back to a placeholder",
                 wired);
     }
 }

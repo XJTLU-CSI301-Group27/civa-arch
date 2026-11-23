@@ -1,6 +1,5 @@
 package edu.xjtlu.civa.server.web;
 
-import edu.xjtlu.civa.server.api.InventoryApi;
 import edu.xjtlu.civa.server.api.MediaApi;
 import edu.xjtlu.civa.server.api.PlanningApi;
 import edu.xjtlu.civa.server.api.RecipeApi;
@@ -15,7 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 /** Explicit 501 placeholders for the generated contracts that do not yet have implementations. */
 @RestController
-class UnimplementedController implements RecipeApi, InventoryApi, PlanningApi, RecordsApi, MediaApi {
+class UnimplementedController implements RecipeApi, PlanningApi, RecordsApi, MediaApi {
     @Override public ResponseEntity<Void> addWishlist(UUID recipeId) { throw new NotImplemented(); }
     @Override public ResponseEntity<Recipe> createRecipe(UUID householdId, UUID key, CreateRecipeRequest body) { throw new NotImplemented(); }
     @Override public ResponseEntity<Recipe> getRecipe(UUID householdId, UUID recipeId) { throw new NotImplemented(); }
@@ -24,14 +23,6 @@ class UnimplementedController implements RecipeApi, InventoryApi, PlanningApi, R
     @Override public ResponseEntity<Void> removeWishlist(UUID recipeId) { throw new NotImplemented(); }
     @Override public ResponseEntity<Recipe> setRecipeArchived(UUID householdId, UUID recipeId, ArchiveRecipeRequest body) { throw new NotImplemented(); }
     @Override public ResponseEntity<Recipe> updateRecipe(UUID householdId, UUID recipeId, UpdateRecipeRequest body) { throw new NotImplemented(); }
-
-    @Override public ResponseEntity<InventoryMovement> changeInventory(UUID householdId, UUID batchId, UUID key, InventoryChangeRequest body) { throw new NotImplemented(); }
-    @Override public ResponseEntity<InventoryBatch> createInventoryBatch(UUID householdId, UUID key, CreateInventoryBatchRequest body) { throw new NotImplemented(); }
-    @Override public ResponseEntity<IngredientPage> listIngredients(String q, Integer page, Integer size) { throw new NotImplemented(); }
-    @Override public ResponseEntity<InventoryBatchPage> listInventoryBatches(UUID householdId, UUID ingredientId, ExpiryStatus status, Integer page, Integer size) { throw new NotImplemented(); }
-    @Override public ResponseEntity<InventoryMovementPage> listInventoryMovements(UUID householdId, UUID batchId, Integer page, Integer size) { throw new NotImplemented(); }
-    @Override public ResponseEntity<List<RecipeMatch>> matchRecipes(UUID householdId, MatchRequest body) { throw new NotImplemented(); }
-    @Override public ResponseEntity<InventoryBatch> updateInventoryBatch(UUID householdId, UUID batchId, UpdateInventoryBatchRequest body) { throw new NotImplemented(); }
 
     @Override public ResponseEntity<List<PlanSlot>> commitPlan(UUID householdId, UUID key, PlanCommitRequest body) { throw new NotImplemented(); }
     @Override public ResponseEntity<PlanSlotPage> listPlanSlots(UUID householdId, String from, String to, Integer page, Integer size) { throw new NotImplemented(); }

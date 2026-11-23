@@ -254,3 +254,22 @@ no provider key ships with the app.
   the server. Provider failures return `503 NUTRITION_UNAVAILABLE` with `Retry-After`.
 - Estimate is approximate: the UI labels it as an AI estimate, and the data is not an
   authoritative calorie record (see product invariants).
+
+## Server inventory (2026-11-23)
+
+C 组的库存功能已并入主体：`server/.../inventory/` 实现 7 个既有 `InventoryApi` 操作 + 新增
+`createIngredient`（IC-20261123-INVENTORY-01）。没有新数据库迁移，复用 V1 的
+`ingredients`、`ingredient_aliases`、`inventory_batches`、`inventory_movements`。
+
+- 范围：所有库存操作按当前家庭隔离；`Idempotency-Key` 重放返回原结果；`expectedVersion`
+  与负库存保护在服务端强制。
+- 批次：同食材每次入库是独立批次；`listInventoryBatches` 支持食材与到期状态过滤
+  （`EXPIRED`/`EXPIRING`/`FRESH`），排序为到期日升序、未知日期最后。
+- 变动：消耗/丢弃/修正均写 `inventory_movements`，数量不得使库存为负；单位换算在客户端
+  （kg→G），服务端只接受标准单位。
+- 标准食材：`createIngredient` 允许任意英文名 + 单位登记；同名同单位幂等，同名不同单位
+  `409 UNIT_CONFLICT`；查询按 NFKC/大小写/空白规范化并支持别名。
+- 匹配：`matchRecipes` 只读计算可用量与覆盖率，不做扣减；最终的做饭扣减（`confirmCooking`）
+  仍属 records，服务端 501，待后续阶段。
+- 客户端：`feature-ac/inventory` 的原生冰箱页；视觉使用 `civa_*` 颜色与 `CivaWidget`
+  按钮令牌（C 组 demo 的绿色配色已按共享设计系统重映射）。
