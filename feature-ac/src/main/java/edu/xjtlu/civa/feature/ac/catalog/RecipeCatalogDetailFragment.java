@@ -15,6 +15,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import edu.xjtlu.civa.api.model.CatalogRecipe;
 import edu.xjtlu.civa.api.model.CatalogRecipeIngredient;
 import edu.xjtlu.civa.api.model.CreatePersonalRecipeRequest;
+import edu.xjtlu.civa.api.model.CreateRecipeRequest;
+import edu.xjtlu.civa.api.model.Ingredient;
+import edu.xjtlu.civa.api.model.Recipe;
 import edu.xjtlu.civa.api.model.PersonalRecipe;
 import edu.xjtlu.civa.api.model.RecipeFavorite;
 import edu.xjtlu.civa.api.model.RecipeFavoriteKind;
@@ -38,6 +41,9 @@ public final class RecipeCatalogDetailFragment extends Fragment {
     private Call<?> call;
     private PersonalRecipe personalRecipe;
     private CatalogRecipe catalogRecipe;
+    private Recipe householdRecipe;
+    private List<Ingredient> dictionary;
+    private boolean household;
     private boolean favorite;
 
     public static RecipeCatalogDetailFragment create(@Nullable String recipeId) {
@@ -61,8 +67,11 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             return;
         }
         personal = RecipeCard.isPersonal(entityId);
+        household = RecipeCard.isHousehold(entityId);
         recipeId = RecipeCard.idOf(entityId);
-        if (personal) {
+        if (household) {
+            loadHousehold(view);
+        } else if (personal) {
             PersonalRecipe cached = CatalogCache.loadPersonal(requireContext(), recipeId);
             if (cached != null) {
                 personalRecipe = cached;
@@ -92,6 +101,43 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             @Override public void onError(ApiError error) { }
         });
             }
+
+    private void loadHousehold(View view) {
+        java.util.UUID home = host.sessions() == null ? null : uuidOrNull(host.sessions().currentHouseholdId());
+        if (home == null) {
+            toast(R.string.ac_catalog_home_missing);
+            return;
+        }
+        ensureDictionary(() -> { });
+        call = host.api().recipe().getRecipe(home, UUID.fromString(recipeId));
+        host.calls().enqueue((Call<Recipe>) call, new ApiCallback<Recipe>() {
+            @Override public void onSuccess(@Nullable Recipe value) {
+                if (value == null) return;
+                householdRecipe = value;
+                render(view, value);
+            }
+
+            @Override public void onError(ApiError error) {
+                toast(R.string.ac_catalog_error);
+            }
+        });
+    }
+
+    private void ensureDictionary(Runnable then) {
+        if (dictionary != null) { then.run(); return; }
+        host.calls().enqueue(host.api().inventory().listIngredients(null, 0, 100),
+                new ApiCallback<edu.xjtlu.civa.api.model.IngredientPage>() {
+                    @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.IngredientPage value) {
+                        dictionary = value == null || value.getItems() == null ? List.of() : value.getItems();
+                        then.run();
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        dictionary = List.of();
+                        then.run();
+                    }
+                });
+    }
 
     private void loadPersonal(View view) {
         call = host.api().personalRecipes().getPersonalRecipe(UUID.fromString(recipeId));
@@ -133,6 +179,14 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             protein = recipe.getProtein(); carbs = recipe.getCarbs(); fat = recipe.getFat();
             protein100 = recipe.getProteinPer100g(); carbs100 = recipe.getCarbsPer100g(); fat100 = recipe.getFatPer100g();
             servingSize = null;
+        } else if (value instanceof Recipe recipe) {
+            emojiText = "🏠"; title = recipe.getName(); category = recipe.getTags() == null ? ""
+                    : String.join(" · ", recipe.getTags());
+            cuisine = ""; kcal = recipe.getTotalKcal(); minutes = recipe.getDurationMinutes();
+            descriptionText = "";
+            stepList = recipe.getSteps(); ingredientList = List.of();
+            protein = null; carbs = null; fat = null; protein100 = null; carbs100 = null; fat100 = null;
+            servingSize = null;
         } else if (value instanceof PersonalRecipe recipe) {
             emojiText = recipe.getEmoji(); title = recipe.getName(); category = recipe.getCategory();
             cuisine = ""; kcal = recipe.getKcal(); minutes = recipe.getEstimatedMinutes();
@@ -164,7 +218,14 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         description.setVisibility(hasDescription ? View.VISIBLE : View.GONE);
 
         ingredients.removeAllViews();
-        for (Object item : ingredientList) ingredients.addView(line(display(item), 15, R.color.ac_catalog_ink));
+        if (value instanceof Recipe recipe) {
+            java.util.Map<UUID, String> names = HouseholdRecipes.names(dictionary == null ? List.of() : dictionary);
+            String display = HouseholdRecipes.display(recipe, names);
+            ingredients.addView(line(display.isEmpty() ? getString(R.string.ac_catalog_missing) : display, 15,
+                    R.color.ac_catalog_ink));
+        } else {
+            for (Object item : ingredientList) ingredients.addView(line(display(item), 15, R.color.ac_catalog_ink));
+        }
         steps.removeAllViews();
         int number = 1;
         for (String step : stepList) steps.addView(line(number++ + ". " + step, 15, R.color.ac_catalog_ink));
@@ -179,7 +240,8 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         if (!any) nutrition.addView(line(getString(R.string.ac_catalog_no_nutrition), 15, R.color.ac_catalog_muted));
 
         TextView footer = view.findViewById(R.id.ac_detail_footer);
-        footer.setText(personal ? R.string.ac_catalog_personal_note : R.string.ac_catalog_readonly);
+        footer.setText(household ? R.string.ac_catalog_household_shared
+                : personal ? R.string.ac_catalog_personal_note : R.string.ac_catalog_readonly);
         bindActions(view);
         loadFavoriteState(view);
     }
@@ -196,8 +258,11 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         MaterialButton edit = view.findViewById(R.id.ac_detail_edit);
         MaterialButton archive = view.findViewById(R.id.ac_detail_archive);
         MaterialButton delete = view.findViewById(R.id.ac_detail_delete);
+        MaterialButton addHome = view.findViewById(R.id.ac_detail_add_home);
         favoriteButton.setOnClickListener(ignored -> toggleFavorite(view));
-        save.setVisibility(personal ? View.GONE : View.VISIBLE);
+        save.setVisibility((personal || household) ? View.GONE : View.VISIBLE);
+        addHome.setVisibility(household ? View.GONE : View.VISIBLE);
+        addHome.setOnClickListener(ignored -> addToHousehold());
         edit.setVisibility(personal ? View.VISIBLE : View.GONE);
         archive.setVisibility(personal ? View.VISIBLE : View.GONE);
         delete.setVisibility(personal ? View.VISIBLE : View.GONE);
@@ -208,7 +273,8 @@ public final class RecipeCatalogDetailFragment extends Fragment {
     }
 
     private void loadFavoriteState(View view) {
-        RecipeFavoriteKind kind = personal ? RecipeFavoriteKind.PERSONAL : RecipeFavoriteKind.CATALOG;
+        RecipeFavoriteKind kind = household ? RecipeFavoriteKind.HOUSEHOLD
+                : personal ? RecipeFavoriteKind.PERSONAL : RecipeFavoriteKind.CATALOG;
         host.calls().enqueue(host.api().recipeFavorites().getRecipeFavorite(kind, UUID.fromString(recipeId)),
                 new ApiCallback<RecipeFavorite>() {
                     @Override public void onSuccess(@Nullable RecipeFavorite value) {
@@ -229,7 +295,8 @@ public final class RecipeCatalogDetailFragment extends Fragment {
     }
 
     private void toggleFavorite(View view) {
-        RecipeFavoriteKind kind = personal ? RecipeFavoriteKind.PERSONAL : RecipeFavoriteKind.CATALOG;
+        RecipeFavoriteKind kind = household ? RecipeFavoriteKind.HOUSEHOLD
+                : personal ? RecipeFavoriteKind.PERSONAL : RecipeFavoriteKind.CATALOG;
         UUID id = UUID.fromString(recipeId);
         Call<Void> request = favorite ? host.api().recipeFavorites().removeRecipeFavorite(kind, id)
                 : host.api().recipeFavorites().addRecipeFavorite(kind, id);
@@ -291,6 +358,37 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                     .note(item.getNote()));
         }
         return result;
+    }
+
+    private void addToHousehold() {
+        java.util.UUID home = host.sessions() == null ? null : uuidOrNull(host.sessions().currentHouseholdId());
+        if (home == null) { toast(R.string.ac_catalog_home_missing); return; }
+        ensureDictionary(() -> {
+            List<String> steps = List.of();
+            List<String> lines = List.of();
+            String name = null;
+            if (catalogRecipe != null) {
+                name = catalogRecipe.getName(); steps = catalogRecipe.getSteps();
+                lines = HouseholdRecipes.catalogIngredientLines(catalogRecipe.getIngredients());
+            } else if (personalRecipe != null) {
+                name = personalRecipe.getName(); steps = personalRecipe.getSteps();
+                lines = HouseholdRecipes.personalIngredientLines(personalRecipe.getIngredients());
+            }
+            if (name == null) return;
+            CreateRecipeRequest request = HouseholdRecipes.request(name, steps, lines,
+                    HouseholdRecipes.byName(dictionary));
+            if (request == null) { toast(R.string.ac_catalog_ingredient_unknown); return; }
+            host.calls().enqueue(host.api().recipe().createRecipe(home, UUID.randomUUID(), request),
+                    new ApiCallback<Recipe>() {
+                        @Override public void onSuccess(@Nullable Recipe value) {
+                            toast(R.string.ac_catalog_added_to_home);
+                        }
+
+                        @Override public void onError(ApiError error) {
+                            toast(R.string.ac_catalog_error);
+                        }
+                    });
+        });
     }
 
     private void archivePersonal() {
@@ -374,6 +472,11 @@ public final class RecipeCatalogDetailFragment extends Fragment {
     }
 
     private static boolean has(String value) { return value != null && !value.trim().isEmpty(); }
+
+    private static java.util.UUID uuidOrNull(String value) {
+        if (value == null || value.isEmpty()) return null;
+        try { return java.util.UUID.fromString(value); } catch (IllegalArgumentException invalid) { return null; }
+    }
 
     @Override public void onDestroyView() {
         if (call != null) {

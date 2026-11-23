@@ -35,7 +35,7 @@ public final class RecipeCatalogFragment extends Fragment {
     private static final String[] CATEGORIES = {"全部", "家常菜", "减脂", "增肌", "营养", "保持", "食疗", "小吃", "烘焙"};
     private static final int PAGE_SIZE = 60;
 
-    private enum Source { PUBLIC, PERSONAL, FAVORITES }
+    private enum Source { PUBLIC, PERSONAL, HOUSEHOLD, FAVORITES }
 
     private final List<RecipeCard> loaded = new ArrayList<>();
     private final RecipeCard.RecipeCards cards = RecipeCard.cards();
@@ -92,7 +92,7 @@ public final class RecipeCatalogFragment extends Fragment {
     }
 
     private void buildSources() {
-        String[][] labels = {{"公共", "PUBLIC"}, {"我的", "PERSONAL"}, {"想吃", "FAVORITES"}};
+        String[][] labels = {{"公共", "PUBLIC"}, {"我的", "PERSONAL"}, {"家庭", "HOUSEHOLD"}, {"想吃", "FAVORITES"}};
         for (String[] entry : labels) {
             Chip chip = new Chip(requireContext());
             chip.setText(entry[0]);
@@ -162,6 +162,8 @@ public final class RecipeCatalogFragment extends Fragment {
     private void open(RecipeCard card) {
         if (source == Source.PERSONAL) {
             host.navigate(Route.RECIPE_DETAIL, RecipeCard.personalKey(card.id()));
+        } else if (source == Source.HOUSEHOLD) {
+            host.navigate(Route.RECIPE_DETAIL, RecipeCard.householdKey(card.id()));
         } else {
             host.navigate(Route.RECIPE_DETAIL, card.id());
         }
@@ -206,6 +208,30 @@ public final class RecipeCatalogFragment extends Fragment {
                             return;
                         }
                     }
+                    failed();
+                }
+            });
+        } else if (source == Source.HOUSEHOLD) {
+            java.util.UUID home = host.sessions() == null ? null : uuidOrNull(host.sessions().currentHouseholdId());
+            if (home == null) {
+                loading = false;
+                failed();
+                return;
+            }
+            Call<edu.xjtlu.civa.api.model.RecipePage> request = host.api().recipe().listRecipes(
+                    home, null, null, null, false, requestPage, PAGE_SIZE);
+            call = request;
+            host.calls().enqueue(request, new ApiCallback<edu.xjtlu.civa.api.model.RecipePage>() {
+                @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.RecipePage value) {
+                    loading = false;
+                    if (value == null || value.getItems() == null) { failed(); return; }
+                    loaded.addAll(cards.fromHousehold(value.getItems()));
+                    total = value.getTotal() == null ? loaded.size() : value.getTotal();
+                    render(requestPage);
+                }
+
+                @Override public void onError(ApiError error) {
+                    loading = false;
                     failed();
                 }
             });
@@ -258,6 +284,11 @@ public final class RecipeCatalogFragment extends Fragment {
     private void failed() {
         status.setText(R.string.ac_catalog_error);
         more.setVisibility(View.GONE);
+    }
+
+    private static java.util.UUID uuidOrNull(String value) {
+        if (value == null || value.isEmpty()) return null;
+        try { return java.util.UUID.fromString(value); } catch (IllegalArgumentException invalid) { return null; }
     }
 
     @Override public void onDestroyView() {

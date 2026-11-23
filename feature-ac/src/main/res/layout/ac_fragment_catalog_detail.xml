@@ -118,6 +118,13 @@
             android:text="@string/ac_catalog_save_to_mine" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_detail_add_home"
+            style="@style/CivaWidget.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ac_catalog_add_to_home" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/ac_detail_edit"
             style="@style/CivaWidget.SecondaryButton"
             android:layout_width="match_parent"

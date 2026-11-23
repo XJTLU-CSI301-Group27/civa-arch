@@ -2,6 +2,7 @@ package edu.xjtlu.civa.feature.ac.catalog;
 
 import edu.xjtlu.civa.api.model.CatalogRecipe;
 import edu.xjtlu.civa.api.model.PersonalRecipe;
+import edu.xjtlu.civa.api.model.Recipe;
 import edu.xjtlu.civa.api.model.RecipeFavorite;
 import edu.xjtlu.civa.api.model.RecipeFavoriteKind;
 import java.util.ArrayList;
@@ -9,7 +10,7 @@ import java.util.List;
 
 /** One card in the recipe grid, independent of the recipe space it came from. */
 record RecipeCard(String id, String name, String emoji, String meta, String tags, Kind kind) {
-    enum Kind { CATALOG, PERSONAL }
+    enum Kind { CATALOG, PERSONAL, HOUSEHOLD }
 
     static RecipeCards cards() { return new RecipeCards(); }
 
@@ -32,11 +33,25 @@ record RecipeCard(String id, String name, String emoji, String meta, String tags
             return cards;
         }
 
+        List<RecipeCard> fromHousehold(List<Recipe> rows) {
+            List<RecipeCard> cards = new ArrayList<>();
+            for (Recipe row : rows) {
+                String tags = row.getTags() == null || row.getTags().isEmpty() ? "家庭菜谱" : String.join(" · ", row.getTags());
+                cards.add(new RecipeCard(row.getId() == null ? null : row.getId().toString(), row.getName(), "🏠",
+                        meta(String.join(" · ", tags), row.getTotalKcal(), row.getDurationMinutes()), "家庭共享",
+                        Kind.HOUSEHOLD));
+            }
+            return cards;
+        }
+
         List<RecipeCard> fromFavorites(List<RecipeFavorite> rows) {
             List<RecipeCard> cards = new ArrayList<>();
             for (RecipeFavorite row : rows) {
-                if (row.getKind() == RecipeFavoriteKind.HOUSEHOLD) continue;
-                Kind kind = row.getKind() == RecipeFavoriteKind.PERSONAL ? Kind.PERSONAL : Kind.CATALOG;
+                Kind kind = switch (row.getKind()) {
+                    case PERSONAL -> Kind.PERSONAL;
+                    case HOUSEHOLD -> Kind.HOUSEHOLD;
+                    default -> Kind.CATALOG;
+                };
                 cards.add(new RecipeCard(row.getRecipeId() == null ? null : row.getRecipeId().toString(),
                         row.getName(), row.getEmoji(), "想吃", row.getCategory(), kind));
             }
@@ -54,11 +69,15 @@ record RecipeCard(String id, String name, String emoji, String meta, String tags
 
     static String personalKey(String id) { return "p:" + id; }
 
+    static String householdKey(String id) { return "h:" + id; }
+
     static String idOf(String entityId) {
-        return entityId != null && entityId.startsWith("p:") ? entityId.substring(2) : entityId;
+        if (entityId == null) return null;
+        if (entityId.startsWith("p:") || entityId.startsWith("h:")) return entityId.substring(2);
+        return entityId;
     }
 
-    static boolean isPersonal(String entityId) {
-        return entityId != null && entityId.startsWith("p:");
-    }
+    static boolean isPersonal(String entityId) { return entityId != null && entityId.startsWith("p:"); }
+
+    static boolean isHousehold(String entityId) { return entityId != null && entityId.startsWith("h:"); }
 }

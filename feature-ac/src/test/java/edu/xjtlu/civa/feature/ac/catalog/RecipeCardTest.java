@@ -43,9 +43,10 @@ public class RecipeCardTest {
         RecipeFavorite personal = new RecipeFavorite().kind(RecipeFavoriteKind.PERSONAL).recipeId(UUID.randomUUID()).name("我的小炒").createdAt("now");
         RecipeFavorite household = new RecipeFavorite().kind(RecipeFavoriteKind.HOUSEHOLD).recipeId(UUID.randomUUID()).name("家庭菜").createdAt("now");
         List<RecipeCard> result = cards.fromFavorites(List.of(catalog, personal, household));
-        assertEquals(2, result.size());
+        assertEquals(3, result.size());
         assertEquals(RecipeCard.Kind.CATALOG, result.get(0).kind());
         assertEquals(RecipeCard.Kind.PERSONAL, result.get(1).kind());
+        assertEquals(RecipeCard.Kind.HOUSEHOLD, result.get(2).kind());
     }
 
     @Test public void entityKeysDistinguishPersonalRoutes() {
