@@ -74,6 +74,7 @@ public final class PersonalRecipeEditorFragment extends Fragment {
         host.calls().enqueue(host.api().personalRecipes().getPersonalRecipe(UUID.fromString(recipeId)),
                 new ApiCallback<PersonalRecipe>() {
                     @Override public void onSuccess(@Nullable PersonalRecipe value) {
+                        if (!isAdded()) return;
                         if (value == null) return;
                         existing = value;
                         name.setText(value.getName());
@@ -84,6 +85,7 @@ public final class PersonalRecipeEditorFragment extends Fragment {
                     }
 
                     @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
                         toast(R.string.ac_catalog_error);
                     }
                 });
@@ -108,11 +110,13 @@ public final class PersonalRecipeEditorFragment extends Fragment {
             host.calls().enqueue(host.api().personalRecipes().createPersonalRecipe(UUID.randomUUID(), request),
                     new ApiCallback<PersonalRecipe>() {
                         @Override public void onSuccess(@Nullable PersonalRecipe value) {
+                            if (!isAdded()) return;
                             toast(R.string.ac_editor_saved);
                             getParentFragmentManager().popBackStack();
                         }
 
                         @Override public void onError(ApiError error) {
+                            if (!isAdded()) return;
                             save.setEnabled(true);
                             toast(R.string.ac_catalog_error);
                         }
@@ -128,12 +132,14 @@ public final class PersonalRecipeEditorFragment extends Fragment {
             host.calls().enqueue(host.api().personalRecipes().updatePersonalRecipe(existing.getId(), request),
                     new ApiCallback<PersonalRecipe>() {
                         @Override public void onSuccess(@Nullable PersonalRecipe value) {
+                            if (!isAdded()) return;
                             if (value != null) CatalogCache.savePersonal(requireContext(), value);
                             toast(R.string.ac_editor_saved);
                             getParentFragmentManager().popBackStack();
                         }
 
                         @Override public void onError(ApiError error) {
+                            if (!isAdded()) return;
                             save.setEnabled(true);
                             toast(R.string.ac_catalog_error);
                         }

@@ -197,6 +197,21 @@ public class ApiCallsTest {
         assertTrue(result.get().fieldErrors.isEmpty());
     }
 
+    @Test public void cancelledCallsNeverReachCallbacks() throws Exception {
+        sessions.installIfCurrent(sessions.snapshot().generation, "token-a", "user-a", null);
+        server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE));
+        Call<Void> call = endpoints.me();
+        AtomicBoolean delivered = new AtomicBoolean();
+        calls.enqueue(call, new ApiCallback<Void>() {
+            @Override public void onSuccess(Void value) { delivered.set(true); }
+            @Override public void onError(ApiError error) { delivered.set(true); }
+        });
+        assertNotNull(server.takeRequest(10, TimeUnit.SECONDS));
+        call.cancel();
+        assertNull("A cancelled request must not post any callback", main.poll(2, TimeUnit.SECONDS));
+        assertFalse(delivered.get());
+    }
+
     private void runNext() throws Exception {
         Runnable task = main.poll(10, TimeUnit.SECONDS);
         assertNotNull("No callback was posted", task);

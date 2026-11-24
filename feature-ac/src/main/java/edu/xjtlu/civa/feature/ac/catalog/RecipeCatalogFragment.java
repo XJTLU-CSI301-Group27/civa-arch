@@ -188,6 +188,7 @@ public final class RecipeCatalogFragment extends Fragment {
             call = request;
             host.calls().enqueue(request, new ApiCallback<CatalogRecipePage>() {
                 @Override public void onSuccess(@Nullable CatalogRecipePage value) {
+                    if (!isAdded()) return;
                     loading = false;
                     if (value == null || value.getItems() == null) { failed(); return; }
                     loaded.addAll(cards.fromCatalog(value.getItems()));
@@ -197,6 +198,7 @@ public final class RecipeCatalogFragment extends Fragment {
                 }
 
                 @Override public void onError(ApiError error) {
+                    if (!isAdded()) return;
                     loading = false;
                     if (requestPage == 0 && loaded.isEmpty()) {
                         CatalogRecipePage cached = CatalogCache.loadList(requireContext());
@@ -223,6 +225,7 @@ public final class RecipeCatalogFragment extends Fragment {
             call = request;
             host.calls().enqueue(request, new ApiCallback<edu.xjtlu.civa.api.model.RecipePage>() {
                 @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.RecipePage value) {
+                    if (!isAdded()) return;
                     loading = false;
                     if (value == null || value.getItems() == null) { failed(); return; }
                     loaded.addAll(cards.fromHousehold(value.getItems()));
@@ -231,6 +234,7 @@ public final class RecipeCatalogFragment extends Fragment {
                 }
 
                 @Override public void onError(ApiError error) {
+                    if (!isAdded()) return;
                     loading = false;
                     failed();
                 }
@@ -241,6 +245,7 @@ public final class RecipeCatalogFragment extends Fragment {
             call = request;
             host.calls().enqueue(request, new ApiCallback<PersonalRecipePage>() {
                 @Override public void onSuccess(@Nullable PersonalRecipePage value) {
+                    if (!isAdded()) return;
                     loading = false;
                     if (value == null || value.getItems() == null) { failed(); return; }
                     loaded.addAll(cards.fromPersonal(value.getItems()));
@@ -249,6 +254,7 @@ public final class RecipeCatalogFragment extends Fragment {
                 }
 
                 @Override public void onError(ApiError error) {
+                    if (!isAdded()) return;
                     loading = false;
                     failed();
                 }
@@ -258,6 +264,7 @@ public final class RecipeCatalogFragment extends Fragment {
             call = request;
             host.calls().enqueue(request, new ApiCallback<RecipeFavoritePage>() {
                 @Override public void onSuccess(@Nullable RecipeFavoritePage value) {
+                    if (!isAdded()) return;
                     loading = false;
                     if (value == null || value.getItems() == null) { failed(); return; }
                     loaded.addAll(cards.fromFavorites(value.getItems()));
@@ -266,6 +273,7 @@ public final class RecipeCatalogFragment extends Fragment {
                 }
 
                 @Override public void onError(ApiError error) {
+                    if (!isAdded()) return;
                     loading = false;
                     failed();
                 }

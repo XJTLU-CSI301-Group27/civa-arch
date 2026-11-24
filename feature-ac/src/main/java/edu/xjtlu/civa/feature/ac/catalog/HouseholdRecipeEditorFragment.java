@@ -75,6 +75,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         host.calls().enqueue(host.api().inventory().listIngredients(null, page, 100),
                 new ApiCallback<IngredientPage>() {
                     @Override public void onSuccess(@Nullable IngredientPage value) {
+                        if (!isAdded()) return;
                         if (value == null || value.getItems() == null) { dictionary = collected; done.run(); return; }
                         collected.addAll(value.getItems());
                         long total = value.getTotal() == null ? collected.size() : value.getTotal();
@@ -83,6 +84,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                     }
 
                     @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
                         dictionary = collected;
                         done.run();
                     }
@@ -92,6 +94,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
     private void loadExisting() {
         host.calls().enqueue(host.api().recipe().getRecipe(home, recipeId), new ApiCallback<Recipe>() {
             @Override public void onSuccess(@Nullable Recipe value) {
+                if (!isAdded()) return;
                 if (value == null) return;
                 existing = value;
                 name.setText(value.getName());
@@ -108,6 +111,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
             }
 
             @Override public void onError(ApiError error) {
+                if (!isAdded()) return;
                 toast(R.string.ac_catalog_error);
             }
         });
@@ -125,11 +129,13 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
             host.calls().enqueue(host.api().recipe().createRecipe(home, UUID.randomUUID(), request),
                     new ApiCallback<Recipe>() {
                         @Override public void onSuccess(@Nullable Recipe value) {
+                            if (!isAdded()) return;
                             toast(R.string.ac_editor_saved);
                             getParentFragmentManager().popBackStack();
                         }
 
                         @Override public void onError(ApiError error) {
+                            if (!isAdded()) return;
                             save.setEnabled(true);
                             toast(R.string.ac_catalog_error);
                         }
@@ -146,11 +152,13 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
             host.calls().enqueue(host.api().recipe().updateRecipe(home, existing.getId(), update),
                     new ApiCallback<Recipe>() {
                         @Override public void onSuccess(@Nullable Recipe value) {
+                            if (!isAdded()) return;
                             toast(R.string.ac_editor_saved);
                             getParentFragmentManager().popBackStack();
                         }
 
                         @Override public void onError(ApiError error) {
+                            if (!isAdded()) return;
                             save.setEnabled(true);
                             toast(R.string.ac_catalog_error);
                         }

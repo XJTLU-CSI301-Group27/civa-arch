@@ -82,6 +82,7 @@ public final class ApiCalls {
     <T> void enqueueDetached(Call<T> call, long generation, ApiCallback<T> callback) {
         call.enqueue(new Callback<T>() {
             @Override public void onResponse(Call<T> request, Response<T> response) {
+                if (request.isCanceled()) return;
                 if (response.isSuccessful()) deliver(generation, () -> callback.onSuccess(response.body()));
                 else {
                     ApiError error = parseError(response.errorBody());
@@ -89,7 +90,8 @@ public final class ApiCalls {
                 }
             }
             @Override public void onFailure(Call<T> request, Throwable failure) {
-                String code = request.isCanceled() ? "CANCELLED" : failure instanceof SocketTimeoutException ? "TIMEOUT" : "NETWORK_ERROR";
+                if (request.isCanceled()) return;
+                String code = failure instanceof SocketTimeoutException ? "TIMEOUT" : "NETWORK_ERROR";
                 deliver(generation, () -> callback.onError(localError(code)));
             }
         });
@@ -112,7 +114,9 @@ public final class ApiCalls {
                         T value = response.body();
                         main.execute(() -> {
                             synchronized (sessions) {
-                                if (sessions.snapshot().generation == generation) callback.onSuccess(value);
+                                if (request.isCanceled()) {
+                                    if (value instanceof ResponseBody) ((ResponseBody) value).close();
+                                } else if (sessions.snapshot().generation == generation) callback.onSuccess(value);
                                 else if (value instanceof ResponseBody) ((ResponseBody) value).close();
                             }
                         });
@@ -143,7 +147,9 @@ public final class ApiCalls {
 
                 @Override public void onFailure(Call<T> request, Throwable failure) {
                     inFlight.remove(request);
-                    String code = request.isCanceled() ? "CANCELLED" : failure instanceof RawResponseValidation.InvalidResponseException
+                    // A cancelled call is deliberate: do not run callbacks against a screen that is going away.
+                    if (request.isCanceled()) return;
+                    String code = failure instanceof RawResponseValidation.InvalidResponseException
                             ? "INVALID_RESPONSE" : failure instanceof SocketTimeoutException ? "TIMEOUT" : "NETWORK_ERROR";
                     deliver(generation, () -> callback.onError(localError(code)));
                 }
