@@ -1,6 +1,7 @@
 package edu.xjtlu.civa.server.inventory;
 
 import edu.xjtlu.civa.server.api.model.*;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
@@ -62,6 +63,15 @@ public final class InventoryMatchingService {
               .shortages(result.shortages())
               .checkedAt(checkedAt);
         });
+  }
+
+  /**
+   * Stock required for one recipe line at the requested servings. Shared with the cooking
+   * confirmation so preview and confirmation can never disagree on the rounding rule.
+   */
+  public static BigDecimal requiredFor(RecipeIngredient ingredient, BigDecimal servings, BigDecimal yield) {
+    if (ingredient.getQuantity() == null) throw new IllegalArgumentException("Missing ingredient quantity");
+    return InventoryRules.required(new BigDecimal(ingredient.getQuantity()), servings, yield);
   }
 
   private List<InventoryBatch> stock(UUID home) {

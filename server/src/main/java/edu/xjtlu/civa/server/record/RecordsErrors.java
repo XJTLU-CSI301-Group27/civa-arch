@@ -18,7 +18,7 @@ class RecordsErrors {
     ResponseEntity<Map<String, Object>> fault(RecordFault error, HttpServletRequest request) {
         int status = switch (error.code) {
             case "NOT_FOUND" -> 404;
-            case "VERSION_CONFLICT", "IDEMPOTENCY_KEY_REUSED", "INSUFFICIENT_STOCK" -> 409;
+            case "VERSION_CONFLICT", "IDEMPOTENCY_KEY_REUSED", "INSUFFICIENT_STOCK", "EXPIRED_BATCH" -> 409;
             case "HOUSEHOLD_ACCESS_REVOKED" -> 403;
             default -> 400;
         };

@@ -143,6 +143,147 @@ class CookingEventHttpIntegrationTest {
         }
     }
 
+    /**
+     * The confirmation may only deduct what the recipe consumes, from batches that really hold that
+     * ingredient, that are not expired and that are still at the expected version. Every rejected
+     * attempt must leave cooking events, inventory movements and batch quantities untouched.
+     */
+    @Test void unsafeCookingAllocationsAreRejectedWithoutSideEffects() throws Exception {
+        UUID user = UUID.randomUUID();
+        UUID home = UUID.randomUUID();
+        UUID recipe = UUID.randomUUID();
+        try {
+            String name = "u_" + user.toString().replace("-", "").substring(0, 20);
+            jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
+                    user, name, "Guard", passwords.encode("long-password"), "UTC");
+            jdbc.update("INSERT INTO households(id,name,zone_id) VALUES (?,?,'UTC')", home, "Guard home");
+            jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
+                    UUID.randomUUID(), home, user);
+            String token = login(name);
+
+            UUID grams = jdbc.queryForObject(
+                    "SELECT id FROM ingredients WHERE unit='G' ORDER BY name LIMIT 1", UUID.class);
+            UUID count = jdbc.queryForObject(
+                    "SELECT id FROM ingredients WHERE unit='COUNT' ORDER BY name LIMIT 1", UUID.class);
+            jdbc.update("INSERT INTO recipes(id,household_id,author_id,name,steps,yield_servings,duration_minutes)"
+                            + " VALUES (?,?,?,?,CAST(? AS jsonb),?,?)",
+                    recipe, home, user, "校验测试菜", "[\"切\"]", 2, 20);
+
+            jdbc.update("INSERT INTO recipe_ingredients(recipe_id,ingredient_id,position,quantity,unit,track_stock)"
+                    + " VALUES (?,?,0,100,'G',true)", recipe, grams);
+            jdbc.update("INSERT INTO recipe_ingredients(recipe_id,ingredient_id,position,quantity,unit,track_stock)"
+                    + " VALUES (?,?,1,2,'COUNT',true)", recipe, count);
+
+            UUID stockG = UUID.randomUUID();
+            UUID stockC = UUID.randomUUID();
+            UUID stockC2 = UUID.randomUUID();
+            UUID stockExpired = UUID.randomUUID();
+            insertBatch(stockG, home, grams, "200", "G", null);
+            insertBatch(stockC, home, count, "10", "COUNT", null);
+            insertBatch(stockC2, home, count, "10", "COUNT", null);
+            insertBatch(stockExpired, home, grams, "100", "G", LocalDate.now(java.time.ZoneOffset.UTC).minusDays(1));
+
+            String key = UUID.randomUUID().toString();
+            // 1. No allocations at all: the tracked ingredients would never be deducted.
+            confirm(home, token, key, confirmBody(recipe, 1, List.of()))
+                    .andExpect(status().isBadRequest());
+            // 2. Incomplete allocation: half of the required grams.
+            confirm(home, token, UUID.randomUUID().toString(), confirmBody(recipe, 1, List.of(
+                    allocation(stockG, 1, grams, "50", "G"),
+                    allocation(stockC, 1, count, "2", "COUNT"))))
+                    .andExpect(status().isBadRequest());
+            // 3. The batch belongs to another ingredient.
+            confirm(home, token, UUID.randomUUID().toString(), confirmBody(recipe, 1, List.of(
+                    allocation(stockC, 1, grams, "100", "G"),
+                    allocation(stockC2, 1, count, "2", "COUNT"))))
+                    .andExpect(status().isBadRequest());
+            // 4. The batch expired before the household's today.
+            confirm(home, token, UUID.randomUUID().toString(), confirmBody(recipe, 1, List.of(
+                    allocation(stockExpired, 1, grams, "100", "G"),
+                    allocation(stockC, 1, count, "2", "COUNT"))))
+                    .andExpect(status().isConflict());
+            // 5. A missing batch version is rejected as a malformed confirmation.
+            confirm(home, token, UUID.randomUUID().toString(), confirmBody(recipe, 1, List.of(
+                    Map.of("batchId", stockG.toString(), "ingredientId", grams.toString(),
+                            "quantity", "100", "unit", "G"),
+                    allocation(stockC, 1, count, "2", "COUNT"))))
+                    .andExpect(status().isBadRequest());
+
+            assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM cooking_events WHERE household_id=?",
+                    Integer.class, home));
+            assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM inventory_movements WHERE household_id=?",
+                    Integer.class, home));
+            assertQuantity(stockG, "200");
+            assertQuantity(stockC, "10");
+            assertQuantity(stockC2, "10");
+            assertQuantity(stockExpired, "100");
+
+            // 5. The valid confirmation still works and deducts exactly once per batch.
+            confirm(home, token, UUID.randomUUID().toString(), confirmBody(recipe, 1, List.of(
+                    allocation(stockG, 1, grams, "100", "G"),
+                    allocation(stockC, 1, count, "2", "COUNT"))))
+                    .andExpect(status().isCreated());
+            assertQuantity(stockG, "100");
+            assertQuantity(stockC, "8");
+            assertEquals(2, jdbc.queryForObject("SELECT count(*) FROM inventory_movements"
+                    + " WHERE household_id=? AND reason='COOK'", Integer.class, home));
+
+            // 6. A tracked line whose requirement is zero needs no allocation and consumes nothing.
+            UUID zeroRecipe = UUID.randomUUID();
+            jdbc.update("INSERT INTO recipes(id,household_id,author_id,name,steps,yield_servings,duration_minutes)"
+                            + " VALUES (?,?,?,?,CAST(? AS jsonb),?,?)",
+                    zeroRecipe, home, user, "零用量菜", "[\"切\"]", 2, 20);
+            jdbc.update("INSERT INTO recipe_ingredients(recipe_id,ingredient_id,position,quantity,unit,track_stock)"
+                    + " VALUES (?,?,0,0,'G',true)", zeroRecipe, grams);
+            confirm(home, token, UUID.randomUUID().toString(), confirmBody(zeroRecipe, 1, List.of()))
+                    .andExpect(status().isCreated());
+            assertEquals(2, jdbc.queryForObject("SELECT count(*) FROM inventory_movements"
+                    + " WHERE household_id=? AND reason='COOK'", Integer.class, home));
+        } finally {
+            jdbc.update("DELETE FROM inventory_movements WHERE household_id=?", home);
+            jdbc.update("DELETE FROM cooking_events WHERE household_id=?", home);
+            jdbc.update("DELETE FROM inventory_batches WHERE household_id=?", home);
+            jdbc.update("DELETE FROM recipe_ingredients WHERE recipe_id IN (SELECT id FROM recipes WHERE household_id=?)", home);
+            jdbc.update("DELETE FROM recipes WHERE household_id=?", home);
+            jdbc.update("DELETE FROM memberships WHERE household_id=?", home);
+            jdbc.update("DELETE FROM households WHERE id=?", home);
+            jdbc.update("DELETE FROM idempotency_requests WHERE actor_id=?", user);
+            jdbc.update("DELETE FROM sessions WHERE user_id=?", user);
+            jdbc.update("DELETE FROM users WHERE id=?", user);
+        }
+    }
+
+    private void insertBatch(UUID id, UUID home, UUID ingredient, String quantity, String unit, LocalDate expiresOn) {
+        jdbc.update("INSERT INTO inventory_batches(id,household_id,ingredient_id,quantity,unit,location,expires_on)"
+                        + " VALUES (?,?,?,?,?,'冷藏',?)",
+                id, home, ingredient, new java.math.BigDecimal(quantity), unit, expiresOn);
+    }
+
+    private void assertQuantity(UUID batch, String expected) {
+        assertEquals(0, jdbc.queryForObject("SELECT quantity FROM inventory_batches WHERE id=?",
+                        java.math.BigDecimal.class, batch).compareTo(new java.math.BigDecimal(expected)),
+                "batch " + batch + " quantity changed");
+    }
+
+    private Map<String, Object> allocation(UUID batchId, long version, UUID ingredientId, String quantity, String unit) {
+        return Map.of("batchId", batchId.toString(), "expectedVersion", version,
+                "ingredientId", ingredientId.toString(), "quantity", quantity, "unit", unit);
+    }
+
+    private String confirmBody(UUID recipe, int recipeVersion, List<Map<String, Object>> allocations)
+            throws Exception {
+        return json.writeValueAsString(Map.of(
+                "recipeId", recipe.toString(), "recipeVersion", recipeVersion, "servings", "2",
+                "cookedAt", "2026-11-26T04:00:00.000Z", "allocations", allocations));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions confirm(UUID home, String token, String key,
+                                                                      String body) throws Exception {
+        return http.perform(post("/api/v1/households/{id}/cooking-events", home)
+                .header("Authorization", bearer(token)).header("Idempotency-Key", key)
+                .contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
     private String login(String name) throws Exception {
         String body = json.writeValueAsString(Map.of("username", name, "password", "long-password"));
         var result = http.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))

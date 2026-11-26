@@ -21,13 +21,16 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -72,12 +75,14 @@ final class CookingEventService {
         OffsetDateTime cookedAt = parseInstant(body.getCookedAt());
         requireMember(actor, home);
         return executor.execute(actor, key, digest, () -> {
-            boolean locked = lockHousehold(home);
+            String zone = lockHousehold(home);
             try {
+                LocalDate today = LocalDate.now(clock.withZone(ZoneId.of(zone)));
                 RecipeRow recipe = recipe(home, body.getRecipeId());
                 if (recipe.version != body.getRecipeVersion()) throw new RecordFault("VERSION_CONFLICT");
                 List<RecipeIngredient> snapshotIngredients = ingredients(recipe.id);
                 List<CookingAllocation> allocations = normalise(body.getAllocations(), snapshotIngredients);
+                requireCompleteAllocations(recipe, snapshotIngredients, allocations, servings);
                 UUID eventId = UUID.randomUUID();
                 jdbc.update("INSERT INTO cooking_events(id, household_id, actor_id, cooked_at, servings,"
                                 + " recipe_id, recipe_snapshot, plan_slot_id, request_id)"
@@ -86,21 +91,30 @@ final class CookingEventService {
                         jsonb.write(json.valueToTree(snapshot(recipe, snapshotIngredients))), body.getPlanSlotId(), key);
                 Map<UUID, Allocation> perBatch = new LinkedHashMap<>();
                 for (CookingAllocation allocation : allocations) {
-                    Allocation current = perBatch.computeIfAbsent(allocation.getBatchId(),
-                            ignored -> new Allocation(allocation.getExpectedVersion(), BigDecimal.ZERO));
+                    Allocation current = perBatch.get(allocation.getBatchId());
+                    if (current == null) {
+                        perBatch.put(allocation.getBatchId(), new Allocation(allocation.getExpectedVersion(),
+                                new BigDecimal(allocation.getQuantity()), allocation.getIngredientId(),
+                                allocation.getUnit()));
+                        continue;
+                    }
                     if (!current.expectedVersion.equals(allocation.getExpectedVersion())) {
                         throw new RecordFault("VERSION_CONFLICT");
+                    }
+                    if (!current.ingredientId.equals(allocation.getIngredientId())
+                            || current.unit != allocation.getUnit()) {
+                        throw new RecordFault("INVALID_INGREDIENT");
                     }
                     current.quantity = current.quantity.add(new BigDecimal(allocation.getQuantity()));
                 }
                 for (Map.Entry<UUID, Allocation> entry : perBatch.entrySet()) {
-                    deduct(home, actor, eventId, key, entry.getKey(), entry.getValue());
+                    deduct(home, actor, eventId, key, entry.getKey(), entry.getValue(), today);
                 }
                 return new IdempotencyExecutor.Result(201, jsonb.write(json.valueToTree(get(home, eventId))));
             } finally {
-                if (locked) jdbc.execute("SET LOCAL lock_timeout = DEFAULT");
+                jdbc.execute("SET LOCAL lock_timeout = DEFAULT");
             }
-        }, ignored -> { });
+        }, ignored -> requireMember(actor, home));
     }
 
     CookingEventPage list(UUID actor, UUID home, UUID recipeId, String from, String to, Integer page, Integer size) {
@@ -135,15 +149,27 @@ final class CookingEventService {
         return new CookingEventPage(items, pageNumber, pageSize, total == null ? 0 : total);
     }
 
-    private void deduct(UUID home, UUID actor, UUID eventId, UUID key, UUID batchId, Allocation allocation) {
+    private void deduct(UUID home, UUID actor, UUID eventId, UUID key, UUID batchId, Allocation allocation,
+                        LocalDate today) {
         BigDecimal quantity = allocation.quantity;
-        List<BatchRow> batches = jdbc.query("SELECT id, quantity, version FROM inventory_batches"
-                        + " WHERE household_id=? AND id=? FOR UPDATE",
-                (rs, row) -> new BatchRow(rs.getObject(1, UUID.class), rs.getBigDecimal(2), rs.getLong(3)),
+        List<BatchRow> batches = jdbc.query("SELECT id, ingredient_id, unit, quantity, version, expires_on"
+                        + " FROM inventory_batches WHERE household_id=? AND id=? FOR UPDATE",
+                (rs, row) -> new BatchRow(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class),
+                        rs.getString(3), rs.getBigDecimal(4), rs.getLong(5),
+                        rs.getObject(6, LocalDate.class)),
                 home, batchId);
         if (batches.isEmpty()) throw new RecordFault("INSUFFICIENT_STOCK");
-        if (allocation.expectedVersion != batches.get(0).version) throw new RecordFault("VERSION_CONFLICT");
-        BigDecimal before = batches.get(0).quantity;
+        BatchRow batch = batches.get(0);
+        // The batch must really be the ingredient the caller says it is: a wrong batch id must not
+        // consume another ingredient's stock.
+        if (!batch.ingredientId.equals(allocation.ingredientId)
+                || !batch.unit.equals(allocation.unit.getValue())) {
+            throw new RecordFault("INVALID_INGREDIENT");
+        }
+        if (allocation.expectedVersion != batch.version) throw new RecordFault("VERSION_CONFLICT");
+        // Same rule as the preview: an expiry date equal to today is still usable.
+        if (batch.expiresOn != null && batch.expiresOn.isBefore(today)) throw new RecordFault("EXPIRED_BATCH");
+        BigDecimal before = batch.quantity;
         if (before.compareTo(quantity) < 0) throw new RecordFault("INSUFFICIENT_STOCK");
         BigDecimal after = before.subtract(quantity);
         jdbc.update("UPDATE inventory_batches SET quantity=?, version=version+1, updated_at=CURRENT_TIMESTAMP"
@@ -151,6 +177,41 @@ final class CookingEventService {
         jdbc.update("INSERT INTO inventory_movements(id, household_id, batch_id, before_quantity, after_quantity,"
                         + " reason, actor_id, cooking_event_id, request_id) VALUES (?,?,?,?,?,'COOK',?,?,?)",
                 UUID.randomUUID(), home, batchId, before, after, actor, eventId, key);
+    }
+
+    /**
+     * The confirmation may only deduct what the recipe actually consumes: every stock-tracked line
+     * must be covered exactly once, and untracked lines must not be deducted. A recipe with no
+     * stock-tracked lines is legitimately confirmed with an empty allocation list.
+     */
+    private void requireCompleteAllocations(RecipeRow recipe, List<RecipeIngredient> ingredients,
+                                            List<CookingAllocation> allocations, BigDecimal servings) {
+        BigDecimal yield = new BigDecimal(recipe.yieldServings());
+        Map<UUID, BigDecimal> allocated = new LinkedHashMap<>();
+        for (CookingAllocation allocation : allocations) {
+            allocated.merge(allocation.getIngredientId(), new BigDecimal(allocation.getQuantity()), BigDecimal::add);
+        }
+        Set<UUID> tracked = new LinkedHashSet<>();
+        for (RecipeIngredient ingredient : ingredients) {
+            UUID ingredientId = ingredient.getIngredientId();
+            if (!Boolean.TRUE.equals(ingredient.getTrackStock())) {
+                if (allocated.containsKey(ingredientId)) throw new RecordFault("INVALID_INGREDIENT");
+                continue;
+            }
+            tracked.add(ingredientId);
+            BigDecimal got = allocated.get(ingredientId);
+            if (ingredient.getQuantity() == null) throw new RecordFault("INVALID_INGREDIENT");
+            BigDecimal required = InventoryMatchingService.requiredFor(ingredient, servings, yield);
+            if (required.signum() == 0) {
+                // A tracked line of zero grams still needs no batch and must not consume stock.
+                if (got != null) throw new RecordFault("INVALID_INGREDIENT");
+            } else if (got == null || got.compareTo(required) != 0) {
+                throw new RecordFault("INVALID_RANGE");
+            }
+        }
+        for (UUID ingredientId : allocated.keySet()) {
+            if (!tracked.contains(ingredientId)) throw new RecordFault("INVALID_INGREDIENT");
+        }
     }
 
     private List<CookingAllocation> normalise(List<CookingAllocation> allocations,
@@ -162,7 +223,8 @@ final class CookingEventService {
         List<CookingAllocation> result = new ArrayList<>();
         for (CookingAllocation allocation : allocations) {
             if (allocation == null || allocation.getBatchId() == null || allocation.getIngredientId() == null
-                    || allocation.getQuantity() == null || allocation.getUnit() == null) {
+                    || allocation.getQuantity() == null || allocation.getUnit() == null
+                    || allocation.getExpectedVersion() == null) {
                 throw new RecordFault("INVALID_RANGE");
             }
             BigDecimal quantity = positive(allocation.getQuantity());
@@ -232,12 +294,13 @@ final class CookingEventService {
         return event;
     }
 
-    private boolean lockHousehold(UUID home) {
+    /** Locks the household row and returns its zone, so "today" matches the household calendar. */
+    private String lockHousehold(UUID home) {
         jdbc.execute("SET LOCAL lock_timeout = '5s'");
-        List<UUID> homes = jdbc.query("SELECT id FROM households WHERE id=? FOR UPDATE",
-                (rs, row) -> rs.getObject(1, UUID.class), home);
-        if (homes.isEmpty()) throw new RecordFault("NOT_FOUND");
-        return true;
+        List<String> zones = jdbc.query("SELECT zone_id FROM households WHERE id=? FOR UPDATE",
+                (rs, row) -> rs.getString(1), home);
+        if (zones.isEmpty()) throw new RecordFault("NOT_FOUND");
+        return zones.get(0);
     }
 
     private void requireMember(UUID actor, UUID home) {
@@ -279,15 +342,20 @@ final class CookingEventService {
 
     private record RecipeRow(UUID id, long version, String name, String yieldServings, String totalKcal) { }
 
-    private record BatchRow(UUID id, BigDecimal quantity, long version) { }
+    private record BatchRow(UUID id, UUID ingredientId, String unit, BigDecimal quantity, long version,
+                            LocalDate expiresOn) { }
 
     private static final class Allocation {
         final Long expectedVersion;
+        final UUID ingredientId;
+        final Unit unit;
         BigDecimal quantity;
 
-        Allocation(Long expectedVersion, BigDecimal quantity) {
+        Allocation(Long expectedVersion, BigDecimal quantity, UUID ingredientId, Unit unit) {
             this.expectedVersion = expectedVersion;
             this.quantity = quantity;
+            this.ingredientId = ingredientId;
+            this.unit = unit;
         }
     }
 }

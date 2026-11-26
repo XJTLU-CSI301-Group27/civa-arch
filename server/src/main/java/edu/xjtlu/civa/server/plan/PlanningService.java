@@ -120,7 +120,7 @@ final class PlanningService {
                 return resultSlots;
             });
             return new IdempotencyExecutor.Result(200, writeJson(saved));
-        }, ignored -> { });
+        }, ignored -> requireMember(actor, home));
         return readJson(result.body);
     }
 

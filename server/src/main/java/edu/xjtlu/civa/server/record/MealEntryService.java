@@ -73,7 +73,23 @@ final class MealEntryService {
                     value.cookingEventId, value.amount, value.basis.getValue(), value.basisKcal,
                     value.totalKcal, value.note, value.imageId);
             return new IdempotencyExecutor.Result(201, writeModel(get(actor, id)));
-        }, ignored -> { });
+        }, stored -> requireStoredOwner(actor, stored));
+    }
+
+    /**
+     * A meal entry is personal data, so leaving a household must not revoke it. What a replay must
+     * never do is hand one account's stored response to another: verify the stored body still
+     * belongs to the authenticated actor.
+     */
+    private void requireStoredOwner(UUID actor, IdempotencyExecutor.Result stored) {
+        if (stored == null || stored.body == null) throw new RecordFault("NOT_FOUND");
+        String owner;
+        try {
+            owner = json.readTree(stored.body).path("userId").asText(null);
+        } catch (JsonProcessingException corrupt) {
+            throw new RecordFault("NOT_FOUND");
+        }
+        if (owner == null || !owner.equals(actor.toString())) throw new RecordFault("NOT_FOUND");
     }
 
     MealEntry update(UUID actor, UUID id, UpdateMealEntryRequest body) {
