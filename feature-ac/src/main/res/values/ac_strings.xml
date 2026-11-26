@@ -367,6 +367,18 @@
     <string name="ac_l10n_diary_expiry_suffix">" · 到期 %1$s"</string>
     <string name="ac_l10n_diary_note">%1$s：%2$s</string>
     <string name="ac_l10n_plan_recipe_option">%1$s（%2$s 份）</string>
+    <string name="ac_record_summary_meal">食记：%1$s</string>
+    <string name="ac_record_summary_cooking">做饭：%1$s</string>
+    <string name="ac_record_working">正在提交…</string>
+    <string name="ac_record_storage_failed">本地存储不可用，未提交</string>
+    <string name="ac_record_unconfirmed_title">结果待确认</string>
+    <string name="ac_record_unconfirmed_message">上次提交可能已经成功，也可能没有送达。重试会复用同一次操作，不会重复记录。</string>
+    <string name="ac_record_unconfirmed_retry">重试</string>
+    <string name="ac_record_unconfirmed_discard">放弃</string>
+    <string name="ac_record_pending_title">有未确认的记录</string>
+    <string name="ac_record_pending_message">上次提交的结果没有确认。请先检查食记和做饭历史：记录已存在就无需再记；关闭本提示后可以重新记录。</string>
+    <string name="ac_record_pending_ok">知道了</string>
+    <string name="ac_diary_record_hint">只记录你吃了什么，不会扣减冰箱；需要扣库存请用菜谱里的“做饭”。</string>
 </resources>
 
 

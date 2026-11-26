@@ -10,21 +10,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import edu.xjtlu.civa.api.model.CookingEvent;
 import edu.xjtlu.civa.api.model.CookingEventPage;
 import edu.xjtlu.civa.api.model.CookingPreview;
 import edu.xjtlu.civa.api.model.CookingPreviewRequest;
-import edu.xjtlu.civa.api.model.ChangeReason;
 import edu.xjtlu.civa.api.model.ConfirmCookingRequest;
-import edu.xjtlu.civa.api.model.InventoryBatch;
-import edu.xjtlu.civa.api.model.InventoryBatchPage;
-import edu.xjtlu.civa.api.model.InventoryChangeRequest;
-import edu.xjtlu.civa.api.model.NutritionBasis;
-import edu.xjtlu.civa.api.model.NutritionEstimate;
-import edu.xjtlu.civa.api.model.NutritionEstimateRequest;
 import edu.xjtlu.civa.api.model.CreateMealEntryRequest;
 import edu.xjtlu.civa.api.model.DaySummary;
 import edu.xjtlu.civa.api.model.Ingredient;
@@ -39,11 +34,16 @@ import edu.xjtlu.civa.api.model.MealEntryPage;
 import edu.xjtlu.civa.api.model.PeriodSummary;
 import edu.xjtlu.civa.api.model.UpdateMealEntryRequest;
 import edu.xjtlu.civa.core.data.ApiCallback;
+import edu.xjtlu.civa.core.data.PendingWrite;
 import edu.xjtlu.civa.core.data.PlannedDish;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.AcText;
 import edu.xjtlu.civa.feature.ac.R;
+import edu.xjtlu.civa.feature.ac.record.CookingIntent;
+import edu.xjtlu.civa.feature.ac.record.IdempotentAction;
+import edu.xjtlu.civa.feature.ac.record.RecordSubmissionViewModel;
+import edu.xjtlu.civa.feature.ac.record.RecordSubmissions;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
@@ -57,6 +57,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /** Food diary: month calendar of actual intake, per-day entries and household cooking history. */
 public final class DiaryFragment extends Fragment {
@@ -73,12 +74,19 @@ public final class DiaryFragment extends Fragment {
     private boolean ingredientNamesLoaded;
     private TextView monthLabel, monthSummary, dayTitle, daySummary;
     private boolean loading;
+    private RecordSubmissionViewModel submissions;
+    private static final ApiCallback<Void> IGNORE = new ApiCallback<>() {
+        @Override public void onSuccess(@Nullable Void value) { }
+
+        @Override public void onError(ApiError error) { }
+    };
 
     public DiaryFragment() { super(R.layout.ac_fragment_diary); }
 
     @Override public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         host = (AcHost) requireActivity();
+        submissions = new ViewModelProvider(requireActivity()).get(RecordSubmissionViewModel.class);
         calendar = view.findViewById(R.id.ac_diary_calendar);
         entryList = view.findViewById(R.id.ac_diary_entries);
         cookingList = view.findViewById(R.id.ac_diary_cooking);
@@ -95,9 +103,10 @@ public final class DiaryFragment extends Fragment {
             selected = LocalDate.now();
             loadMonth();
         });
-        view.findViewById(R.id.ac_diary_add).setOnClickListener(ignored -> chooseScenario());
+        view.findViewById(R.id.ac_diary_add).setOnClickListener(ignored -> editEntry(null, null));
         loadMonth();
         loadCooking();
+        resumeSubmission();
     }
 
     private void shiftMonth(int delta) {
@@ -323,19 +332,23 @@ public final class DiaryFragment extends Fragment {
                 .recipeVersion(preview.getRecipeVersion())
                 .servings(preview.getServings())
                 .allocations(preview.getAllocations())
-                .cookedAt(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-                        .withZone(java.time.ZoneOffset.UTC).format(java.time.Instant.now()));
-        host.calls().enqueue(host.api().records().confirmCooking(home, UUID.randomUUID(), request),
-                new ApiCallback<CookingEvent>() {
-                    @Override public void onSuccess(@Nullable CookingEvent value) {
-                        if (!isAdded()) return;
-                        recordPlannedMeal(dish, recipe, value == null ? null : value.getId(), true);
-                    }
-
-                    @Override public void onError(ApiError error) {
-                        if (!isAdded()) return;
-                        offerRecordOnly(dish, R.string.ac_diary_plan_failed);
-                    }
+                .cookedAt(isoNow());
+        IdempotentAction action = submissions.action(RecordSubmissionViewModel.COOKING);
+        String summary = getString(R.string.ac_record_summary_cooking, recipe.getName());
+        if (!action.begin(summary)) {
+            toast(R.string.ac_record_working);
+            return;
+        }
+        submissions.remember(RecordSubmissionViewModel.COOKING, new CookingIntent(home, request));
+        RecordSubmissions.recordIntent(host.calls(), userId(), home.toString(),
+                RecordSubmissionViewModel.COOKING, action, summary,
+                () -> sendCooking(action, home, request,
+                        event -> recordPlannedMeal(dish, recipe, event == null ? null : event.getId(), true),
+                        error -> offerRecordOnly(dish, R.string.ac_diary_plan_failed)),
+                () -> {
+                    action.abandon();
+                    submissions.forget(RecordSubmissionViewModel.COOKING);
+                    toast(R.string.ac_record_storage_failed);
                 });
     }
 
@@ -396,19 +409,8 @@ public final class DiaryFragment extends Fragment {
                 .basisKcal(basisKcal == null ? null : plain(basisKcal))
                 .note(getString(R.string.ac_diary_plan_title))
                 .cookingEventId(cookingEventId);
-        host.calls().enqueue(host.api().records().createMealEntry(UUID.randomUUID(), request),
-                new ApiCallback<MealEntry>() {
-                    @Override public void onSuccess(@Nullable MealEntry value) {
-                        if (!isAdded()) return;
-                        toast(deducted ? R.string.ac_diary_plan_done : R.string.ac_diary_plan_recorded);
-                        loadMonth();
-                    }
-
-                    @Override public void onError(ApiError error) {
-                        if (!isAdded()) return;
-                        toast(R.string.ac_diary_plan_failed);
-                    }
-                });
+        startMealSubmission(request, null,
+                deducted ? R.string.ac_diary_plan_done : R.string.ac_diary_plan_recorded);
     }
 
     private void ensureIngredientNames(Runnable then) {
@@ -600,256 +602,217 @@ public final class DiaryFragment extends Fragment {
         return row;
     }
 
-    /** First decision: eating at home (fridge ingredients) or outside (free input). */
-    private void chooseScenario() {
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.ac_diary_new)
-                .setItems(new String[]{getString(R.string.ac_diary_at_home),
-                        getString(R.string.ac_diary_outside)}, (dialog, which) -> {
-                    if (which == 0) addHomeMeal();
-                    else editEntry(null, null);
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
+    // ---- Record submissions: one intent, one idempotency key, explicit unconfirmed state ----
 
-    /** At home: only fridge batches can be picked, and the used quantities are consumed. */
-    private void addHomeMeal() {
-        if (!isAdded()) return;
-        String homeText = host.sessions() == null ? null : host.sessions().currentHouseholdId();
-        if (homeText == null) {
-            toast(R.string.ac_diary_cooking_no_home);
-            return;
+    private boolean startMealSubmission(CreateMealEntryRequest request, @Nullable AlertDialog dialog,
+                                        int successMessage) {
+        String user = userId();
+        if (user == null || !isAdded()) return false;
+        IdempotentAction action = submissions.action(RecordSubmissionViewModel.MEAL);
+        String summary = getString(R.string.ac_record_summary_meal, request.getName());
+        if (!action.begin(summary)) {
+            toast(R.string.ac_record_working);
+            return false;
         }
-        UUID home = UUID.fromString(homeText);
-        ensureIngredientNames(() -> host.calls().enqueue(
-                host.api().inventory().listInventoryBatches(home, null, null, 0, 100),
-                new ApiCallback<InventoryBatchPage>() {
-                    @Override public void onSuccess(@Nullable InventoryBatchPage value) {
-                        if (!isAdded()) return;
-                        List<InventoryBatch> batches = value == null || value.getItems() == null
-                                ? List.of() : value.getItems();
-                        if (batches.isEmpty()) {
-                            toast(R.string.ac_diary_home_empty_fridge);
-                            return;
-                        }
-                        showHomeMealDialog(home, batches);
-                    }
-
-                    @Override public void onError(ApiError error) {
-                        if (!isAdded()) return;
-                        toast(R.string.ac_diary_load_error);
-                    }
-                }));
-    }
-
-    private void showHomeMealDialog(UUID home, List<InventoryBatch> batches) {
-        EditText name = field(getString(R.string.ac_diary_home_name_hint));
-        Map<UUID, EditText> amounts = new LinkedHashMap<>();
-        Map<UUID, InventoryBatch> byId = new LinkedHashMap<>();
-        LinearLayout list = new LinearLayout(requireContext());
-        list.setOrientation(LinearLayout.VERTICAL);
-        list.addView(line(getString(R.string.ac_diary_home_ingredients_hint), 12, R.color.ac_catalog_muted));
-        for (InventoryBatch batch : batches) {
-            String ingredient = ingredientNames.getOrDefault(batch.getIngredientId(),
-                    getString(R.string.ac_l10n_ingredient_fallback));
-            String label = ingredient + " · " + batch.getQuantity() + " "
-                    + AcText.unit(getResources(), batch.getUnit(), ingredient)
-                    + (batch.getExpiresOn() == null ? ""
-                            : getString(R.string.ac_l10n_diary_expiry_suffix, batch.getExpiresOn()));
-            com.google.android.material.checkbox.MaterialCheckBox check =
-                    new com.google.android.material.checkbox.MaterialCheckBox(requireContext());
-            check.setText(label);
-            check.setTextSize(13);
-            EditText amount = new EditText(requireContext());
-            amount.setHint(R.string.ac_diary_home_amount_hint);
-            amount.setTextSize(13);
-            amount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-            amount.setBackgroundResource(R.drawable.ac_catalog_search);
-            amount.setPadding(dp(10), dp(6), dp(10), dp(6));
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            params.topMargin = dp(4);
-            amount.setLayoutParams(params);
-            amount.setVisibility(View.GONE);
-            check.setOnCheckedChangeListener((button, checked) -> {
-                amount.setVisibility(checked ? View.VISIBLE : View.GONE);
-                if (checked && amount.getText().toString().trim().isEmpty()) {
-                    amount.setText(batch.getQuantity());
-                }
-            });
-            list.addView(check);
-            list.addView(amount);
-            amounts.put(batch.getId(), amount);
-            byId.put(batch.getId(), batch);
-        }
-        android.widget.ScrollView scroll = new android.widget.ScrollView(requireContext());
-        scroll.addView(list);
-
-        EntryMealType[] meals = EntryMealType.values();
-        Map<EntryMealType, MaterialButton> mealButtons = new LinkedHashMap<>();
-        LinearLayout mealRow = new LinearLayout(requireContext());
-        mealRow.setOrientation(LinearLayout.HORIZONTAL);
-        for (EntryMealType meal : meals) {
-            MaterialButton button = new MaterialButton(requireContext(), null,
-                    com.google.android.material.R.attr.materialButtonOutlinedStyle);
-            button.setText(mealLabel(meal));
-            button.setTextSize(12);
-            button.setInsetTop(0);
-            button.setInsetBottom(0);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
-                    ViewGroup.LayoutParams.WRAP_CONTENT, 1);
-            params.setMarginEnd(dp(4));
-            mealRow.addView(button, params);
-            mealButtons.put(meal, button);
-            button.setOnClickListener(ignored -> select(mealButtons, meal));
-        }
-        select(mealButtons, EntryMealType.LUNCH);
-
-        LinearLayout rootView = new LinearLayout(requireContext());
-        rootView.setOrientation(LinearLayout.VERTICAL);
-        rootView.setPadding(dp(20), dp(6), dp(20), dp(6));
-        rootView.addView(mealRow);
-        rootView.addView(name);
-        rootView.addView(scroll);
-
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.ac_diary_at_home)
-                .setView(rootView)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.ac_diary_save, (dialog, which) -> {
-                    String dish = name.getText().toString().trim();
-                    if (dish.isEmpty()) {
-                        toast(R.string.ac_diary_invalid);
-                        return;
-                    }
-                    List<InventoryBatch> picked = new ArrayList<>();
-                    List<BigDecimal> used = new ArrayList<>();
-                    List<String> lines = new ArrayList<>();
-                    for (Map.Entry<UUID, InventoryBatch> entry : byId.entrySet()) {
-                        InventoryBatch batch = entry.getValue();
-                        String text = amounts.get(batch.getId()).getText().toString().trim();
-                        if (!amounts.get(batch.getId()).isShown() || text.isEmpty()) continue;
-                        BigDecimal amount = decimal(text);
-                        if (amount == null || amount.signum() <= 0) {
-                            toast(R.string.ac_diary_invalid);
-                            return;
-                        }
-                        BigDecimal available = decimal(batch.getQuantity());
-                        if (available == null || amount.compareTo(available) > 0) {
-                            toast(R.string.ac_diary_home_too_much);
-                            return;
-                        }
-                        picked.add(batch);
-                        used.add(amount);
-                        lines.add(ingredientNames.getOrDefault(batch.getIngredientId(),
-                                        getString(R.string.ac_l10n_ingredient_fallback))
-                                + " " + plain(amount) + " " + batch.getUnit().getValue());
-                    }
-                    if (picked.isEmpty()) {
-                        toast(R.string.ac_diary_home_pick);
-                        return;
-                    }
-                    consumeThenRecord(home, selected(mealButtons, meals), dish, picked, used, lines);
-                })
-                .show();
-    }
-
-    private void consumeThenRecord(UUID home, EntryMealType meal, String dish, List<InventoryBatch> batches,
-                                   List<BigDecimal> used, List<String> lines) {
-        consumeBatch(home, meal, dish, batches, used, lines, 0);
-    }
-
-    private void consumeBatch(UUID home, EntryMealType meal, String dish, List<InventoryBatch> batches,
-                              List<BigDecimal> used, List<String> lines, int index) {
-        if (!isAdded()) return;
-        if (index >= batches.size()) {
-            estimateAndRecord(meal, dish, lines);
-            return;
-        }
-        InventoryBatch batch = batches.get(index);
-        BigDecimal before = decimal(batch.getQuantity());
-        BigDecimal after = (before == null ? BigDecimal.ZERO : before).subtract(used.get(index));
-        InventoryChangeRequest request = new InventoryChangeRequest()
-                .afterQuantity(plain(after.max(BigDecimal.ZERO)))
-                .reason(ChangeReason.CONSUME)
-                .expectedVersion(batch.getVersion());
-        final int next = index + 1;
-        host.calls().enqueue(host.api().inventory().changeInventory(home, batch.getId(),
-                        UUID.randomUUID(), request), new ApiCallback<edu.xjtlu.civa.api.model.InventoryMovement>() {
-                    @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.InventoryMovement value) {
-                        if (!isAdded()) return;
-                        consumeBatch(home, meal, dish, batches, used, lines, next);
-                    }
-
-                    @Override public void onError(ApiError error) {
-                        if (!isAdded()) return;
-                        toast(R.string.ac_diary_home_consume_failed);
-                    }
+        submissions.remember(RecordSubmissionViewModel.MEAL, request);
+        setSubmitting(dialog, true);
+        RecordSubmissions.recordIntent(host.calls(), user, householdId(),
+                RecordSubmissionViewModel.MEAL, action, summary,
+                () -> sendMeal(action, request, dialog, successMessage),
+                () -> {
+                    action.abandon();
+                    submissions.forget(RecordSubmissionViewModel.MEAL);
+                    setSubmitting(dialog, false);
+                    toast(R.string.ac_record_storage_failed);
                 });
+        return true;
     }
 
-    /** Same idea as the today page: ask the server AI for a per-100g estimate, unknown if unavailable. */
-    private void estimateAndRecord(EntryMealType meal, String dish, List<String> lines) {
-        NutritionEstimateRequest request = new NutritionEstimateRequest().name(dish).ingredients(lines);
-        host.calls().enqueue(host.api().nutrition().estimateNutrition(request),
-                new ApiCallback<NutritionEstimate>() {
-                    @Override public void onSuccess(@Nullable NutritionEstimate value) {
-                        if (!isAdded()) return;
-                        BigDecimal kcal = null;
-                        if (value != null && value.getBasis() == NutritionBasis.PER_100_G
-                                && value.getEnergyKcal() != null) {
-                            BigDecimal grams = BigDecimal.ZERO;
-                            for (String line : lines) {
-                                String[] parts = line.split(" ");
-                                if (parts.length >= 2) {
-                                    BigDecimal amount = decimal(parts[1]);
-                                    if (amount != null) grams = grams.add(amount);
-                                }
-                            }
-                            if (grams.signum() > 0) {
-                                kcal = value.getEnergyKcal()
-                                        .multiply(grams)
-                                        .divide(BigDecimal.valueOf(100), 3, RoundingMode.HALF_UP);
-                            }
-                        }
-                        recordHomeMeal(meal, dish, lines, kcal);
-                    }
-
-                    @Override public void onError(ApiError error) {
-                        if (!isAdded()) return;
-                        recordHomeMeal(meal, dish, lines, null);
-                    }
-                });
-    }
-
-    private void recordHomeMeal(EntryMealType meal, String dish, List<String> lines,
-                                @Nullable BigDecimal kcal) {
-        if (!isAdded()) return;
-        String note = getString(R.string.ac_l10n_diary_note, getString(R.string.ac_diary_at_home),
-                AcText.join(getResources(), lines));
-        if (note.length() > 2000) note = note.substring(0, 2000);
-        CreateMealEntryRequest request = new CreateMealEntryRequest()
-                .date(selected.toString())
-                .mealType(meal)
-                .name(dish)
-                .amount("1")
-                .basis(kcal == null ? KcalBasis.UNKNOWN : KcalBasis.MANUAL)
-                .basisKcal(kcal == null ? null : plain(kcal))
-                .note(note);
-        host.calls().enqueue(host.api().records().createMealEntry(UUID.randomUUID(), request),
+    private void sendMeal(IdempotentAction action, CreateMealEntryRequest request, @Nullable AlertDialog dialog,
+                          int successMessage) {
+        String key = action.key();
+        if (key == null || !isAdded()) return;
+        host.calls().enqueue(host.api().records().createMealEntry(UUID.fromString(key), request),
                 new ApiCallback<MealEntry>() {
                     @Override public void onSuccess(@Nullable MealEntry value) {
                         if (!isAdded()) return;
-                        toast(R.string.ac_diary_saved);
+                        RecordSubmissions.settled(host.calls(), userId(), action);
+                        submissions.forget(RecordSubmissionViewModel.MEAL);
+                        setSubmitting(dialog, false);
+                        if (dialog != null) dialog.dismiss();
+                        toast(successMessage);
                         loadMonth();
                     }
 
                     @Override public void onError(ApiError error) {
                         if (!isAdded()) return;
-                        toast(R.string.ac_diary_load_error);
+                        if (IdempotentAction.ambiguous(error)) {
+                            action.uncertain();
+                            setSubmitting(dialog, false);
+                            if (dialog != null) dialog.dismiss();
+                            promptUnconfirmed(RecordSubmissionViewModel.MEAL);
+                        } else {
+                            RecordSubmissions.rejected(host.calls(), userId(), action);
+                            submissions.forget(RecordSubmissionViewModel.MEAL);
+                            setSubmitting(dialog, false);
+                            toast(R.string.ac_diary_load_error);
+                        }
                     }
                 });
+    }
+
+    private void sendCooking(IdempotentAction action, UUID home, ConfirmCookingRequest request,
+                             @Nullable Consumer<CookingEvent> afterSuccess,
+                             @Nullable Consumer<ApiError> afterRejected) {
+        String key = action.key();
+        if (key == null || !isAdded()) return;
+        host.calls().enqueue(host.api().records().confirmCooking(home, UUID.fromString(key), request),
+                new ApiCallback<CookingEvent>() {
+                    @Override public void onSuccess(@Nullable CookingEvent value) {
+                        if (!isAdded()) return;
+                        RecordSubmissions.settled(host.calls(), userId(), action);
+                        submissions.forget(RecordSubmissionViewModel.COOKING);
+                        if (afterSuccess != null) {
+                            afterSuccess.accept(value);
+                        } else {
+                            toast(R.string.ac_diary_plan_done);
+                            loadMonth();
+                            loadCooking();
+                        }
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        if (IdempotentAction.ambiguous(error)) {
+                            action.uncertain();
+                            promptUnconfirmed(RecordSubmissionViewModel.COOKING);
+                        } else {
+                            RecordSubmissions.rejected(host.calls(), userId(), action);
+                            submissions.forget(RecordSubmissionViewModel.COOKING);
+                            if (afterRejected != null) afterRejected.accept(error);
+                            else toast(R.string.ac_diary_plan_failed);
+                        }
+                    }
+                });
+    }
+
+    /** A timeout never proves failure: keep the key and offer the exact same intent again. */
+    private void promptUnconfirmed(String operation) {
+        if (!isAdded()) return;
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.ac_record_unconfirmed_title)
+                .setMessage(R.string.ac_record_unconfirmed_message)
+                .setCancelable(false)
+                .setPositiveButton(R.string.ac_record_unconfirmed_retry,
+                        (dialog, which) -> retrySubmission(operation))
+                .setNegativeButton(R.string.ac_record_unconfirmed_discard,
+                        (dialog, which) -> abandonSubmission(operation))
+                .show();
+    }
+
+    private void retrySubmission(String operation) {
+        if (!isAdded() || submissions == null) return;
+        IdempotentAction action = submissions.action(operation);
+        if (!action.retry()) return;
+        if (RecordSubmissionViewModel.COOKING.equals(operation)) {
+            CookingIntent intent = submissions.intent(RecordSubmissionViewModel.COOKING, CookingIntent.class);
+            if (intent == null) {
+                abandonSubmission(operation);
+                return;
+            }
+            sendCooking(action, intent.householdId(), intent.request(), null, null);
+            return;
+        }
+        CreateMealEntryRequest request = submissions.intent(RecordSubmissionViewModel.MEAL,
+                CreateMealEntryRequest.class);
+        if (request == null) {
+            abandonSubmission(operation);
+            return;
+        }
+        sendMeal(action, request, null, R.string.ac_diary_saved);
+    }
+
+    private void abandonSubmission(String operation) {
+        if (submissions == null) return;
+        RecordSubmissions.abandoned(host.calls(), userId(), submissions.action(operation));
+        submissions.forget(operation);
+        promptNextUnconfirmed();
+    }
+
+    /** Restores an in-flight or unconfirmed intent after rotation, tab switch or process death. */
+    private void resumeSubmission() {
+        if (submissions == null || !isAdded()) return;
+        // At view creation no request of this view is running yet, so anything still marked as
+        // in-flight belongs to a destroyed view that can no longer receive its callback.
+        IdempotentAction cooking = submissions.action(RecordSubmissionViewModel.COOKING);
+        if (cooking.inFlight()) cooking.uncertain();
+        IdempotentAction meal = submissions.action(RecordSubmissionViewModel.MEAL);
+        if (meal.inFlight()) meal.uncertain();
+        if (promptNextUnconfirmed()) return;
+        recoverPendingRows();
+    }
+
+    private boolean promptNextUnconfirmed() {
+        if (submissions == null || !isAdded()) return false;
+        if (submissions.action(RecordSubmissionViewModel.COOKING).unconfirmed()) {
+            promptUnconfirmed(RecordSubmissionViewModel.COOKING);
+            return true;
+        }
+        if (submissions.action(RecordSubmissionViewModel.MEAL).unconfirmed()) {
+            promptUnconfirmed(RecordSubmissionViewModel.MEAL);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * A pending row left by a previous process can no longer be replayed without its body, so the
+     * user is asked to check the records instead of silently starting a second operation.
+     */
+    private void recoverPendingRows() {
+        String user = userId();
+        if (user == null) return;
+        host.calls().pendingWrites().listPending(user, new ApiCallback<List<PendingWrite>>() {
+            @Override public void onSuccess(@Nullable List<PendingWrite> values) {
+                if (!isAdded() || values == null) return;
+                List<PendingWrite> rows = new ArrayList<>();
+                for (PendingWrite row : values) {
+                    if (RecordSubmissionViewModel.COOKING.equals(row.operationId)
+                            || RecordSubmissionViewModel.MEAL.equals(row.operationId)) rows.add(row);
+                }
+                if (rows.isEmpty()) return;
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.ac_record_pending_title)
+                        .setMessage(R.string.ac_record_pending_message)
+                        .setCancelable(false)
+                        .setPositiveButton(R.string.ac_record_pending_ok, (dialog, which) -> {
+                            for (PendingWrite row : rows) {
+                                host.calls().pendingWrites().confirm(user, row.key, IGNORE);
+                            }
+                            loadMonth();
+                            loadCooking();
+                        })
+                        .show();
+            }
+
+            @Override public void onError(ApiError error) { }
+        });
+    }
+
+    private void setSubmitting(@Nullable AlertDialog dialog, boolean busy) {
+        if (dialog == null) return;
+        android.widget.Button positive = dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE);
+        if (positive == null) return;
+        positive.setEnabled(!busy);
+        positive.setText(busy ? R.string.ac_record_working : R.string.ac_diary_save);
+    }
+
+    @Nullable private String userId() {
+        return host == null || host.sessions() == null ? null : host.sessions().currentUserId();
+    }
+
+    @Nullable private String householdId() {
+        return host == null || host.sessions() == null ? null : host.sessions().currentHouseholdId();
     }
 
     private void editEntry(@Nullable MealEntry entry, @Nullable CookingEvent prefill) {
@@ -880,6 +843,12 @@ public final class DiaryFragment extends Fragment {
         }
         select(mealButtons, initialMeal);
         body.addView(mealRow);
+
+        if (!editing) {
+            TextView hint = line(getString(R.string.ac_diary_record_hint), 12, R.color.ac_catalog_muted);
+            hint.setPadding(0, dp(8), 0, 0);
+            body.addView(hint);
+        }
 
         EditText name = field(getString(R.string.ac_diary_name_hint));
         if (editing) name.setText(entry.getName());
@@ -935,9 +904,9 @@ public final class DiaryFragment extends Fragment {
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.ac_diary_save, null);
         if (editing) builder.setNeutralButton(R.string.ac_diary_delete, null);
-        final androidx.appcompat.app.AlertDialog dialog = builder.create();
+        final AlertDialog dialog = builder.create();
         Runnable save = () -> submit(mealButtons, meals, basisButtons, bases, name, amount, kcal, note,
-                entry, prefill, dialog::dismiss);
+                entry, prefill, dialog);
         kcal.setOnEditorActionListener((view, actionId, event) -> {
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
                 save.run();
@@ -976,7 +945,7 @@ public final class DiaryFragment extends Fragment {
     private void submit(Map<EntryMealType, MaterialButton> mealButtons, EntryMealType[] meals,
                         Map<KcalBasis, MaterialButton> basisButtons, KcalBasis[] bases,
                         EditText name, EditText amount, EditText kcal, EditText note,
-                        @Nullable MealEntry entry, @Nullable CookingEvent prefill, @Nullable Runnable afterSave) {
+                        @Nullable MealEntry entry, @Nullable CookingEvent prefill, @Nullable AlertDialog dialog) {
         if (!isAdded()) return;
         EntryMealType meal = selected(mealButtons, meals);
         KcalBasis basis = selected(basisButtons, bases);
@@ -996,22 +965,21 @@ public final class DiaryFragment extends Fragment {
             return;
         }
         String kcalText = basis == KcalBasis.UNKNOWN ? null : plain(basisKcal);
-        ApiCallback<MealEntry> saved = savedCallback();
         if (entry != null) {
             UpdateMealEntryRequest request = new UpdateMealEntryRequest()
                     .date(selected.toString()).mealType(meal).name(title)
                     .amount(plain(amountValue)).basis(basis).basisKcal(kcalText)
                     .note(note.getText().toString()).expectedVersion(entry.getVersion());
-            host.calls().enqueue(host.api().records().updateMealEntry(entry.getId(), request), saved);
+            host.calls().enqueue(host.api().records().updateMealEntry(entry.getId(), request), savedCallback());
+            if (dialog != null) dialog.dismiss();
         } else {
             CreateMealEntryRequest request = new CreateMealEntryRequest()
                     .date(selected.toString()).mealType(meal).name(title)
                     .amount(plain(amountValue)).basis(basis).basisKcal(kcalText)
                     .note(note.getText().toString())
                     .cookingEventId(prefill == null ? null : prefill.getId());
-            host.calls().enqueue(host.api().records().createMealEntry(UUID.randomUUID(), request), saved);
+            startMealSubmission(request, dialog, R.string.ac_diary_saved);
         }
-        if (afterSave != null) afterSave.run();
     }
 
     private ApiCallback<MealEntry> savedCallback() {
@@ -1103,8 +1071,13 @@ public final class DiaryFragment extends Fragment {
         };
     }
 
-    private static BigDecimal decimal(String value) {
-        try {
+    private static String isoNow() {
+        return DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+                .withZone(java.time.ZoneOffset.UTC)
+                .format(java.time.Instant.now());
+    }
+
+    private static BigDecimal decimal(String value) {        try {
             return value == null || value.trim().isEmpty() ? null : new BigDecimal(value.trim());
         } catch (NumberFormatException invalid) {
             return null;

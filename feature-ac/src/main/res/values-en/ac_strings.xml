@@ -367,4 +367,16 @@
     <string name="ac_l10n_diary_expiry_suffix">" · expires %1$s"</string>
     <string name="ac_l10n_diary_note">%1$s: %2$s</string>
     <string name="ac_l10n_plan_recipe_option">%1$s (%2$s servings)</string>
+    <string name="ac_record_summary_meal">Meal: %1$s</string>
+    <string name="ac_record_summary_cooking">Cooking: %1$s</string>
+    <string name="ac_record_working">Submitting…</string>
+    <string name="ac_record_storage_failed">Local storage unavailable; nothing was submitted</string>
+    <string name="ac_record_unconfirmed_title">Result not confirmed</string>
+    <string name="ac_record_unconfirmed_message">The last submission may have succeeded, or it may never have arrived. Retrying reuses the same operation, so nothing is recorded twice.</string>
+    <string name="ac_record_unconfirmed_retry">Retry</string>
+    <string name="ac_record_unconfirmed_discard">Discard</string>
+    <string name="ac_record_pending_title">Unconfirmed record</string>
+    <string name="ac_record_pending_message">The result of a previous submission was never confirmed. Check the meal records and cooking history first: if the record is already there, do not add it again. You can record again after closing this message.</string>
+    <string name="ac_record_pending_ok">Got it</string>
+    <string name="ac_diary_record_hint">This logs what you ate and does not deduct the fridge. Use the cook action on a recipe to deduct stock.</string>
 </resources>

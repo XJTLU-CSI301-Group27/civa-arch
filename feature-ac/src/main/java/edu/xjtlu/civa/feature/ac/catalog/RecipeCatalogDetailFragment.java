@@ -11,12 +11,14 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import edu.xjtlu.civa.api.model.CatalogRecipe;
 import edu.xjtlu.civa.api.model.CatalogRecipeIngredient;
 import edu.xjtlu.civa.api.model.CreatePersonalRecipeRequest;
 import edu.xjtlu.civa.api.model.ConfirmCookingRequest;
+import edu.xjtlu.civa.api.model.CookingEvent;
 import edu.xjtlu.civa.api.model.CookingPreview;
 import edu.xjtlu.civa.api.model.CookingPreviewRequest;
 import edu.xjtlu.civa.api.model.CreateRecipeRequest;
@@ -32,6 +34,10 @@ import edu.xjtlu.civa.core.ui.Haptics;
 import edu.xjtlu.civa.core.ui.Route;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.R;
+import edu.xjtlu.civa.feature.ac.record.CookingIntent;
+import edu.xjtlu.civa.feature.ac.record.IdempotentAction;
+import edu.xjtlu.civa.feature.ac.record.RecordSubmissionViewModel;
+import edu.xjtlu.civa.feature.ac.record.RecordSubmissions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -53,6 +59,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
     private List<Ingredient> dictionary;
     private boolean household;
     private boolean favorite;
+    private RecordSubmissionViewModel submissions;
 
     public static RecipeCatalogDetailFragment create(@Nullable String recipeId) {
         RecipeCatalogDetailFragment fragment = new RecipeCatalogDetailFragment();
@@ -70,6 +77,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
     @Override public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         viewCallbacks.startView();
         host = (AcHost) requireActivity();
+        submissions = new ViewModelProvider(requireActivity()).get(RecordSubmissionViewModel.class);
         view.findViewById(R.id.ac_detail_close).setOnClickListener(ignored -> host.navigate(Route.RECIPES, null));
         entityId = getArguments() == null ? null : getArguments().getString(ARG_ID);
         if (entityId == null) {
@@ -96,6 +104,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             }
             loadCatalog(view);
         }
+        resumeCooking();
     }
 
     private void loadCatalog(View view) {
@@ -487,19 +496,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                                                     .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
                                                     .withZone(java.time.ZoneOffset.UTC)
                                                     .format(java.time.Instant.now()));
-                                    host.calls().enqueue(host.api().records().confirmCooking(home,
-                                                    java.util.UUID.randomUUID(), confirm),
-                                            new ApiCallback<edu.xjtlu.civa.api.model.CookingEvent>() {
-                                                @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.CookingEvent value) {
-                                                    if (!isAdded()) return;
-                                                    toast(R.string.ac_detail_cook_done);
-                                                }
-
-                                                @Override public void onError(ApiError error) {
-                                                    if (!isAdded()) return;
-                                                    toast(R.string.ac_catalog_error);
-                                                }
-                                            });
+                                    startCookingConfirmation(home, confirm);
                                 }
 
                                 @Override public void onError(ApiError error) {
@@ -509,6 +506,97 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                             });
                 })
                 .show();
+    }
+
+    // ---- Cooking confirmation: one intent, one idempotency key, explicit unconfirmed state ----
+
+    private void startCookingConfirmation(UUID home, ConfirmCookingRequest request) {
+        String user = userId();
+        if (user == null || !isAdded() || householdRecipe == null) return;
+        IdempotentAction action = submissions.action(RecordSubmissionViewModel.COOKING);
+        String summary = getString(R.string.ac_record_summary_cooking, householdRecipe.getName());
+        if (!action.begin(summary)) {
+            toast(R.string.ac_record_working);
+            return;
+        }
+        submissions.remember(RecordSubmissionViewModel.COOKING, new CookingIntent(home, request));
+        RecordSubmissions.recordIntent(host.calls(), user, home.toString(),
+                RecordSubmissionViewModel.COOKING, action, summary,
+                () -> sendCookingConfirmation(action, home, request, user),
+                () -> {
+                    action.abandon();
+                    submissions.forget(RecordSubmissionViewModel.COOKING);
+                    toast(R.string.ac_record_storage_failed);
+                });
+    }
+
+    private void sendCookingConfirmation(IdempotentAction action, UUID home, ConfirmCookingRequest request,
+                                         String user) {
+        String key = action.key();
+        if (key == null || !isAdded()) return;
+        host.calls().enqueue(host.api().records().confirmCooking(home, UUID.fromString(key), request),
+                new ApiCallback<CookingEvent>() {
+                    @Override public void onSuccess(@Nullable CookingEvent value) {
+                        if (!isAdded()) return;
+                        RecordSubmissions.settled(host.calls(), user, action);
+                        submissions.forget(RecordSubmissionViewModel.COOKING);
+                        toast(R.string.ac_detail_cook_done);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        if (IdempotentAction.ambiguous(error)) {
+                            action.uncertain();
+                            promptUnconfirmedCooking();
+                        } else {
+                            RecordSubmissions.rejected(host.calls(), user, action);
+                            submissions.forget(RecordSubmissionViewModel.COOKING);
+                            toast(R.string.ac_catalog_error);
+                        }
+                    }
+                });
+    }
+
+    private void promptUnconfirmedCooking() {
+        if (!isAdded()) return;
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.ac_record_unconfirmed_title)
+                .setMessage(R.string.ac_record_unconfirmed_message)
+                .setCancelable(false)
+                .setPositiveButton(R.string.ac_record_unconfirmed_retry, (dialog, which) -> retryCooking())
+                .setNegativeButton(R.string.ac_record_unconfirmed_discard, (dialog, which) -> {
+                    String user = userId();
+                    if (user != null) {
+                        RecordSubmissions.abandoned(host.calls(), user,
+                                submissions.action(RecordSubmissionViewModel.COOKING));
+                    }
+                    submissions.forget(RecordSubmissionViewModel.COOKING);
+                })
+                .show();
+    }
+
+    private void retryCooking() {
+        if (!isAdded() || submissions == null) return;
+        IdempotentAction action = submissions.action(RecordSubmissionViewModel.COOKING);
+        CookingIntent intent = submissions.intent(RecordSubmissionViewModel.COOKING, CookingIntent.class);
+        String user = userId();
+        if (!action.retry() || intent == null || user == null) {
+            submissions.forget(RecordSubmissionViewModel.COOKING);
+            return;
+        }
+        sendCookingConfirmation(action, intent.householdId(), intent.request(), user);
+    }
+
+    private void resumeCooking() {
+        if (submissions == null || !isAdded()) return;
+        IdempotentAction action = submissions.action(RecordSubmissionViewModel.COOKING);
+        // A fresh view cannot own a running request; an in-flight marker is an orphaned intent.
+        if (action.inFlight()) action.uncertain();
+        if (action.unconfirmed()) promptUnconfirmedCooking();
+    }
+
+    @Nullable private String userId() {
+        return host == null || host.sessions() == null ? null : host.sessions().currentUserId();
     }
 
     private void addToHousehold() {
