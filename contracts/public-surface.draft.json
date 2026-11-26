@@ -65,6 +65,19 @@
   ],
   "symbols": [
     {
+      "type": "edu.xjtlu.civa.feature.bd.BdTodayPlanReader",
+      "kind": "class",
+      "owner": "BD",
+      "consumers": [
+        "app"
+      ],
+      "thread": "main",
+      "members": [
+        "BdTodayPlanReader(Context context, SessionStore sessions)",
+        "List plan(LocalDate date)"
+      ]
+    },
+    {
       "type": "edu.xjtlu.civa.feature.ac.diary.DiaryFragment",
       "kind": "class",
       "owner": "A",

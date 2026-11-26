@@ -114,6 +114,19 @@
     <string name="ac_detail_cook_servings">做了几份（默认按菜谱份数）</string>
     <string name="ac_detail_cook_shortage">冰箱里还差一些食材，先补货再确认吧～</string>
     <string name="ac_detail_cook_done">已确认做饭，冰箱库存已扣减</string>
+    <!-- Today plan inside the food diary -->
+    <string name="ac_diary_plan_title">今天的计划（来自「今天」）</string>
+    <string name="ac_diary_plan_eaten">吃了</string>
+    <string name="ac_diary_plan_row">%1$s · %2$s</string>
+    <string name="ac_diary_plan_no_recipe">家庭菜谱里没有同名菜，只能记一餐、不扣库存。</string>
+    <string name="ac_diary_plan_shortage">冰箱里还缺：%1$s</string>
+    <string name="ac_diary_plan_shortage_row">%1$s（需 %2$s，现有 %3$s）</string>
+    <string name="ac_diary_plan_record_only">仍记一餐</string>
+    <string name="ac_diary_plan_recorded">已记一餐（未扣库存）</string>
+    <string name="ac_diary_plan_done">已记餐并扣减冰箱</string>
+    <string name="ac_diary_plan_failed">操作失败，请重试</string>
+    <string name="ac_diary_plan_shortage_title">冰箱缺食材</string>
+    <string name="ac_diary_plan_recorded_mark">（已记餐）</string>
 </resources>
 
 

@@ -82,6 +82,21 @@
             android:textColor="@color/ac_catalog_muted"
             android:textSize="12sp" />
 
+        <TextView
+            android:id="@+id/ac_diary_plan_title"
+            style="@style/CivaText.Section"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/ac_diary_plan_title"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/ac_diary_plan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
         <LinearLayout
             android:id="@+id/ac_diary_entries"
             android:layout_width="match_parent"

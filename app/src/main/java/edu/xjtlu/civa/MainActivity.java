@@ -148,6 +148,10 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
 
     @Override public SessionStore sessions() { return container.sessions; }
 
+    @Override public java.util.List<edu.xjtlu.civa.core.data.PlannedDish> planFor(java.time.LocalDate date) {
+        return container.todayPlan.plan(date);
+    }
+
     @Override public void onHouseholdReady() {
         if (!container.sessions.isLoggedIn() || getSupportFragmentManager().isStateSaved()) return;
         navigate(Route.TODAY, null);

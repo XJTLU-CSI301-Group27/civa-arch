@@ -15,8 +15,16 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import edu.xjtlu.civa.api.model.CookingEvent;
 import edu.xjtlu.civa.api.model.CookingEventPage;
+import edu.xjtlu.civa.api.model.CookingPreview;
+import edu.xjtlu.civa.api.model.CookingPreviewRequest;
+import edu.xjtlu.civa.api.model.ConfirmCookingRequest;
 import edu.xjtlu.civa.api.model.CreateMealEntryRequest;
 import edu.xjtlu.civa.api.model.DaySummary;
+import edu.xjtlu.civa.api.model.Ingredient;
+import edu.xjtlu.civa.api.model.IngredientPage;
+import edu.xjtlu.civa.api.model.MatchLine;
+import edu.xjtlu.civa.api.model.Recipe;
+import edu.xjtlu.civa.api.model.RecipePage;
 import edu.xjtlu.civa.api.model.EntryMealType;
 import edu.xjtlu.civa.api.model.KcalBasis;
 import edu.xjtlu.civa.api.model.MealEntry;
@@ -24,6 +32,7 @@ import edu.xjtlu.civa.api.model.MealEntryPage;
 import edu.xjtlu.civa.api.model.PeriodSummary;
 import edu.xjtlu.civa.api.model.UpdateMealEntryRequest;
 import edu.xjtlu.civa.core.data.ApiCallback;
+import edu.xjtlu.civa.core.data.PlannedDish;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.R;
@@ -50,7 +59,11 @@ public final class DiaryFragment extends Fragment {
     private LocalDate selected = LocalDate.now();
     private final Map<String, DaySummary> marker = new LinkedHashMap<>();
     private final Map<EntryMealType, List<MealEntry>> entries = new LinkedHashMap<>();
-    private LinearLayout calendar, entryList, cookingList;
+    private LinearLayout calendar, entryList, cookingList, planList;
+    private TextView planTitle;
+    private final Map<UUID, String> ingredientNames = new LinkedHashMap<>();
+    private List<PlannedDish> planned = List.of();
+    private boolean ingredientNamesLoaded;
     private TextView monthLabel, monthSummary, dayTitle, daySummary;
     private boolean loading;
 
@@ -62,6 +75,8 @@ public final class DiaryFragment extends Fragment {
         calendar = view.findViewById(R.id.ac_diary_calendar);
         entryList = view.findViewById(R.id.ac_diary_entries);
         cookingList = view.findViewById(R.id.ac_diary_cooking);
+        planList = view.findViewById(R.id.ac_diary_plan);
+        planTitle = view.findViewById(R.id.ac_diary_plan_title);
         monthLabel = view.findViewById(R.id.ac_diary_month);
         monthSummary = view.findViewById(R.id.ac_diary_month_summary);
         dayTitle = view.findViewById(R.id.ac_diary_day_title);
@@ -125,6 +140,7 @@ public final class DiaryFragment extends Fragment {
         daySummary.setText(summary == null ? getString(R.string.ac_diary_no_records)
                 : getString(R.string.ac_diary_day_summary, summary.getKnownKcal(),
                         summary.getUnknownCount() == null ? 0 : summary.getUnknownCount()));
+        loadPlan();
         host.calls().enqueue(host.api().records().listMealEntries(day, day, 0, 100),
                 new ApiCallback<MealEntryPage>() {
                     @Override public void onSuccess(@Nullable MealEntryPage value) {
@@ -136,12 +152,275 @@ public final class DiaryFragment extends Fragment {
                             }
                         }
                         renderEntries();
+                        renderPlan();
                     }
 
                     @Override public void onError(ApiError error) {
                         if (!isAdded()) return;
                         entries.clear();
                         renderEntries();
+                        renderPlan();
+                    }
+                });
+    }
+
+    private void loadPlan() {
+        if (!isAdded()) return;
+        try {
+            planned = host.planFor(selected);
+        } catch (RuntimeException unavailable) {
+            planned = List.of();
+        }
+        renderPlan();
+    }
+
+    private void renderPlan() {
+        if (planList == null) return;
+        planList.removeAllViews();
+        planTitle.setVisibility(planned.isEmpty() ? View.GONE : View.VISIBLE);
+        for (PlannedDish dish : planned) planList.addView(planRow(dish, isRecorded(dish)));
+    }
+
+    private boolean isRecorded(PlannedDish dish) {
+        for (List<MealEntry> rows : entries.values()) {
+            for (MealEntry entry : rows) {
+                if (entry.getName() != null && entry.getName().trim().equalsIgnoreCase(dish.name().trim())
+                        && entry.getMealType() == plannedMeal(dish.meal())) return true;
+            }
+        }
+        return false;
+    }
+
+    private View planRow(PlannedDish dish, boolean recorded) {
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(12), dp(8), dp(12), dp(8));
+        row.setBackgroundResource(R.drawable.ac_catalog_card);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.bottomMargin = dp(6);
+        row.setLayoutParams(params);
+        String text = getString(R.string.ac_diary_plan_row, mealLabel(plannedMeal(dish.meal())), dish.name());
+        if (recorded) text = text + getString(R.string.ac_diary_plan_recorded_mark);
+        TextView label = line(text, 14, R.color.ac_catalog_ink);
+        label.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        row.addView(label);
+        com.google.android.material.button.MaterialButton eaten = new com.google.android.material.button.MaterialButton(
+                requireContext(), null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        eaten.setText(R.string.ac_diary_plan_eaten);
+        eaten.setTextSize(12);
+        eaten.setInsetTop(0);
+        eaten.setInsetBottom(0);
+        if (recorded) {
+            eaten.setVisibility(View.GONE);
+        } else {
+            eaten.setOnClickListener(ignored -> confirmPlannedDish(dish));
+        }
+        row.addView(eaten);
+        return row;
+    }
+
+    private static EntryMealType plannedMeal(String meal) {
+        try {
+            return EntryMealType.fromValue(meal);
+        } catch (RuntimeException invalid) {
+            return EntryMealType.LUNCH;
+        }
+    }
+
+    /** "Ate this planned dish": deduct the fridge and record the meal, warning about missing items. */
+    private void confirmPlannedDish(PlannedDish dish) {
+        if (!isAdded()) return;
+        String homeText = host.sessions() == null ? null : host.sessions().currentHouseholdId();
+        if (homeText == null) {
+            recordPlannedMeal(dish, null, null, false);
+            return;
+        }
+        UUID home = UUID.fromString(homeText);
+        host.calls().enqueue(host.api().recipe().listRecipes(home, dish.name(), null, null, false, 0, 20),
+                new ApiCallback<RecipePage>() {
+                    @Override public void onSuccess(@Nullable RecipePage value) {
+                        if (!isAdded()) return;
+                        Recipe match = null;
+                        if (value != null && value.getItems() != null) {
+                            for (Recipe row : value.getItems()) {
+                                if (row.getName() != null
+                                        && row.getName().trim().equalsIgnoreCase(dish.name().trim())) {
+                                    match = row;
+                                    break;
+                                }
+                            }
+                        }
+                        if (match == null) {
+                            offerRecordOnly(dish, R.string.ac_diary_plan_no_recipe);
+                            return;
+                        }
+                        loadRecipeAndPreview(home, dish, match.getId());
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        offerRecordOnly(dish, R.string.ac_diary_plan_failed);
+                    }
+                });
+    }
+
+    private void loadRecipeAndPreview(UUID home, PlannedDish dish, UUID recipeId) {
+        host.calls().enqueue(host.api().recipe().getRecipe(home, recipeId), new ApiCallback<Recipe>() {
+            @Override public void onSuccess(@Nullable Recipe recipe) {
+                if (!isAdded() || recipe == null) return;
+                String servings = recipe.getYieldServings() == null || recipe.getYieldServings().isEmpty()
+                        ? "2" : recipe.getYieldServings();
+                CookingPreviewRequest request = new CookingPreviewRequest()
+                        .recipeId(recipe.getId()).servings(servings);
+                host.calls().enqueue(host.api().records().previewCooking(home, request),
+                        new ApiCallback<CookingPreview>() {
+                            @Override public void onSuccess(@Nullable CookingPreview preview) {
+                                if (!isAdded() || preview == null) return;
+                                if (preview.getShortages() == null || preview.getShortages().isEmpty()) {
+                                    confirmPlannedCook(home, dish, recipe, preview);
+                                } else {
+                                    ensureIngredientNames(() -> showShortageDialog(home, dish, recipe, preview));
+                                }
+                            }
+
+                            @Override public void onError(ApiError error) {
+                                if (!isAdded()) return;
+                                offerRecordOnly(dish, R.string.ac_diary_plan_failed);
+                            }
+                        });
+            }
+
+            @Override public void onError(ApiError error) {
+                if (!isAdded()) return;
+                offerRecordOnly(dish, R.string.ac_diary_plan_failed);
+            }
+        });
+    }
+
+    private void confirmPlannedCook(UUID home, PlannedDish dish, Recipe recipe, CookingPreview preview) {
+        ConfirmCookingRequest request = new ConfirmCookingRequest()
+                .recipeId(recipe.getId())
+                .recipeVersion(preview.getRecipeVersion())
+                .servings(preview.getServings())
+                .allocations(preview.getAllocations())
+                .cookedAt(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+                        .withZone(java.time.ZoneOffset.UTC).format(java.time.Instant.now()));
+        host.calls().enqueue(host.api().records().confirmCooking(home, UUID.randomUUID(), request),
+                new ApiCallback<CookingEvent>() {
+                    @Override public void onSuccess(@Nullable CookingEvent value) {
+                        if (!isAdded()) return;
+                        recordPlannedMeal(dish, recipe, value == null ? null : value.getId(), true);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        offerRecordOnly(dish, R.string.ac_diary_plan_failed);
+                    }
+                });
+    }
+
+    private void showShortageDialog(UUID home, PlannedDish dish, Recipe recipe, CookingPreview preview) {
+        if (!isAdded()) return;
+        List<String> lines = new ArrayList<>();
+        for (MatchLine shortage : preview.getShortages()) {
+            String name = ingredientNames.getOrDefault(shortage.getIngredientId(), "食材");
+            lines.add(getString(R.string.ac_diary_plan_shortage_row, name,
+                    shortage.getRequired() == null ? "?" : shortage.getRequired(),
+                    shortage.getAvailable() == null ? "0" : shortage.getAvailable()));
+        }
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.ac_diary_plan_shortage_title)
+                .setMessage(getString(R.string.ac_diary_plan_shortage, String.join("、", lines)))
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.ac_diary_plan_record_only, (dialog, which) ->
+                        recordPlannedMeal(dish, recipe, null, false))
+                .show();
+    }
+
+    private void offerRecordOnly(PlannedDish dish, int message) {
+        if (!isAdded()) return;
+        new MaterialAlertDialogBuilder(requireContext())
+                .setMessage(message)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.ac_diary_plan_record_only, (dialog, which) ->
+                        recordPlannedMeal(dish, null, null, false))
+                .show();
+    }
+
+    private void recordPlannedMeal(PlannedDish dish, @Nullable Recipe recipe, @Nullable UUID cookingEventId,
+                                    boolean deducted) {
+        if (!isAdded()) return;
+        BigDecimal basisKcal = null;
+        if (recipe != null) {
+            try {
+                BigDecimal total = recipe.getTotalKcal() == null || recipe.getTotalKcal().isEmpty()
+                        ? null : new BigDecimal(recipe.getTotalKcal());
+                BigDecimal yield = recipe.getYieldServings() == null || recipe.getYieldServings().isEmpty()
+                        ? null : new BigDecimal(recipe.getYieldServings());
+                if (total != null && yield != null && yield.signum() > 0) {
+                    basisKcal = total.divide(yield, 3, RoundingMode.HALF_UP);
+                }
+            } catch (NumberFormatException ignored) {
+                basisKcal = null;
+            }
+        }
+        KcalBasis basis = basisKcal == null ? KcalBasis.UNKNOWN : KcalBasis.SERVING;
+        CreateMealEntryRequest request = new CreateMealEntryRequest()
+                .date(selected.toString())
+                .mealType(plannedMeal(dish.meal()))
+                .name(dish.name())
+                .amount("1")
+                .basis(basis)
+                .basisKcal(basisKcal == null ? null : plain(basisKcal))
+                .note(getString(R.string.ac_diary_plan_title))
+                .cookingEventId(cookingEventId);
+        host.calls().enqueue(host.api().records().createMealEntry(UUID.randomUUID(), request),
+                new ApiCallback<MealEntry>() {
+                    @Override public void onSuccess(@Nullable MealEntry value) {
+                        if (!isAdded()) return;
+                        toast(deducted ? R.string.ac_diary_plan_done : R.string.ac_diary_plan_recorded);
+                        loadMonth();
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        toast(R.string.ac_diary_plan_failed);
+                    }
+                });
+    }
+
+    private void ensureIngredientNames(Runnable then) {
+        if (ingredientNamesLoaded) { then.run(); return; }
+        loadIngredientNames(0, then);
+    }
+
+    private void loadIngredientNames(int page, Runnable then) {
+        host.calls().enqueue(host.api().inventory().listIngredients(null, page, 100),
+                new ApiCallback<IngredientPage>() {
+                    @Override public void onSuccess(@Nullable IngredientPage value) {
+                        if (!isAdded()) return;
+                        if (value == null || value.getItems() == null) {
+                            ingredientNamesLoaded = true;
+                            then.run();
+                            return;
+                        }
+                        for (Ingredient ingredient : value.getItems()) {
+                            ingredientNames.put(ingredient.getId(), ingredient.getName());
+                        }
+                        long total = value.getTotal() == null ? ingredientNames.size() : value.getTotal();
+                        if (ingredientNames.size() < total && page < 20) loadIngredientNames(page + 1, then);
+                        else {
+                            ingredientNamesLoaded = true;
+                            then.run();
+                        }
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        ingredientNamesLoaded = true;
+                        then.run();
                     }
                 });
     }

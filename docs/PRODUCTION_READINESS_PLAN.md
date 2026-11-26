@@ -118,6 +118,18 @@ M0（基线，可并行）
 
 ## 5. 进度记录（倒序）
 
+### 2026-11-26（第四轮）
+
+- ✅ 今天计划同步进食记：新增只读桥 PlannedDish / TodayPlanReader（core-data），
+  BdTodayPlanReader（feature-bd）读取个人本地计划，AppContainer→AcHost 暴露给食记；
+  食记新增「今天的计划（来自「今天」）」区块，每个计划菜可点「吃了」，已记录的菜标记「（已记餐）」并隐藏按钮。
+- ✅ 按排餐自动扣冰箱 + 缺料提醒：点「吃了」时按菜名匹配家庭菜谱 → previewCooking：
+  - 无缺口：confirmCooking 同事务扣减批次并写做饭历史，然后自动写个人食记（带 cookingEventId）；
+  - 有缺口：弹窗列出「缺少：食材（需 X，现有 Y）」，可选择「仍记一餐」（只记食记、不扣库存）；
+  - 家庭里没有同名菜谱：提示只能记一餐、不扣库存。
+- ✅ 模拟器实测：计划「TomatoEgg」→ 缺 beef 时提示「beef（需 200，现有 0）」；补货后再点「吃了」，
+  beef 批次 400g→200g、新增做饭事件与带 cookingEventId 的食记条目，计划行变为「（已记餐）」。
+
 ### 2026-11-26（第三轮）
 
 - ✅ M1-2 做饭确认：previewCooking + confirmCooking + listCookingEvents 实现在 CookingEventService。
