@@ -5692,7 +5692,7 @@
             }
           },
           "403": {
-            "description": "HOUSEHOLD_ACCESS_REVOKED, FORBIDDEN",
+            "description": "HOUSEHOLD_ACCESS_REVOKED, FORBIDDEN, PLAN_PERMISSION_DENIED",
             "content": {
               "application/json": {
                 "schema": {
@@ -5707,7 +5707,8 @@
                           "type": "string",
                           "enum": [
                             "HOUSEHOLD_ACCESS_REVOKED",
-                            "FORBIDDEN"
+                            "FORBIDDEN",
+                            "PLAN_PERMISSION_DENIED"
                           ]
                         }
                       },
@@ -6341,7 +6342,7 @@
             }
           },
           "403": {
-            "description": "HOUSEHOLD_ACCESS_REVOKED, FORBIDDEN",
+            "description": "HOUSEHOLD_ACCESS_REVOKED, FORBIDDEN, PLAN_PERMISSION_DENIED",
             "content": {
               "application/json": {
                 "schema": {
@@ -6356,7 +6357,8 @@
                           "type": "string",
                           "enum": [
                             "HOUSEHOLD_ACCESS_REVOKED",
-                            "FORBIDDEN"
+                            "FORBIDDEN",
+                            "PLAN_PERMISSION_DENIED"
                           ]
                         }
                       },
@@ -6674,7 +6676,7 @@
             }
           },
           "403": {
-            "description": "HOUSEHOLD_ACCESS_REVOKED, FORBIDDEN",
+            "description": "HOUSEHOLD_ACCESS_REVOKED, FORBIDDEN, PLAN_PERMISSION_DENIED",
             "content": {
               "application/json": {
                 "schema": {
@@ -6689,7 +6691,8 @@
                           "type": "string",
                           "enum": [
                             "HOUSEHOLD_ACCESS_REVOKED",
-                            "FORBIDDEN"
+                            "FORBIDDEN",
+                            "PLAN_PERMISSION_DENIED"
                           ]
                         }
                       },

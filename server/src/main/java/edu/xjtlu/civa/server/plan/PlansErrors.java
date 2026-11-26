@@ -18,6 +18,7 @@ class PlansErrors {
     ResponseEntity<Map<String, Object>> fault(PlanFault error, HttpServletRequest request) {
         int status = switch (error.code) {
             case "NOT_FOUND" -> 404;
+            case "PLAN_PERMISSION_DENIED" -> 403;
             case "VERSION_CONFLICT", "PLAN_SLOT_LOCKED", "IDEMPOTENCY_KEY_REUSED" -> 409;
             default -> 400;
         };

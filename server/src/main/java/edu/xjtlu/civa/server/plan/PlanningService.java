@@ -62,6 +62,8 @@ final class PlanningService {
         if (meal == null || expectedVersion == null) throw new PlanFault("INVALID_PLAN");
         List<PlanItem> rows = validate(home, items);
         return transactions.execute(status -> {
+            UUID owner = lockHousehold(home);
+            requireMember(actor, home);
             List<PlanSlot> existing = slotRow(home, date, meal, true);
             if (existing.isEmpty()) {
                 if (expectedVersion != 0) throw new PlanFault("VERSION_CONFLICT");
@@ -73,6 +75,9 @@ final class PlanningService {
             PlanSlot slot = existing.get(0);
             if (slot.getLocked()) throw new PlanFault("PLAN_SLOT_LOCKED");
             if (!expectedVersion.equals(slot.getVersion())) throw new PlanFault("VERSION_CONFLICT");
+            if (!actor.equals(owner) && PlanPermissions.needsOwner(slot.getItems(), rows)) {
+                throw new PlanFault("PLAN_PERMISSION_DENIED");
+            }
             jdbc.update("UPDATE plan_slots SET version=version+1, updated_at=CURRENT_TIMESTAMP, author_id=?"
                     + " WHERE id=?", actor, slot.getId());
             jdbc.update("DELETE FROM plan_items WHERE slot_id=?", slot.getId());
@@ -86,6 +91,9 @@ final class PlanningService {
         LocalDate date = date(dateText);
         if (meal == null || expectedVersion == null) throw new PlanFault("INVALID_PLAN");
         return transactions.execute(status -> {
+            UUID owner = lockHousehold(home);
+            requireMember(actor, home);
+            if (!actor.equals(owner)) throw new PlanFault("PLAN_PERMISSION_DENIED");
             List<PlanSlot> existing = slotRow(home, date, meal, true);
             if (existing.isEmpty()) {
                 if (expectedVersion != 0) throw new PlanFault("VERSION_CONFLICT");
@@ -113,9 +121,11 @@ final class PlanningService {
         }
         IdempotencyExecutor.Result result = executor.execute(actor, key, digest, () -> {
             List<PlanSlot> saved = transactions.execute(status -> {
+                UUID owner = lockHousehold(home);
+                requireMember(actor, home);
                 List<PlanSlot> resultSlots = new ArrayList<>();
                 for (PlanSlotWrite write : body.getSlots()) {
-                    resultSlots.add(applyWrite(actor, home, write));
+                    resultSlots.add(applyWrite(actor, home, owner, write));
                 }
                 return resultSlots;
             });
@@ -124,7 +134,7 @@ final class PlanningService {
         return readJson(result.body);
     }
 
-    private PlanSlot applyWrite(UUID actor, UUID home, PlanSlotWrite write) {
+    private PlanSlot applyWrite(UUID actor, UUID home, UUID owner, PlanSlotWrite write) {
         LocalDate date = date(write.getDate());
         List<PlanItem> rows = validate(home, write.getItems());
         List<PlanSlot> existing = slotRow(home, date, write.getMealType(), true);
@@ -141,6 +151,9 @@ final class PlanningService {
         }
         PlanSlot slot = existing.get(0);
         if (!write.getExpectedVersion().equals(slot.getVersion())) throw new PlanFault("VERSION_CONFLICT");
+        if (!actor.equals(owner) && PlanPermissions.needsOwner(slot.getItems(), rows)) {
+            throw new PlanFault("PLAN_PERMISSION_DENIED");
+        }
         jdbc.update("UPDATE plan_slots SET version=version+1, updated_at=CURRENT_TIMESTAMP, author_id=?"
                 + " WHERE id=?", actor, slot.getId());
         jdbc.update("DELETE FROM plan_items WHERE slot_id=?", slot.getId());
@@ -234,6 +247,18 @@ final class PlanningService {
                         .servings(number(row.getBigDecimal("servings"))), slotId);
         slot.setItems(items);
         return slot;
+    }
+
+    /**
+     * Serialises with ownership transfer/dissolve (which take FOR UPDATE) and returns the current
+     * owner. Concurrent plan writers share the lock, so they still only conflict on the slot version.
+     */
+    private UUID lockHousehold(UUID home) {
+        List<UUID> rows = jdbc.query("SELECT owner_user_id FROM households"
+                        + " WHERE id=? AND closed_at IS NULL FOR SHARE",
+                (rs, n) -> rs.getObject(1, UUID.class), home);
+        if (rows.isEmpty()) throw new PlanFault("NOT_FOUND");
+        return rows.get(0);
     }
 
     private void requireMember(UUID actor, UUID home) {
