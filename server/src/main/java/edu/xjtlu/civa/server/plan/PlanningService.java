@@ -16,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -65,9 +66,7 @@ final class PlanningService {
             if (existing.isEmpty()) {
                 if (expectedVersion != 0) throw new PlanFault("VERSION_CONFLICT");
                 UUID id = UUID.randomUUID();
-                jdbc.update("INSERT INTO plan_slots(id, household_id, date, meal_type, locked, author_id)"
-                                + " VALUES (?,?,?,?,false,?)",
-                        id, home, date, meal.getValue(), actor);
+                insertSlot(id, home, date, meal, false, actor);
                 writeItems(id, home, rows);
                 return get(home, date, meal);
             }
@@ -91,9 +90,7 @@ final class PlanningService {
             if (existing.isEmpty()) {
                 if (expectedVersion != 0) throw new PlanFault("VERSION_CONFLICT");
                 UUID id = UUID.randomUUID();
-                jdbc.update("INSERT INTO plan_slots(id, household_id, date, meal_type, locked, author_id)"
-                                + " VALUES (?,?,?,?,?,?)",
-                        id, home, date, meal.getValue(), locked, actor);
+                insertSlot(id, home, date, meal, locked, actor);
                 return get(home, date, meal);
             }
             PlanSlot slot = existing.get(0);
@@ -138,9 +135,7 @@ final class PlanningService {
         if (existing.isEmpty()) {
             if (write.getExpectedVersion() != 0) throw new PlanFault("VERSION_CONFLICT");
             UUID id = UUID.randomUUID();
-            jdbc.update("INSERT INTO plan_slots(id, household_id, date, meal_type, locked, author_id)"
-                            + " VALUES (?,?,?,?,false,?)",
-                    id, home, date, write.getMealType().getValue(), actor);
+            insertSlot(id, home, date, write.getMealType(), false, actor);
             writeItems(id, home, rows);
             return get(home, date, write.getMealType());
         }
@@ -170,6 +165,21 @@ final class PlanningService {
                         + " WHERE s.household_id=? AND s.date=? AND s.meal_type=?"
                         + (lock ? " FOR UPDATE OF s" : ""),
                 (rs, row) -> map(rs), home, date, meal.getValue());
+    }
+
+    /**
+     * Creates one slot row, translating a concurrent creation of the same date+meal into a version
+     * conflict. Two members can both observe an empty slot; the loser of the unique-index race must
+     * receive a conflict rather than an internal error.
+     */
+    private void insertSlot(UUID id, UUID home, LocalDate date, PlanMealType meal, boolean locked, UUID actor) {
+        try {
+            jdbc.update("INSERT INTO plan_slots(id, household_id, date, meal_type, locked, author_id)"
+                            + " VALUES (?,?,?,?,?,?)",
+                    id, home, date, meal.getValue(), locked, actor);
+        } catch (DuplicateKeyException concurrentCreation) {
+            throw new PlanFault("VERSION_CONFLICT");
+        }
     }
 
     private void writeItems(UUID slotId, UUID home, List<PlanItem> items) {

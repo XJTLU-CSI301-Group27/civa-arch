@@ -101,15 +101,20 @@ final class HouseholdRecipeService {
     Recipe update(UUID actor, UUID home, UUID id, UpdateRecipeRequest body) {
         requireMember(actor, home);
         validate(body.getName(), body.getSteps(), body.getIngredients(), body.getYieldServings(), body.getDurationMinutes());
-        int updated = jdbc.update("UPDATE recipes SET name=?, steps=CAST(? AS jsonb), yield_servings=?, duration_minutes=?,"
-                        + " tags=CAST(? AS TEXT[]), image_id=?, total_kcal=?, version=version+1, updated_at=CURRENT_TIMESTAMP"
-                        + " WHERE id=? AND household_id=? AND version=?",
-                body.getName().trim(), write(body.getSteps()), decimal(body.getYieldServings()), body.getDurationMinutes(),
-                textArray(body.getTags()), body.getImageId(), decimal(body.getTotalKcal()), id, home, body.getExpectedVersion());
-        if (updated == 0) throw new PersonalRecipeFault(exists(home, id) ? "VERSION_CONFLICT" : "NOT_FOUND");
-        jdbc.update("DELETE FROM recipe_ingredients WHERE recipe_id=?", id);
-        insertIngredients(id, body.getIngredients());
-        return get(actor, home, id);
+        // The replacement is one logical edit: the header, the old ingredient rows and the new
+        // ingredient rows must commit or roll back together, otherwise a rejected write (duplicate
+        // or unknown ingredient) leaves the recipe without any ingredients.
+        return transactions.execute(status -> {
+            int updated = jdbc.update("UPDATE recipes SET name=?, steps=CAST(? AS jsonb), yield_servings=?, duration_minutes=?,"
+                            + " tags=CAST(? AS TEXT[]), image_id=?, total_kcal=?, version=version+1, updated_at=CURRENT_TIMESTAMP"
+                            + " WHERE id=? AND household_id=? AND version=?",
+                    body.getName().trim(), write(body.getSteps()), decimal(body.getYieldServings()), body.getDurationMinutes(),
+                    textArray(body.getTags()), body.getImageId(), decimal(body.getTotalKcal()), id, home, body.getExpectedVersion());
+            if (updated == 0) throw new PersonalRecipeFault(exists(home, id) ? "VERSION_CONFLICT" : "NOT_FOUND");
+            jdbc.update("DELETE FROM recipe_ingredients WHERE recipe_id=?", id);
+            insertIngredients(id, body.getIngredients());
+            return get(actor, home, id);
+        });
     }
 
     Recipe archive(UUID actor, UUID home, UUID id, ArchiveRecipeRequest body) {

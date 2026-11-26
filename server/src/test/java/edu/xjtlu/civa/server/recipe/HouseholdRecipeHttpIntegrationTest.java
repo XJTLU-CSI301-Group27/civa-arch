@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -108,6 +109,78 @@ class HouseholdRecipeHttpIntegrationTest {
             jdbc.update("DELETE FROM idempotency_requests WHERE actor_id=?", outsider);
             jdbc.update("DELETE FROM sessions WHERE user_id=?", outsider);
             jdbc.update("DELETE FROM users WHERE id=?", outsider);
+        } finally {
+            jdbc.update("DELETE FROM wishlists WHERE user_id=?", user);
+            jdbc.update("DELETE FROM recipe_favorites WHERE user_id=?", user);
+            jdbc.update("DELETE FROM user_recipes WHERE user_id=?", user);
+            jdbc.update("DELETE FROM recipe_ingredients WHERE recipe_id IN (SELECT id FROM recipes WHERE household_id=?)", home);
+            jdbc.update("DELETE FROM recipes WHERE household_id=?", home);
+            jdbc.update("DELETE FROM idempotency_requests WHERE actor_id=?", user);
+            jdbc.update("DELETE FROM memberships WHERE household_id=?", home);
+            jdbc.update("DELETE FROM households WHERE id=?", home);
+            jdbc.update("DELETE FROM sessions WHERE user_id=?", user);
+            jdbc.update("DELETE FROM users WHERE id=?", user);
+        }
+    }
+
+    /**
+     * The replacement of recipe ingredients must be atomic: a rejected ingredient write may not
+     * leave the stored recipe without its previous ingredient rows or with a bumped version.
+     */
+    @Test void rejectedIngredientReplacementKeepsTheStoredRecipe() throws Exception {
+        UUID user = UUID.randomUUID();
+        UUID home = UUID.randomUUID();
+        try {
+            String name = "u_" + user.toString().replace("-", "").substring(0, 20);
+            jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
+                    user, name, "Atomic", passwords.encode("long-password"), "UTC");
+            jdbc.update("INSERT INTO households(id,name) VALUES (?,?)", home, "Atomic home");
+            jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
+                    UUID.randomUUID(), home, user);
+            String token = login(name);
+            String ingredientId = jdbc.queryForObject(
+                    "SELECT id::text FROM ingredients WHERE unit='G' ORDER BY name LIMIT 1", String.class);
+
+            String create = json.writeValueAsString(Map.of(
+                    "name", "原名称", "steps", List.of("切块"),
+                    "ingredients", List.of(Map.of("ingredientId", ingredientId, "quantity", "2",
+                            "unit", "G", "trackStock", true)),
+                    "yieldServings", "2", "durationMinutes", 20, "tags", List.of("家常菜")));
+            var created = http.perform(post("/api/v1/households/{id}/recipes", home)
+                            .header("Authorization", bearer(token))
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(MediaType.APPLICATION_JSON).content(create))
+                    .andExpect(status().isCreated())
+                    .andReturn();
+            String recipeId = json.readTree(created.getResponse().getContentAsString()).path("id").asText();
+
+            // The same ingredient twice violates the recipe_ingredients primary key, so the write
+            // fails after the previous rows have already been deleted inside the replacement.
+            String rejected = json.writeValueAsString(Map.of(
+                    "name", "改名不应保留", "steps", List.of("切块", "合炒"),
+                    "ingredients", List.of(
+                            Map.of("ingredientId", ingredientId, "quantity", "3", "unit", "G", "trackStock", true),
+                            Map.of("ingredientId", ingredientId, "quantity", "4", "unit", "G", "trackStock", true)),
+                    "yieldServings", "2", "durationMinutes", 25, "tags", List.of("家常菜"),
+                    "expectedVersion", 1));
+            var rejectedResult = http.perform(put("/api/v1/households/{id}/recipes/{r}", home, recipeId)
+                            .header("Authorization", bearer(token))
+                            .contentType(MediaType.APPLICATION_JSON).content(rejected))
+                    .andReturn();
+            assertTrue(rejectedResult.getResponse().getStatus() >= 400,
+                    "the duplicate ingredient write must be rejected, got "
+                            + rejectedResult.getResponse().getStatus());
+
+            http.perform(get("/api/v1/households/{id}/recipes/{r}", home, recipeId)
+                            .header("Authorization", bearer(token)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.name").value("原名称"))
+                    .andExpect(jsonPath("$.version").value(1))
+                    .andExpect(jsonPath("$.ingredients.length()").value(1))
+                    .andExpect(jsonPath("$.ingredients[0].ingredientId").value(ingredientId))
+                    .andExpect(jsonPath("$.ingredients[0].quantity").value("2"));
+            assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM recipe_ingredients WHERE recipe_id=?",
+                    Integer.class, UUID.fromString(recipeId)));
         } finally {
             jdbc.update("DELETE FROM wishlists WHERE user_id=?", user);
             jdbc.update("DELETE FROM recipe_favorites WHERE user_id=?", user);
