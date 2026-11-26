@@ -30,12 +30,31 @@ final class HouseholdMembershipService {
             Member leaving = active(household, target);
             if (leaving == null) throw new HouseholdWriteService.Failure("NOT_FOUND");
             if (leaving.version != expectedVersion) throw new HouseholdWriteService.Failure("VERSION_CONFLICT");
+            // The owner can only leave after a completed transfer; a sole owner must dissolve instead.
+            UUID owner = ownerOf(household);
+            if (owner != null && owner.equals(actor)) {
+                Integer active = jdbc.queryForObject(
+                        "SELECT count(*) FROM memberships WHERE household_id=? AND active", Integer.class, household);
+                throw new HouseholdWriteService.Failure(active != null && active > 1
+                        ? "OWNER_MUST_TRANSFER" : "OWNER_MUST_DISSOLVE");
+            }
             int count = jdbc.update("UPDATE memberships SET active=false,version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND active AND version=?", leaving.id, expectedVersion);
             if (count != 1) throw new HouseholdWriteService.Failure("VERSION_CONFLICT");
+            // A member leaving cancels the transfer request that targets them; the owner is unchanged.
+            jdbc.update("UPDATE ownership_transfer_requests SET status='CANCELLED', resolved_at=CURRENT_TIMESTAMP,"
+                            + " resolved_by=?, version=version+1, updated_at=CURRENT_TIMESTAMP"
+                            + " WHERE household_id=? AND target_user_id=? AND status='PENDING'",
+                    actor, household, actor);
             // Join, invitation access and leave all lock this same household first.
             // A concurrent join either commits before closure or sees a closed household.
             jdbc.update("UPDATE households SET closed_at=CURRENT_TIMESTAMP,version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND NOT EXISTS(SELECT 1 FROM memberships WHERE household_id=? AND active)",household,household);
         });
+    }
+
+    private UUID ownerOf(UUID household) {
+        List<UUID> rows = jdbc.query("SELECT owner_user_id FROM households WHERE id=?",
+                (rs, n) -> rs.getObject(1, UUID.class), household);
+        return rows.isEmpty() ? null : rows.get(0);
     }
 
     private Member active(UUID household, UUID user) {

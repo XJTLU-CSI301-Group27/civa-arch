@@ -36,7 +36,7 @@ class ProfileContractHttpIntegrationTest {
         try {
             insertUser(first, "First One");
             insertUser(second, "Second One");
-            jdbc.update("INSERT INTO households(id,name,zone_id) VALUES (?,?,'UTC')", home, "Name home");
+            jdbc.update("INSERT INTO households(id,name,zone_id,owner_user_id,owner_source) VALUES (?,?,'UTC',?,'CREATED')", home, "Name home", first);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'MEMBER',true)",
                     UUID.randomUUID(), home, first);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'MEMBER',true)",

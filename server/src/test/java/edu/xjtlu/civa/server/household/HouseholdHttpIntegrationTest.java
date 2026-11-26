@@ -61,13 +61,21 @@ class HouseholdHttpIntegrationTest {
             http.perform(get(path).header("Authorization",b)).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOUSEHOLD_ACCESS_REVOKED"));
             http.perform(post("/api/v1/households/join").header("Authorization",b).header("Idempotency-Key",joinKey).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("code",invite))))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOUSEHOLD_ACCESS_REVOKED"));
-            http.perform(delete("/api/v1/households/"+home+"/members/"+creator).header("Authorization",a).param("expectedVersion","1")).andExpect(status().isNoContent());
-            assertEquals(invite,code(c,path)); // creator left, another equal member still shares the same code
-            assertNull(jdbc.queryForObject("SELECT closed_at FROM households WHERE id=?",java.sql.Timestamp.class,home));
+            // The owner cannot leave while another member remains.
+            http.perform(delete("/api/v1/households/"+home+"/members/"+creator).header("Authorization",a).param("expectedVersion","1"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("OWNER_MUST_TRANSFER"));
+            // A non-owner member may still leave; the owner keeps the household and the invitation.
             http.perform(delete("/api/v1/households/"+home+"/members/"+other).header("Authorization",c).param("expectedVersion","1")).andExpect(status().isNoContent());
+            assertNull(jdbc.queryForObject("SELECT closed_at FROM households WHERE id=?",java.sql.Timestamp.class,home));
+            assertEquals(invite,code(a,path));
+            // A sole owner must dissolve instead of leaving.
+            http.perform(delete("/api/v1/households/"+home+"/members/"+creator).header("Authorization",a).param("expectedVersion","1"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("OWNER_MUST_DISSOLVE"));
+            http.perform(post("/api/v1/households/"+home+"/dissolve").header("Authorization",a).header("Idempotency-Key",UUID.randomUUID()))
+                .andExpect(status().isNoContent());
             assertNotNull(jdbc.queryForObject("SELECT closed_at FROM households WHERE id=?",java.sql.Timestamp.class,home));
             assertEquals(3,jdbc.queryForObject("SELECT count(*) FROM memberships WHERE household_id=? AND NOT active",Integer.class,home));
-            http.perform(get(path).header("Authorization",c)).andExpect(status().isNotFound());
+            http.perform(get(path).header("Authorization",a)).andExpect(status().isNotFound());
             http.perform(post("/api/v1/households/join").header("Authorization",a).header("Idempotency-Key",UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("code",invite))))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_INVITATION"));
             http.perform(get("/api/v1/households/"+home).header("Authorization",a)).andExpect(status().isForbidden());

@@ -36,7 +36,7 @@ class PlanAuthorHttpIntegrationTest {
         try {
             insertUser(first, "Chef One");
             insertUser(second, "Chef Two");
-            jdbc.update("INSERT INTO households(id,name,zone_id) VALUES (?,?,'UTC')", home, "Author home");
+            jdbc.update("INSERT INTO households(id,name,zone_id,owner_user_id,owner_source) VALUES (?,?,'UTC',?,'CREATED')", home, "Author home", first);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'MEMBER',true)",
                     UUID.randomUUID(), home, first);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'MEMBER',true)",

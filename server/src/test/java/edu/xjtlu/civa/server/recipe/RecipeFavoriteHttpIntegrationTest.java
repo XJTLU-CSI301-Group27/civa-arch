@@ -39,7 +39,7 @@ class RecipeFavoriteHttpIntegrationTest {
             String name = username(user);
             jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                     user, name, "Test", passwords.encode("long-password"), "UTC");
-            jdbc.update("INSERT INTO households(id,name) VALUES (?,?)", home, "Test home");
+            jdbc.update("INSERT INTO households(id,name,owner_user_id,owner_source) VALUES (?,?,?,'CREATED')", home, "Test home", user);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
                     UUID.randomUUID(), home, user);
             jdbc.update("INSERT INTO recipes(id,household_id,author_id,name,steps,yield_servings,duration_minutes)"

@@ -30,9 +30,12 @@ public final class HouseholdWriteService {
         return idempotency.execute(actor, key, digest, () -> {
             if (hasActiveHousehold(actor)) throw new Failure("ALREADY_IN_HOUSEHOLD");
             UUID id = UUID.randomUUID();
-            List<ObjectNode> homes = jdbc.query("INSERT INTO households(id,name) VALUES (?,?) RETURNING id,name,zone_id,version,created_at,updated_at",
+            List<ObjectNode> homes = jdbc.query("INSERT INTO households(id,name,owner_user_id,owner_source,owner_assigned_at,owner_confirmed_at)"
+                            + " VALUES (?,?,?,'CREATED',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)"
+                            + " RETURNING id,name,zone_id,version,created_at,updated_at,owner_user_id,owner_source",
                     (rs, n) -> householdJson(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getLong(4),
-                            rs.getTimestamp(5).toInstant(), rs.getTimestamp(6).toInstant()), id, name);
+                            rs.getTimestamp(5).toInstant(), rs.getTimestamp(6).toInstant(),
+                            rs.getObject(7, UUID.class), rs.getString(8)), id, name, actor);
             int inserted = jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'MEMBER',true) ON CONFLICT (user_id) WHERE active DO NOTHING",
                     UUID.randomUUID(), id, actor);
             if (inserted != 1) throw new Failure("ALREADY_IN_HOUSEHOLD");
@@ -97,10 +100,13 @@ public final class HouseholdWriteService {
         return name;
     }
 
-    private ObjectNode householdJson(UUID id, String name, String zoneId, long version, Instant created, Instant updated) {
+    private ObjectNode householdJson(UUID id, String name, String zoneId, long version, Instant created, Instant updated,
+                                     UUID ownerUserId, String ownerSource) {
         ObjectNode body = json.object();
         body.put("id", id.toString()); body.put("name", name); body.put("zoneId", zoneId); body.put("version", version);
         body.put("createdAt", WIRE_TIME.format(created)); body.put("updatedAt", WIRE_TIME.format(updated));
+        body.put("ownerUserId", ownerUserId == null ? null : ownerUserId.toString());
+        body.put("ownerSource", ownerSource);
         return body;
     }
 

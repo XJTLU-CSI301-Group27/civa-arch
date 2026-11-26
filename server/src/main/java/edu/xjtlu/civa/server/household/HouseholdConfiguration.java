@@ -17,6 +17,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 class HouseholdConfiguration {
     @Bean HouseholdSettingsService householdSettingsService(JdbcTemplate jdbc, HouseholdReadService read, PlatformTransactionManager manager) { return new HouseholdSettingsService(jdbc, read, manager); }
     @Bean HouseholdMembershipService householdMembershipService(JdbcTemplate jdbc, PlatformTransactionManager manager) { return new HouseholdMembershipService(jdbc, manager); }
+    @Bean HouseholdOwnershipService householdOwnershipService(JdbcTemplate jdbc, ObjectMapper json, IdempotencyExecutor executor) {
+        return new HouseholdOwnershipService(jdbc, json, executor);
+    }
     @Bean InvitationReceiptCipher invitationReceiptCipher(@org.springframework.beans.factory.annotation.Value("${civa.media-dir}") String mediaDir) throws IOException {
         return new InvitationReceiptCipher(java.nio.file.Path.of(mediaDir).resolve(".private/invitation-receipt.key"));
     }

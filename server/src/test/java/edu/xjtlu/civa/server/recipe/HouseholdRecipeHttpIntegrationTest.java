@@ -37,7 +37,7 @@ class HouseholdRecipeHttpIntegrationTest {
             String name = "u_" + user.toString().replace("-", "").substring(0, 20);
             jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                     user, name, "Test", passwords.encode("long-password"), "UTC");
-            jdbc.update("INSERT INTO households(id,name) VALUES (?,?)", home, "Test home");
+            jdbc.update("INSERT INTO households(id,name,owner_user_id,owner_source) VALUES (?,?,?,'CREATED')", home, "Test home", user);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
                     UUID.randomUUID(), home, user);
             String token = login(name);
@@ -134,7 +134,7 @@ class HouseholdRecipeHttpIntegrationTest {
             String name = "u_" + user.toString().replace("-", "").substring(0, 20);
             jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                     user, name, "Atomic", passwords.encode("long-password"), "UTC");
-            jdbc.update("INSERT INTO households(id,name) VALUES (?,?)", home, "Atomic home");
+            jdbc.update("INSERT INTO households(id,name,owner_user_id,owner_source) VALUES (?,?,?,'CREATED')", home, "Atomic home", user);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
                     UUID.randomUUID(), home, user);
             String token = login(name);

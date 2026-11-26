@@ -4,8 +4,10 @@
 
 | operationId | 方法 | 路径 | 负责人 | 请求体 | 成功响应 |
 | --- | --- | --- | --- | --- | --- |
+| acceptOwnershipTransfer | POST | /api/v1/households/{householdId}/owner-transfer-requests/{requestId}/accept | E | — | 200 application/json: Household |
 | addRecipeFavorite | PUT | /api/v1/me/recipe-favorites/{kind}/{recipeId} | A | — | 204 — |
 | addWishlist | PUT | /api/v1/me/wishlist/{recipeId} | A | — | 204 — |
+| cancelOwnershipTransfer | POST | /api/v1/households/{householdId}/owner-transfer-requests/{requestId}/cancel | E | — | 200 application/json: OwnershipTransferRequest |
 | changeInventory | POST | /api/v1/households/{householdId}/inventory-batches/{batchId}/movements | C | application/json: InventoryChangeRequest | 201 application/json: InventoryMovement |
 | commitPlan | POST | /api/v1/households/{householdId}/plan-commits | B | application/json: PlanCommitRequest | 200 application/json: PlanSlot[] |
 | confirmCooking | POST | /api/v1/households/{householdId}/cooking-events | D+E | application/json: ConfirmCookingRequest | 201 application/json: CookingEvent |
@@ -18,6 +20,7 @@
 | createRecipe | POST | /api/v1/households/{householdId}/recipes | A | application/json: CreateRecipeRequest | 201 application/json: Recipe |
 | deleteMealEntry | DELETE | /api/v1/me/meal-entries/{entryId} | D | — | 204 — |
 | deletePersonalRecipe | DELETE | /api/v1/me/recipes/{recipeId} | A | — | 204 — |
+| dissolveHousehold | POST | /api/v1/households/{householdId}/dissolve | E | — | 204 — |
 | estimateNutrition | POST | /api/v1/nutrition/estimates | B | application/json: NutritionEstimateRequest | 200 application/json: NutritionEstimate |
 | getCatalogRecipe | GET | /api/v1/recipe-catalog/{recipeId} | A | — | 200 application/json: CatalogRecipe |
 | getHousehold | GET | /api/v1/households/{householdId} | E | — | 200 application/json: Household |
@@ -37,6 +40,7 @@
 | listInventoryMovements | GET | /api/v1/households/{householdId}/inventory-movements | C | — | 200 application/json: InventoryMovementPage |
 | listMealEntries | GET | /api/v1/me/meal-entries | D | — | 200 application/json: MealEntryPage |
 | listMembers | GET | /api/v1/households/{householdId}/members | E | — | 200 application/json: MembershipPage |
+| listOwnershipTransferRequests | GET | /api/v1/households/{householdId}/owner-transfer-requests | E | — | 200 application/json: OwnershipTransferRequestPage |
 | listPersonalRecipes | GET | /api/v1/me/recipes | A | — | 200 application/json: PersonalRecipePage |
 | listPlanSlots | GET | /api/v1/households/{householdId}/plan-slots | B | — | 200 application/json: PlanSlotPage |
 | listRecipeFavorites | GET | /api/v1/me/recipe-favorites | A | — | 200 application/json: RecipeFavoritePage |
@@ -47,11 +51,13 @@
 | matchRecipes | POST | /api/v1/households/{householdId}/recipe-matches | C | application/json: MatchRequest | 200 application/json: RecipeMatch[] |
 | previewCooking | POST | /api/v1/households/{householdId}/cooking-previews | D+E | application/json: CookingPreviewRequest | 200 application/json: CookingPreview |
 | register | POST | /api/v1/auth/register | E | application/json: RegisterRequest | 201 application/json: User |
+| rejectOwnershipTransfer | POST | /api/v1/households/{householdId}/owner-transfer-requests/{requestId}/reject | E | — | 200 application/json: OwnershipTransferRequest |
 | removeMember | DELETE | /api/v1/households/{householdId}/members/{userId} | E | — | 204 — |
 | removeRecipeFavorite | DELETE | /api/v1/me/recipe-favorites/{kind}/{recipeId} | A | — | 204 — |
 | removeWishlist | DELETE | /api/v1/me/wishlist/{recipeId} | A | — | 204 — |
 | renameHousehold | PUT | /api/v1/households/{householdId} | E | application/json: CreateHouseholdRequest | 200 application/json: Household |
 | replacePlanSlot | PUT | /api/v1/households/{householdId}/plan-slots/{date}/{mealType} | B | application/json: ReplacePlanSlotRequest | 200 application/json: PlanSlot |
+| requestOwnershipTransfer | POST | /api/v1/households/{householdId}/owner-transfer-requests | E | application/json: CreateOwnershipTransferRequest | 201 application/json: OwnershipTransferRequest |
 | setPersonalRecipeArchived | PUT | /api/v1/me/recipes/{recipeId}/archive | A | application/json: ArchivePersonalRecipeRequest | 200 application/json: PersonalRecipe |
 | setPlanSlotLock | PUT | /api/v1/households/{householdId}/plan-slots/{date}/{mealType}/lock | B | application/json: SetPlanLockRequest | 200 application/json: PlanSlot |
 | setRecipeArchived | PUT | /api/v1/households/{householdId}/recipes/{recipeId}/archive | A | application/json: ArchiveRecipeRequest | 200 application/json: Recipe |

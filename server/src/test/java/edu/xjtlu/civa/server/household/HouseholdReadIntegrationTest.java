@@ -26,7 +26,7 @@ class HouseholdReadIntegrationTest {
                     jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                             id, "u_" + id.toString().replace("-", "").substring(0, 20), "Test", "test-only", "UTC");
                 }
-                jdbc.update("INSERT INTO households(id,name) VALUES (?,?)", home, "Home");
+                jdbc.update("INSERT INTO households(id,name,owner_user_id,owner_source) VALUES (?,?,?,'CREATED')", home, "Home", owner);
                 jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,?,true)", UUID.randomUUID(), home, owner, "OWNER");
                 jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,?,true)", UUID.randomUUID(), home, member, "MEMBER");
                 var service = new HouseholdReadService(jdbc);

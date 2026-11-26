@@ -12,9 +12,10 @@ final class HouseholdReadService {
     HouseholdReadService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     Household getHousehold(UUID actorId, UUID householdId) {
-        List<Household> rows = jdbc.query("SELECT h.id,h.name,h.zone_id,h.version,h.created_at,h.updated_at FROM households h JOIN memberships a ON a.household_id=h.id AND a.user_id=? AND a.active WHERE h.id=? AND h.closed_at IS NULL",
+        List<Household> rows = jdbc.query("SELECT h.id,h.name,h.zone_id,h.version,h.created_at,h.updated_at,h.owner_user_id,h.owner_source FROM households h JOIN memberships a ON a.household_id=h.id AND a.user_id=? AND a.active WHERE h.id=? AND h.closed_at IS NULL",
                 (rs, n) -> new Household(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getLong(4),
-                        rs.getTimestamp(5).toInstant(), rs.getTimestamp(6).toInstant()), actorId, householdId);
+                        rs.getTimestamp(5).toInstant(), rs.getTimestamp(6).toInstant(),
+                        rs.getObject(7, UUID.class), rs.getString(8)), actorId, householdId);
         if (rows.isEmpty()) throw denied(actorId, householdId);
         return rows.get(0);
     }
@@ -54,9 +55,13 @@ final class HouseholdReadService {
         final String name, zoneId;
         final long version;
         final Instant createdAt, updatedAt;
-        Household(UUID id, String name, String zoneId, long version, Instant createdAt, Instant updatedAt) {
+        final UUID ownerUserId;
+        final String ownerSource;
+        Household(UUID id, String name, String zoneId, long version, Instant createdAt, Instant updatedAt,
+                  UUID ownerUserId, String ownerSource) {
             this.id = id; this.name = name; this.zoneId = zoneId; this.version = version;
             this.createdAt = createdAt; this.updatedAt = updatedAt;
+            this.ownerUserId = ownerUserId; this.ownerSource = ownerSource;
         }
     }
     static final class Member {

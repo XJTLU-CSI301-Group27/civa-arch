@@ -20,36 +20,53 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class HouseholdLeaveIntegrationTest {
     @Autowired MockMvc http; @Autowired JdbcTemplate jdbc; @Autowired PasswordEncoder passwords; @Autowired ObjectMapper json;
 
-    @Test void creatorCanLeaveAndOnlyFinalLeaveClosesIdentity() throws Exception {
+    @Test void ownerCannotLeaveUntilDissolveAndOnlySelfCanLeave() throws Exception {
         UUID owner=UUID.randomUUID(),member=UUID.randomUUID(),stranger=UUID.randomUUID(),home=UUID.randomUUID();
         UUID[] actors={owner,member,stranger};
         try {
             for(UUID user:actors) jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",user,"leave_"+user.toString().replace("-", "").substring(0,16),"Leave fixture",passwords.encode("fixture-password"),"UTC");
-            jdbc.update("INSERT INTO households(id,name) VALUES (?,?)",home,"Leave fixture");
+            jdbc.update("INSERT INTO households(id,name,owner_user_id,owner_source) VALUES (?,?,?,'CREATED')",home,"Leave fixture",owner);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",UUID.randomUUID(),home,owner);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'MEMBER',true)",UUID.randomUUID(),home,member);
             String ownerToken=login(owner),memberToken=login(member),strangerToken=login(stranger);
             String path="/api/v1/households/"+home+"/members/";
-            http.perform(delete(path+owner).param("expectedVersion","1").header("Authorization",ownerToken)).andExpect(status().isNoContent());
-            assertNull(jdbc.queryForObject("SELECT closed_at FROM households WHERE id=?",java.sql.Timestamp.class,home));
-            http.perform(delete(path+member).param("expectedVersion","1").header("Authorization",ownerToken)).andExpect(status().isForbidden());
-            http.perform(delete(path+member).param("expectedVersion","1").header("Authorization",strangerToken)).andExpect(status().isNotFound());
-            http.perform(delete(path+member).param("expectedVersion","0").header("Authorization",memberToken)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
-            http.perform(delete(path+member).param("expectedVersion","1").header("Authorization",memberToken)).andExpect(status().isNoContent());
+
+            http.perform(delete(path+owner).param("expectedVersion","1").header("Authorization",ownerToken))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("OWNER_MUST_TRANSFER"));
+            http.perform(delete(path+member).param("expectedVersion","1").header("Authorization",ownerToken))
+                .andExpect(status().isForbidden());
+            http.perform(delete(path+member).param("expectedVersion","1").header("Authorization",strangerToken))
+                .andExpect(status().isNotFound());
+            http.perform(delete(path+member).param("expectedVersion","0").header("Authorization",memberToken))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
+            http.perform(delete(path+member).param("expectedVersion","1").header("Authorization",memberToken))
+                .andExpect(status().isNoContent());
             assertEquals(2L,jdbc.queryForObject("SELECT version FROM memberships WHERE household_id=? AND user_id=?",Long.class,home,member));
+            assertFalse(jdbc.queryForObject("SELECT active FROM memberships WHERE household_id=? AND user_id=?",Boolean.class,home,member));
             http.perform(get("/api/v1/me").header("Authorization",memberToken)).andExpect(status().isOk()).andExpect(jsonPath("$.householdId").isEmpty());
-            http.perform(get("/api/v1/households/"+home).header("Authorization",memberToken)).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOUSEHOLD_ACCESS_REVOKED"));
-            http.perform(delete(path+member).param("expectedVersion","1").header("Authorization",memberToken)).andExpect(status().isNotFound());
+            http.perform(get("/api/v1/households/"+home).header("Authorization",memberToken))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOUSEHOLD_ACCESS_REVOKED"));
+
+            // The sole owner cannot leave either; dissolving is the explicit closure path.
+            http.perform(delete(path+owner).param("expectedVersion","1").header("Authorization",ownerToken))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("OWNER_MUST_DISSOLVE"));
+            http.perform(post("/api/v1/households/"+home+"/dissolve").header("Authorization",ownerToken)
+                .header("Idempotency-Key",UUID.randomUUID())).andExpect(status().isNoContent());
             assertFalse(jdbc.queryForObject("SELECT active FROM memberships WHERE household_id=? AND user_id=?",Boolean.class,home,owner));
             assertNotNull(jdbc.queryForObject("SELECT closed_at FROM households WHERE id=?",java.sql.Timestamp.class,home));
-            http.perform(get("/api/v1/households/"+home).header("Authorization",ownerToken)).andExpect(status().isForbidden());
-            http.perform(post("/api/v1/households").header("Authorization",memberToken).header("Idempotency-Key",UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Next fixture home\"}")).andExpect(status().isCreated());
+            http.perform(delete(path+member).param("expectedVersion","1").header("Authorization",memberToken))
+                .andExpect(status().isNotFound());
+            http.perform(get("/api/v1/households/"+home).header("Authorization",ownerToken))
+                .andExpect(status().isForbidden());
+            http.perform(post("/api/v1/households").header("Authorization",memberToken).header("Idempotency-Key",UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Next fixture home\"}")).andExpect(status().isCreated());
         } finally {
             // Random test-owned fixtures only; the guarded test database is separate from development.
             for(UUID user:actors) {
                 jdbc.update("DELETE FROM idempotency_requests WHERE actor_id=?",user);
                 jdbc.update("DELETE FROM sessions WHERE user_id=?",user);
             }
+            jdbc.update("DELETE FROM ownership_transfer_requests WHERE household_id=?",home);
             var owned=jdbc.query("SELECT household_id FROM memberships WHERE user_id IN (?,?,?) ",(rs,n)->rs.getObject(1,UUID.class),owner,member,stranger);
             for(UUID id:owned)jdbc.update("DELETE FROM invitations WHERE household_id=?",id);
             for(UUID user:actors)jdbc.update("DELETE FROM memberships WHERE user_id=?",user);

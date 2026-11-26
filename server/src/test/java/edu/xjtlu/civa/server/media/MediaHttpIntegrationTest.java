@@ -42,7 +42,7 @@ class MediaHttpIntegrationTest {
             jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                     other, "u_" + other.toString().replace("-", "").substring(0, 20), "Other",
                     passwords.encode("long-password"), "UTC");
-            jdbc.update("INSERT INTO households(id,name,zone_id) VALUES (?,?,'UTC')", home, "Media home");
+            jdbc.update("INSERT INTO households(id,name,zone_id,owner_user_id,owner_source) VALUES (?,?,'UTC',?,'CREATED')", home, "Media home", user);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
                     UUID.randomUUID(), home, user);
             String token = login(name);

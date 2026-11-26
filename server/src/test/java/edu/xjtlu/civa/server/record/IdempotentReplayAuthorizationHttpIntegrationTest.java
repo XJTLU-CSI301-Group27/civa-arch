@@ -45,7 +45,7 @@ class IdempotentReplayAuthorizationHttpIntegrationTest {
             String name = user("u_", user);
             jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                     user, name, "Replay", passwords.encode("long-password"), "UTC");
-            jdbc.update("INSERT INTO households(id,name,zone_id) VALUES (?,?,'UTC')", home, "Replay home");
+            jdbc.update("INSERT INTO households(id,name,zone_id,owner_user_id,owner_source) VALUES (?,?,'UTC',?,'CREATED')", home, "Replay home", user);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
                     UUID.randomUUID(), home, user);
             jdbc.update("INSERT INTO ingredients(id,name,unit,active) VALUES (?,?,'G',true)",
@@ -110,7 +110,7 @@ class IdempotentReplayAuthorizationHttpIntegrationTest {
             String name = user("u_", user);
             jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                     user, name, "Replay", passwords.encode("long-password"), "UTC");
-            jdbc.update("INSERT INTO households(id,name,zone_id) VALUES (?,?,'UTC')", home, "Replay plan home");
+            jdbc.update("INSERT INTO households(id,name,zone_id,owner_user_id,owner_source) VALUES (?,?,'UTC',?,'CREATED')", home, "Replay plan home", user);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
                     UUID.randomUUID(), home, user);
             jdbc.update("INSERT INTO recipes(id,household_id,author_id,name,steps,yield_servings,duration_minutes)"
@@ -292,7 +292,7 @@ class IdempotentReplayAuthorizationHttpIntegrationTest {
     private void seedActor(UUID user, String username, UUID home, String homeName) {
         jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                 user, username, "Replay", passwords.encode("long-password"), "UTC");
-        jdbc.update("INSERT INTO households(id,name,zone_id) VALUES (?,?,'UTC')", home, homeName);
+        jdbc.update("INSERT INTO households(id,name,zone_id,owner_user_id,owner_source) VALUES (?,?,'UTC',?,'CREATED')", home, homeName, user);
         jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
                 UUID.randomUUID(), home, user);
     }

@@ -57,8 +57,8 @@ class InventoryHttpIntegrationTest {
     otherToken = registerAndLogin(outsider);
     for (UUID id : List.of(home, otherHome))
       jdbc.update(
-          "INSERT INTO households(id,name,zone_id) VALUES (?,'Inventory test','Asia/Shanghai')",
-          id);
+          "INSERT INTO households(id,name,zone_id,owner_user_id,owner_source) VALUES (?,'Inventory test','Asia/Shanghai',?,'CREATED')",
+          id, id.equals(home) ? owner : outsider);
     jdbc.update(
         "INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
         UUID.randomUUID(),

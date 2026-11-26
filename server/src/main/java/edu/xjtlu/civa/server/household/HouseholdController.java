@@ -5,12 +5,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.xjtlu.civa.server.api.HouseholdApi;
 import edu.xjtlu.civa.server.api.model.CreateHouseholdRequest;
+import edu.xjtlu.civa.server.api.model.CreateOwnershipTransferRequest;
 import edu.xjtlu.civa.server.api.model.Household;
 import edu.xjtlu.civa.server.api.model.Invitation;
 import edu.xjtlu.civa.server.api.model.JoinHouseholdRequest;
 import edu.xjtlu.civa.server.api.model.Membership;
 import edu.xjtlu.civa.server.api.model.MembershipPage;
+import edu.xjtlu.civa.server.api.model.OwnershipTransferRequest;
+import edu.xjtlu.civa.server.api.model.OwnershipTransferRequestPage;
 import edu.xjtlu.civa.server.api.model.Role;
+import edu.xjtlu.civa.server.api.model.TransferStatus;
 import edu.xjtlu.civa.server.application.CanonicalRequestDigest;
 import edu.xjtlu.civa.server.application.IdempotencyExecutor;
 import java.time.Instant;
@@ -29,12 +33,13 @@ class HouseholdController implements HouseholdApi {
     private final HouseholdInvitationService invitations;
     private final HouseholdMembershipService membership;
     private final HouseholdWriteService write;
+    private final HouseholdOwnershipService ownership;
     private final CanonicalRequestDigest digest;
     private final JsonNode schemas;
     private final ObjectMapper json;
 
-    HouseholdController(HouseholdSettingsService settings, HouseholdInvitationService invitations, HouseholdReadService read, HouseholdMembershipService membership, HouseholdWriteService write, CanonicalRequestDigest digest, JsonNode schemas, ObjectMapper json) {
-        this.settings = settings; this.invitations = invitations; this.read = read; this.membership = membership; this.write = write; this.digest = digest; this.schemas = schemas; this.json = json;
+    HouseholdController(HouseholdSettingsService settings, HouseholdInvitationService invitations, HouseholdReadService read, HouseholdMembershipService membership, HouseholdWriteService write, HouseholdOwnershipService ownership, CanonicalRequestDigest digest, JsonNode schemas, ObjectMapper json) {
+        this.settings = settings; this.invitations = invitations; this.read = read; this.membership = membership; this.write = write; this.ownership = ownership; this.digest = digest; this.schemas = schemas; this.json = json;
     }
 
     @Override public ResponseEntity<Household> createHousehold(UUID key, CreateHouseholdRequest input) {
@@ -52,13 +57,52 @@ class HouseholdController implements HouseholdApi {
     }
 
     @Override public ResponseEntity<Household> getHousehold(UUID id) {
-        HouseholdReadService.Household home = read.getHousehold(actor(), id);
-        return ResponseEntity.ok(new Household(home.id, time(home.createdAt), time(home.updatedAt), home.name, home.zoneId, home.version));
+        return ResponseEntity.ok(model(read.getHousehold(actor(), id)));
     }
 
     @Override public ResponseEntity<Household> renameHousehold(UUID id, Long expectedVersion, CreateHouseholdRequest input) {
-        HouseholdReadService.Household home = settings.rename(actor(), id, expectedVersion, input.getName());
-        return ResponseEntity.ok(new Household(home.id, time(home.createdAt), time(home.updatedAt), home.name, home.zoneId, home.version));
+        return ResponseEntity.ok(model(settings.rename(actor(), id, expectedVersion, input.getName())));
+    }
+
+    @Override public ResponseEntity<OwnershipTransferRequestPage> listOwnershipTransferRequests(
+            UUID id, TransferStatus status, Integer page, Integer size) {
+        return ResponseEntity.ok(ownership.list(actor(), id, status,
+                page == null ? 0 : page, size == null ? 20 : size));
+    }
+
+    @Override public ResponseEntity<OwnershipTransferRequest> requestOwnershipTransfer(
+            UUID id, UUID key, CreateOwnershipTransferRequest input) {
+        if (input == null || input.getTargetUserId() == null) {
+            throw new IllegalArgumentException("Invalid transfer target");
+        }
+        byte[] hash = hash("/api/v1/households/" + id + "/owner-transfer-requests",
+                input, "CreateOwnershipTransferRequest");
+        return response(ownership.request(actor(), id, input.getTargetUserId(), key, hash),
+                OwnershipTransferRequest.class);
+    }
+
+    @Override public ResponseEntity<Household> acceptOwnershipTransfer(UUID id, UUID requestId, UUID key) {
+        byte[] hash = digest.digestJson("POST", "/api/v1/households/" + id
+                + "/owner-transfer-requests/" + requestId + "/accept", null, null);
+        return response(ownership.accept(actor(), id, requestId, key, hash), Household.class);
+    }
+
+    @Override public ResponseEntity<OwnershipTransferRequest> rejectOwnershipTransfer(UUID id, UUID requestId, UUID key) {
+        byte[] hash = digest.digestJson("POST", "/api/v1/households/" + id
+                + "/owner-transfer-requests/" + requestId + "/reject", null, null);
+        return response(ownership.reject(actor(), id, requestId, key, hash), OwnershipTransferRequest.class);
+    }
+
+    @Override public ResponseEntity<OwnershipTransferRequest> cancelOwnershipTransfer(UUID id, UUID requestId, UUID key) {
+        byte[] hash = digest.digestJson("POST", "/api/v1/households/" + id
+                + "/owner-transfer-requests/" + requestId + "/cancel", null, null);
+        return response(ownership.cancel(actor(), id, requestId, key, hash), OwnershipTransferRequest.class);
+    }
+
+    @Override public ResponseEntity<Void> dissolveHousehold(UUID id, UUID key) {
+        byte[] hash = digest.digestJson("POST", "/api/v1/households/" + id + "/dissolve", null, null);
+        ownership.dissolve(actor(), id, key, hash);
+        return ResponseEntity.noContent().build();
     }
 
     @Override public ResponseEntity<MembershipPage> listMembers(UUID id, Integer page, Integer size) {
@@ -87,6 +131,11 @@ class HouseholdController implements HouseholdApi {
     private <T> ResponseEntity<T> response(IdempotencyExecutor.Result result, Class<T> type) {
         try { return ResponseEntity.status(result.status).body(json.readValue(result.body, type)); }
         catch (JsonProcessingException ex) { throw new IllegalStateException("Invalid stored response"); }
+    }
+    private static Household model(HouseholdReadService.Household home) {
+        return new Household(home.id, time(home.createdAt), time(home.updatedAt), home.name, home.zoneId, home.version)
+                .ownerUserId(home.ownerUserId)
+                .ownerSource(home.ownerSource == null ? null : Household.OwnerSourceEnum.fromValue(home.ownerSource));
     }
     private static UUID actor() { return (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal(); }
     private static String time(Instant instant) { return TIME.format(instant); }

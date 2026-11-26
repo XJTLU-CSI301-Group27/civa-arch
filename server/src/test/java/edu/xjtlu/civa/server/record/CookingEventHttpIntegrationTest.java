@@ -38,7 +38,7 @@ class CookingEventHttpIntegrationTest {
             String name = "u_" + user.toString().replace("-", "").substring(0, 20);
             jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                     user, name, "Cook", passwords.encode("long-password"), "UTC");
-            jdbc.update("INSERT INTO households(id,name,zone_id) VALUES (?,?,'UTC')", home, "Cook home");
+            jdbc.update("INSERT INTO households(id,name,zone_id,owner_user_id,owner_source) VALUES (?,?,'UTC',?,'CREATED')", home, "Cook home", user);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
                     UUID.randomUUID(), home, user);
             String token = login(name);
@@ -156,7 +156,7 @@ class CookingEventHttpIntegrationTest {
             String name = "u_" + user.toString().replace("-", "").substring(0, 20);
             jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                     user, name, "Guard", passwords.encode("long-password"), "UTC");
-            jdbc.update("INSERT INTO households(id,name,zone_id) VALUES (?,?,'UTC')", home, "Guard home");
+            jdbc.update("INSERT INTO households(id,name,zone_id,owner_user_id,owner_source) VALUES (?,?,'UTC',?,'CREATED')", home, "Guard home", user);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
                     UUID.randomUUID(), home, user);
             String token = login(name);

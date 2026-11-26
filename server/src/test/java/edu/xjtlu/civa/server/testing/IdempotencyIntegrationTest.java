@@ -74,7 +74,7 @@ class IdempotencyIntegrationTest {
                 startedWork.countDown();
                 try { if (!releaseWork.await(10, TimeUnit.SECONDS)) throw new IllegalStateException("Timed out waiting for retry"); }
                 catch (InterruptedException ex) { Thread.currentThread().interrupt(); throw new IllegalStateException(ex); }
-                jdbc.update("INSERT INTO households(id,name) VALUES (?,?)", UUID.randomUUID(), "Test home");
+                jdbc.update("INSERT INTO households(id,name,owner_source) VALUES (?,?,'PENDING_CLAIM')", UUID.randomUUID(), "Test home");
                 return new IdempotencyExecutor.Result(201, "{\"ok\":true}");
             }, result -> fail("First request must not replay")));
             assertTrue(startedWork.await(10, TimeUnit.SECONDS));
@@ -181,7 +181,7 @@ class IdempotencyIntegrationTest {
             assertTrue(pool.awaitTermination(10, TimeUnit.SECONDS));
             try (Connection connection = base.getConnection()) {
                 TestDatabaseGuard.verifyConnection(connection, expectedDatabase);
-                String tables = "users sessions households memberships invitations preferences ingredients ingredient_aliases recipes recipe_ingredients wishlists inventory_batches inventory_movements plan_slots plan_items cooking_events meal_entries media idempotency_requests user_recipes recipe_favorites";
+                String tables = "ownership_transfer_requests users sessions households memberships invitations preferences ingredients ingredient_aliases recipes recipe_ingredients wishlists inventory_batches inventory_movements plan_slots plan_items cooking_events meal_entries media idempotency_requests user_recipes recipe_favorites";
                 String qualified = Arrays.stream(tables.split(" ")).map(table -> schema + "." + table).collect(Collectors.joining(","));
                 try (var statement = connection.createStatement()) { statement.execute("TRUNCATE " + qualified); }
             }

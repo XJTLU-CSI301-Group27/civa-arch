@@ -47,7 +47,7 @@ class PlanHttpIntegrationTest {
             String name = "u_" + user.toString().replace("-", "").substring(0, 20);
             jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                     user, name, "Plan", passwords.encode("long-password"), "UTC");
-            jdbc.update("INSERT INTO households(id,name,zone_id) VALUES (?,?,'UTC')", home, "Plan home");
+            jdbc.update("INSERT INTO households(id,name,zone_id,owner_user_id,owner_source) VALUES (?,?,'UTC',?,'CREATED')", home, "Plan home", user);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
                     UUID.randomUUID(), home, user);
             jdbc.update("INSERT INTO recipes(id,household_id,author_id,name,steps,duration_minutes,yield_servings)"
@@ -151,7 +151,7 @@ class PlanHttpIntegrationTest {
             String name = "u_" + user.toString().replace("-", "").substring(0, 20);
             jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
                     user, name, "Race", passwords.encode("long-password"), "UTC");
-            jdbc.update("INSERT INTO households(id,name,zone_id) VALUES (?,?,'UTC')", home, "Race home");
+            jdbc.update("INSERT INTO households(id,name,zone_id,owner_user_id,owner_source) VALUES (?,?,'UTC',?,'CREATED')", home, "Race home", user);
             jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",
                     UUID.randomUUID(), home, user);
             jdbc.update("INSERT INTO recipes(id,household_id,author_id,name,steps,duration_minutes,yield_servings)"

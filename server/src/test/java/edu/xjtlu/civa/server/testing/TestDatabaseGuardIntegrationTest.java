@@ -35,7 +35,7 @@ class TestDatabaseGuardIntegrationTest {
                 UUID actor = UUID.randomUUID(), home = UUID.randomUUID(), other = UUID.randomUUID();
                 UUID ingredient = UUID.randomUUID(), batch = UUID.randomUUID();
                 sql.executeUpdate("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES ('" + actor + "','u_" + actor.toString().replace("-", "").substring(0, 20) + "','Test','test-only','UTC')");
-                sql.executeUpdate("INSERT INTO households(id,name) VALUES ('" + home + "','Home'),('" + other + "','Other')");
+                sql.executeUpdate("INSERT INTO households(id,name,owner_source) VALUES ('" + home + "','Home','PENDING_CLAIM'),('" + other + "','Other','PENDING_CLAIM')");
                 sql.executeUpdate("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES ('" + UUID.randomUUID() + "','" + home + "','" + actor + "','OWNER',true)");
                 var savepoint = connection.setSavepoint();
                 SQLException duplicate = assertThrows(SQLException.class, () -> sql.executeUpdate("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES ('" + UUID.randomUUID() + "','" + other + "','" + actor + "','MEMBER',true)"));

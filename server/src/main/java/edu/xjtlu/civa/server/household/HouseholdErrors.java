@@ -18,12 +18,11 @@ class HouseholdErrors {
     @ExceptionHandler(HouseholdWriteService.Failure.class)
     ResponseEntity<Map<String, Object>> write(HouseholdWriteService.Failure failure, HttpServletRequest request) {
         int status = switch (failure.code) {
-            case "INVALID_INVITATION", "OWNER_CANNOT_LEAVE" -> 400;
-            case "FORBIDDEN" -> 403;
-            case "VERSION_CONFLICT" -> 409;
-            case "HOUSEHOLD_ACCESS_REVOKED" -> 403;
-            case "NOT_FOUND" -> 404;
-            case "ALREADY_IN_HOUSEHOLD" -> 409;
+            case "INVALID_INVITATION", "OWNER_CANNOT_LEAVE", "INVALID_TRANSFER_TARGET" -> 400;
+            case "FORBIDDEN", "HOUSEHOLD_ACCESS_REVOKED", "NOT_HOUSEHOLD_OWNER", "NOT_TRANSFER_TARGET" -> 403;
+            case "NOT_FOUND", "TRANSFER_REQUEST_NOT_FOUND" -> 404;
+            case "VERSION_CONFLICT", "ALREADY_IN_HOUSEHOLD", "TRANSFER_ALREADY_PENDING", "TRANSFER_NOT_PENDING",
+                    "OWNER_MUST_TRANSFER", "OWNER_MUST_DISSOLVE", "HOUSEHOLD_HAS_MEMBERS" -> 409;
             default -> 500;
         };
         return error(status, status == 500 ? "INTERNAL_ERROR" : failure.code, request);
