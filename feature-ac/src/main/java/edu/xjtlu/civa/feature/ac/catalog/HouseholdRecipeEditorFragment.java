@@ -66,6 +66,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         heading.setText(recipeId == null ? R.string.ac_household_recipe_new : R.string.ac_household_recipe_edit);
         view.findViewById(R.id.ac_household_recipe_cancel).setOnClickListener(ignored ->
                 requireActivity().getOnBackPressedDispatcher().onBackPressed());
+        save.setOnClickListener(ignored -> submit());
         save.setEnabled(false);
         loadDictionary(0, new ArrayList<>(), () -> {
             save.setEnabled(true);
