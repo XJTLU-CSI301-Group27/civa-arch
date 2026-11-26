@@ -12,6 +12,11 @@
             <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_plan" style="@style/BdWidget.AddDish" android:layout_width="wrap_content" android:layout_height="48dp" android:layout_marginEnd="6dp" android:text="@string/bd_home_plan" />
     <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/bd_home_calendar" android:layout_width="48dp" android:layout_height="48dp" android:padding="10dp" android:background="@drawable/bd_home_calendar_background" app:srcCompat="@drawable/bd_ic_calendar" android:contentDescription="@string/bd_home_calendar" />
         </LinearLayout>
+        <LinearLayout android:id="@+id/bd_home_scope" android:layout_width="match_parent" android:layout_height="40dp" android:orientation="horizontal" android:gravity="center_vertical">
+            <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_scope_personal" style="@style/BdWidget.AddDish" android:layout_width="0dp" android:layout_weight="1" android:layout_height="36dp" android:textSize="13sp" android:text="@string/bd_home_scope_personal" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_scope_household" style="@style/BdWidget.AddDish" android:layout_width="0dp" android:layout_weight="1" android:layout_height="36dp" android:layout_marginStart="6dp" android:textSize="13sp" android:text="@string/bd_home_scope_household" />
+        </LinearLayout>
+        <TextView android:id="@+id/bd_home_scope_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:textSize="12sp" android:textColor="@color/civa_muted" android:visibility="gone" tools:text="家庭这一天还没排餐" />
         <FrameLayout android:id="@+id/bd_home_hero" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:paddingVertical="3dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_gravity="center" android:orientation="horizontal" android:gravity="center">
                 <LinearLayout android:layout_width="132dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp" android:translationX="36dp">

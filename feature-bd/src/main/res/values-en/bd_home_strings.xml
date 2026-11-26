@@ -24,4 +24,13 @@
         <item>Sat</item>
         <item>Sun</item>
     </string-array>
+    <string name="bd_home_scope_personal">Personal</string>
+    <string name="bd_home_scope_household">Household</string>
+    <string name="bd_home_household_loading">Loading the household plan…</string>
+    <string name="bd_home_household_empty">No household meals on this day. Use Plan in the top-right to arrange them.</string>
+    <string name="bd_home_household_error">Could not load the household plan, try again later</string>
+    <string name="bd_home_household_no_home">Join a household to see its plan</string>
+    <string name="bd_home_household_locked">Locked</string>
+    <string name="bd_home_household_open_plan">Adjust in Plan</string>
+    <string name="bd_home_household_unknown_dish">Unknown recipe</string>
 </resources>

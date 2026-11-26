@@ -24,4 +24,13 @@
         <item>周六</item>
         <item>周日</item>
     </string-array>
+    <string name="bd_home_scope_personal">个人</string>
+    <string name="bd_home_scope_household">家庭</string>
+    <string name="bd_home_household_loading">正在读取家庭计划…</string>
+    <string name="bd_home_household_empty">家庭这一天还没排餐，点右上角「计划」去安排</string>
+    <string name="bd_home_household_error">家庭计划读取失败，稍后再试</string>
+    <string name="bd_home_household_no_home">先加入家庭，才能查看家庭计划</string>
+    <string name="bd_home_household_locked">已锁定</string>
+    <string name="bd_home_household_open_plan">去计划页调整</string>
+    <string name="bd_home_household_unknown_dish">未知菜谱</string>
 </resources>
