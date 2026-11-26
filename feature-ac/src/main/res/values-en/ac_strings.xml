@@ -379,4 +379,9 @@
     <string name="ac_record_pending_message">The result of a previous submission was never confirmed. Check the meal records and cooking history first: if the record is already there, do not add it again. You can record again after closing this message.</string>
     <string name="ac_record_pending_ok">Got it</string>
     <string name="ac_diary_record_hint">This logs what you ate and does not deduct the fridge. Use the cook action on a recipe to deduct stock.</string>
+    <string name="ac_diary_plan_cook">Cook</string>
+    <string name="ac_diary_plan_record">Log meal</string>
+    <string name="ac_diary_plan_cook_missing_title">No matching household recipe</string>
+    <string name="ac_diary_plan_cook_missing_message">The plan item "%1$s" has no matching household recipe. Create or add it in Recipes first, then come back to confirm cooking.</string>
+    <string name="ac_diary_plan_open_recipes">Open recipes</string>
 </resources>

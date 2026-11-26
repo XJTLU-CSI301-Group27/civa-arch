@@ -379,6 +379,11 @@
     <string name="ac_record_pending_message">上次提交的结果没有确认。请先检查食记和做饭历史：记录已存在就无需再记；关闭本提示后可以重新记录。</string>
     <string name="ac_record_pending_ok">知道了</string>
     <string name="ac_diary_record_hint">只记录你吃了什么，不会扣减冰箱；需要扣库存请用菜谱里的“做饭”。</string>
+    <string name="ac_diary_plan_cook">做饭</string>
+    <string name="ac_diary_plan_record">记录用餐</string>
+    <string name="ac_diary_plan_cook_missing_title">没有对应的家庭菜谱</string>
+    <string name="ac_diary_plan_cook_missing_message">计划里的“%1$s”还没有对应的家庭菜谱。请先在菜谱里创建或加入它，再回来确认做饭。</string>
+    <string name="ac_diary_plan_open_recipes">去菜谱</string>
 </resources>
 
 
