@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.View;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.navigation.NavigationBarView;
+import com.google.android.material.navigationrail.NavigationRailView;
 import edu.xjtlu.civa.core.ui.CivaWindow;
 import edu.xjtlu.civa.core.ui.Route;
 import edu.xjtlu.civa.core.data.ApiCalls;
@@ -21,7 +22,9 @@ import edu.xjtlu.civa.feature.ef.LoginHost;
 public class MainActivity extends AppCompatActivity implements LoginHost, HouseholdHost, BdHost, InventoryHost, AcHost, ProfileHost {
     private AppContainer container;
     private AppNavigator navigator;
-    private NavigationBarView navigation;
+    private NavigationBarView bottomNavigation;
+    private NavigationRailView railNavigation;
+    private boolean railMode;
     private boolean introShowing;
     private long introStarted;
     private AppIntroView intro;
@@ -37,18 +40,7 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
         findViewById(android.R.id.content).setTag(edu.xjtlu.civa.core.ui.R.id.civa_intro_blocked, introShowing);
         CivaWindow.apply(this);
         navigator = new AppNavigator(getSupportFragmentManager(), container.sessions);
-        navigation = findViewById(R.id.app_navigation);
-        navigation.setOnItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.app_today) navigator.navigate(Route.TODAY, null);
-            else if (id == R.id.app_recipes) navigator.navigate(Route.RECIPES, null);
-            else if (id == R.id.app_inventory) navigator.navigate(Route.INVENTORY, null);
-            else if (id == R.id.app_diary) navigator.navigate(Route.DIARY, null);
-            else if (id == R.id.app_profile) navigator.navigate(Route.PROFILE, null);
-            else return false;
-            return true;
-        });
-        navigation.setVisibility(container.sessions.isLoggedIn() ? View.VISIBLE : View.GONE);
+        setupNavigation();
         if (savedInstanceState == null || !restore) navigator.navigate(container.sessions.isLoggedIn() ? Route.TODAY : Route.LOGIN, null);
         else if (!container.sessions.isLoggedIn() && !(getSupportFragmentManager().findFragmentById(R.id.app_content) instanceof LoginFragment)) {
             navigator.navigate(Route.LOGIN, null);
@@ -76,11 +68,44 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
         if (view instanceof edu.xjtlu.civa.core.ui.BakeryWelcomeLayout welcome) welcome.playEntrance();
         if (view instanceof android.view.ViewGroup group) for (int i=0;i<group.getChildCount();i++) playWelcome(group.getChildAt(i));
     }
+
+    private void setupNavigation() {
+        bottomNavigation = findViewById(R.id.app_navigation);
+        railNavigation = findViewById(R.id.app_navigation_rail);
+        NavigationBarView.OnItemSelectedListener listener = item -> {
+            int id = item.getItemId();
+            if (id == R.id.app_today) navigator.navigate(Route.TODAY, null);
+            else if (id == R.id.app_recipes) navigator.navigate(Route.RECIPES, null);
+            else if (id == R.id.app_inventory) navigator.navigate(Route.INVENTORY, null);
+            else if (id == R.id.app_diary) navigator.navigate(Route.DIARY, null);
+            else if (id == R.id.app_profile) navigator.navigate(Route.PROFILE, null);
+            else return false;
+            return true;
+        };
+        bottomNavigation.setOnItemSelectedListener(listener);
+        railNavigation.setOnItemSelectedListener(listener);
+        railMode = NavigationMode.forWidth(getResources().getConfiguration().screenWidthDp) == NavigationMode.Kind.RAIL;
+        setNavigationVisible(container.sessions.isLoggedIn());
+    }
+
+    /** Bottom bar on narrow windows, left rail on wide ones (landscape phone or tablet). */
+    private void setNavigationVisible(boolean visible) {
+        bottomNavigation.setVisibility(!visible || railMode ? View.GONE : View.VISIBLE);
+        railNavigation.setVisibility(visible && railMode ? View.VISIBLE : View.GONE);
+    }
+
+    private void checkNavigationItem(int menuId) {
+        android.view.MenuItem bottom = bottomNavigation.getMenu().findItem(menuId);
+        if (bottom != null) bottom.setChecked(true);
+        android.view.MenuItem rail = railNavigation.getMenu().findItem(menuId);
+        if (rail != null) rail.setChecked(true);
+    }
+
     private void updateChrome(androidx.fragment.app.Fragment fragment) {
         boolean auth = fragment instanceof LoginFragment || fragment instanceof edu.xjtlu.civa.feature.ef.HouseholdFragment || !container.sessions.isLoggedIn();
-        navigation.setVisibility(auth ? View.GONE : View.VISIBLE);
-        if (fragment instanceof edu.xjtlu.civa.feature.ef.ProfileFragment) navigation.getMenu().findItem(R.id.app_profile).setChecked(true);
-        else if (fragment instanceof edu.xjtlu.civa.feature.bd.BdHomeFragment) navigation.getMenu().findItem(R.id.app_today).setChecked(true);
+        setNavigationVisible(!auth);
+        if (fragment instanceof edu.xjtlu.civa.feature.ef.ProfileFragment) checkNavigationItem(R.id.app_profile);
+        else if (fragment instanceof edu.xjtlu.civa.feature.bd.BdHomeFragment) checkNavigationItem(R.id.app_today);
         int dark = androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_welcome_brown);
         int paper = androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_welcome_paper);
         View content=findViewById(android.R.id.content);
@@ -106,7 +131,7 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
 
     private void showLoginIfNeeded() {
         if (!container.sessions.isLoggedIn()) {
-            navigation.setVisibility(View.GONE);
+            setNavigationVisible(false);
             var current = getSupportFragmentManager().findFragmentById(R.id.app_content);
             if (current != null && !(current instanceof LoginFragment)
                     && !getSupportFragmentManager().isStateSaved()) navigator.navigate(Route.LOGIN, null);
@@ -115,7 +140,7 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
 
     @Override public AuthRepository authRepository() { return container.auth; }
 
-    @Override public void navigate(Route route, String entityId) { if (route == Route.LOGIN || route == Route.HOUSEHOLD) navigation.setVisibility(View.GONE); navigator.navigate(route, entityId); }
+    @Override public void navigate(Route route, String entityId) { if (route == Route.LOGIN || route == Route.HOUSEHOLD) setNavigationVisible(false); navigator.navigate(route, entityId); }
 
     @Override public ApiProvider api() { return container.api; }
 

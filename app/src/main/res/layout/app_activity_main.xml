@@ -8,23 +8,40 @@
         android:layout_width="match_parent" android:layout_height="match_parent" />
 
     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="horizontal">
 
-        <androidx.fragment.app.FragmentContainerView android:id="@+id/app_content"
-            android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
-
-        <com.google.android.material.bottomnavigation.BottomNavigationView
-            android:id="@+id/app_navigation"
-            android:layout_width="match_parent" android:layout_height="64dp"
-            android:layout_marginHorizontal="14dp" android:layout_marginBottom="8dp"
-            android:paddingTop="4dp" android:paddingBottom="4dp"
-            android:background="@drawable/civa_navigation_background" android:elevation="0dp"
+        <com.google.android.material.navigationrail.NavigationRailView
+            android:id="@+id/app_navigation_rail"
+            android:layout_width="wrap_content" android:layout_height="match_parent"
+            android:background="@android:color/transparent" android:elevation="0dp"
+            android:paddingTop="12dp" android:paddingBottom="12dp"
+            android:visibility="gone"
+            app:itemActiveIndicatorStyle="@style/CivaWidget.NavigationIndicator"
             app:itemIconSize="24dp" app:itemIconTint="@color/app_navigation_icon"
-            app:itemTextColor="@color/app_navigation_text"
+            app:itemRippleColor="#18AA7048" app:itemTextColor="@color/app_navigation_text"
             app:itemTextAppearanceActive="@style/CivaText.Navigation"
             app:itemTextAppearanceInactive="@style/CivaText.Navigation"
-            app:itemActiveIndicatorStyle="@style/CivaWidget.NavigationIndicator"
-            app:itemHorizontalTranslationEnabled="false" app:itemRippleColor="#18AA7048"
             app:labelVisibilityMode="labeled" app:menu="@menu/app_navigation" />
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:orientation="vertical">
+
+            <androidx.fragment.app.FragmentContainerView android:id="@+id/app_content"
+                android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+
+            <com.google.android.material.bottomnavigation.BottomNavigationView
+                android:id="@+id/app_navigation"
+                android:layout_width="match_parent" android:layout_height="64dp"
+                android:layout_marginHorizontal="14dp" android:layout_marginBottom="8dp"
+                android:paddingTop="4dp" android:paddingBottom="4dp"
+                android:background="@drawable/civa_navigation_background" android:elevation="0dp"
+                app:itemIconSize="24dp" app:itemIconTint="@color/app_navigation_icon"
+                app:itemTextColor="@color/app_navigation_text"
+                app:itemTextAppearanceActive="@style/CivaText.Navigation"
+                app:itemTextAppearanceInactive="@style/CivaText.Navigation"
+                app:itemActiveIndicatorStyle="@style/CivaWidget.NavigationIndicator"
+                app:itemHorizontalTranslationEnabled="false" app:itemRippleColor="#18AA7048"
+                app:labelVisibilityMode="labeled" app:menu="@menu/app_navigation" />
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>
