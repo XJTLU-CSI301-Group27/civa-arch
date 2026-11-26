@@ -1,0 +1,675 @@
+--- before/feature-ac/src/main/res/layout/ac_fragment_catalog.xml
++++ after/feature-ac/src/main/res/layout/ac_fragment_catalog.xml
+@@ -2,23 +2,32 @@
+     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:clipChildren="false" android:clipToPadding="false">
+         <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:clipChildren="false" android:clipToPadding="false">
+             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+-                <TextView android:id="@+id/ac_catalog_title" style="@style/CivaText.Title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ac_catalog_title" android:paddingEnd="116dp" />
++                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:gravity="center_vertical" android:orientation="horizontal">
++                    <TextView android:id="@+id/ac_catalog_title" style="@style/CivaText.Title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="@string/ac_catalog_title" />
++                    <com.google.android.material.button.MaterialButton android:id="@+id/ac_catalog_create" style="@style/CivaWidget.SecondaryButton" android:layout_width="wrap_content" android:layout_height="48dp" android:minHeight="48dp" android:layout_marginStart="8dp" android:textSize="15sp" android:paddingHorizontal="14dp" android:text="@string/ac_catalog_create_label" android:visibility="invisible" />
++                </LinearLayout>
+                 <TextView android:id="@+id/ac_catalog_subtitle" style="@style/CivaText.Subtitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ac_catalog_subtitle" android:paddingEnd="116dp" />
+                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center_vertical" android:orientation="horizontal" android:layout_marginEnd="116dp">
+                     <HorizontalScrollView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:scrollbars="none">
+                         <com.google.android.material.chip.ChipGroup android:id="@+id/ac_catalog_sources" android:layout_width="wrap_content" android:layout_height="wrap_content" app:chipSpacingHorizontal="8dp" app:singleLine="true" />
+                     </HorizontalScrollView>
+-                    <com.google.android.material.button.MaterialButton android:id="@+id/ac_catalog_create" style="@style/CivaWidget.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ac_editor_new_title" android:visibility="gone" />
+                 </LinearLayout>
+             </LinearLayout>
+             <ImageView android:id="@+id/ac_catalog_cat" android:layout_width="112dp" android:layout_height="110dp" android:layout_gravity="bottom|end" android:src="@drawable/civa_cat_pan" android:scaleType="fitEnd" android:importantForAccessibility="no" android:translationY="20dp" />
+         </FrameLayout>
+         <EditText android:id="@+id/ac_catalog_search" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="12dp" android:background="@drawable/ac_catalog_search" android:hint="@string/ac_catalog_search" android:inputType="text" android:maxLines="1" android:paddingHorizontal="16dp" android:singleLine="true" android:textColor="@color/civa_text" android:textSize="14sp" android:textColorHint="@color/civa_muted" />
++        <View android:id="@+id/ac_catalog_cat_clearance" android:layout_width="match_parent" android:layout_height="32dp" android:visibility="gone" android:importantForAccessibility="no" />
+     </LinearLayout>
+     <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:scrollbars="none">
+         <com.google.android.material.chip.ChipGroup android:id="@+id/ac_catalog_chips" android:layout_width="wrap_content" android:layout_height="wrap_content" app:chipSpacingHorizontal="8dp" app:singleLine="true" />
+     </HorizontalScrollView>
+-    <androidx.recyclerview.widget.RecyclerView android:id="@+id/ac_catalog_grid" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="8dp" android:clipToPadding="false" android:paddingBottom="8dp" android:scrollbars="none" />
++    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="8dp">
++        <androidx.recyclerview.widget.RecyclerView android:id="@+id/ac_catalog_grid" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:paddingBottom="8dp" android:scrollbars="none" />
++        <LinearLayout android:id="@+id/ac_catalog_empty" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center" android:padding="24dp" android:visibility="gone">
++            <TextView style="@style/CivaText.Title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="20sp" android:gravity="center" android:text="@string/ac_catalog_empty_mine" />
++            <com.google.android.material.button.MaterialButton android:id="@+id/ac_catalog_empty_create" style="@style/CivaWidget.SecondaryButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="@string/ac_catalog_empty_add" />
++        </LinearLayout>
++    </FrameLayout>
+     <TextView android:id="@+id/ac_catalog_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="4dp" android:textSize="13sp" android:textColor="@color/civa_muted" />
+     <com.google.android.material.button.MaterialButton android:id="@+id/ac_catalog_more" style="@style/CivaWidget.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center_horizontal" android:text="@string/ac_catalog_more_plain" android:visibility="gone" />
+ </LinearLayout>
+--- before/feature-ac/src/main/res/values/ac_strings.xml
++++ after/feature-ac/src/main/res/values/ac_strings.xml
+@@ -65,6 +65,10 @@
+     <string name="ac_household_recipe_ingredients_label">食材（每行：名称 数量）</string>
+     <string name="ac_household_recipe_ingredients_hint">鸡蛋 3\n番茄 2</string>
+ <string name="ac_detail_close_symbol">×</string><string name="ac_detail_close">返回菜谱列表</string>
++    <string name="ac_catalog_create_label">＋ 新建菜谱</string>
++    <string name="ac_catalog_empty_mine">这里还空着，放进你的第一道拿手菜吧</string>
++    <string name="ac_catalog_empty_add">＋ 添加菜谱</string>
++    <string name="ac_catalog_join_first">先加入家庭，再和家人分享菜谱吧</string>
+ </resources>
+ 
+ 
+--- before/feature-ac/src/main/java/edu/xjtlu/civa/feature/ac/catalog/RecipeCatalogFragment.java
++++ after/feature-ac/src/main/java/edu/xjtlu/civa/feature/ac/catalog/RecipeCatalogFragment.java
+@@ -50,6 +50,7 @@
+     private MaterialButton more, create;
+     private EditText search;
+     private ChipGroup chips, sources;
++    private View empty, catClearance;
+     private Call<?> call;
+     private Source source = Source.PUBLIC;
+     private String query = "", category = "";
+@@ -73,12 +74,18 @@
+         search = view.findViewById(R.id.ac_catalog_search);
+         chips = view.findViewById(R.id.ac_catalog_chips);
+         sources = view.findViewById(R.id.ac_catalog_sources);
++        empty = view.findViewById(R.id.ac_catalog_empty);
++        catClearance = view.findViewById(R.id.ac_catalog_cat_clearance);
++        view.findViewById(R.id.ac_catalog_empty_create).setOnClickListener(ignored -> create.performClick());
+ 
+         int columns = getResources().getConfiguration().screenWidthDp >= 600 ? 3 : 2;
+         grid.setLayoutManager(new GridLayoutManager(requireContext(), columns));
+         grid.setAdapter(adapter);
+         more.setOnClickListener(ignored -> load(false));
+-        create.setOnClickListener(ignored -> host.navigate(Route.RECIPE_EDIT, source == Source.HOUSEHOLD ? "hnew" : "new"));
++        create.setOnClickListener(ignored -> {
++            if (source == Source.HOUSEHOLD && host.sessions().currentHouseholdId() == null) host.navigate(Route.HOUSEHOLD, null);
++            else host.navigate(Route.RECIPE_EDIT, source == Source.HOUSEHOLD ? "hnew" : "new");
++        });
+         buildSources();
+         buildCategoryChips();
+         search.addTextChangedListener(new TextWatcher() {
+@@ -114,7 +121,8 @@
+                 source = Source.valueOf(entry[1]);
+                 search.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
+                 chips.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
+-                create.setVisibility(source == Source.PERSONAL || source == Source.HOUSEHOLD ? View.VISIBLE : View.GONE);
++                catClearance.setVisibility(source == Source.FAVORITES ? View.VISIBLE : View.GONE);
++                create.setVisibility(source == Source.PERSONAL || source == Source.HOUSEHOLD ? View.VISIBLE : View.INVISIBLE);
+                 load(true);
+             });
+             sources.addView(chip);
+@@ -174,7 +182,14 @@
+     }
+ 
+     private void load(boolean reset) {
++        if (reset) {
++            // A newly selected source/search owns a fresh callback generation.
++            viewCallbacks.startView();
++            if (call != null) { call.cancel(); call = null; }
++            loading = false;
++        }
+         if (loading) return;
++        empty.setVisibility(View.GONE);
+         if (reset) {
+             page = 0;
+             total = 0;
+@@ -219,7 +234,7 @@
+             java.util.UUID home = host.sessions() == null ? null : uuidOrNull(host.sessions().currentHouseholdId());
+             if (home == null) {
+                 loading = false;
+-                failed();
++                status.setText(R.string.ac_catalog_join_first);
+                 return;
+             }
+             Call<edu.xjtlu.civa.api.model.RecipePage> request = host.api().recipe().listRecipes(
+@@ -279,6 +294,7 @@
+ 
+     private void render(int requestPage) {
+         adapter.submit(loaded);
++        empty.setVisibility(loaded.isEmpty() && (source == Source.PERSONAL || source == Source.HOUSEHOLD) ? View.VISIBLE : View.GONE);
+         page = requestPage + 1;
+         status.setText(getString(R.string.ac_catalog_total, (int) total));
+         more.setVisibility(loaded.size() < total ? View.VISIBLE : View.GONE);
+@@ -312,6 +328,8 @@
+         search = null;
+         chips = null;
+         sources = null;
++        empty = null;
++        catClearance = null;
+         host = null;
+         super.onDestroyView();
+     }
+--- before/feature-ef/src/main/res/layout/ef_fragment_household.xml
++++ after/feature-ef/src/main/res/layout/ef_fragment_household.xml
+@@ -1,5 +1,5 @@
+-<edu.xjtlu.civa.core.ui.BakeryWelcomeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-    xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/ef_welcome_scene"
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent">
++<edu.xjtlu.civa.core.ui.BakeryWelcomeLayout android:id="@+id/ef_welcome_scene"
+     android:layout_width="match_parent" android:layout_height="match_parent">
+ 
+     <ScrollView android:layout_width="match_parent" android:layout_height="match_parent"
+@@ -35,12 +35,15 @@
+                 android:layout_height="wrap_content" android:layout_marginTop="8dp" android:hint="@string/ef_household_code">
+                 <com.google.android.material.textfield.TextInputEditText android:fontFamily="@font/civa_kuaile" android:paddingHorizontal="16dp" android:paddingVertical="14dp" android:id="@+id/ef_household_code"
+                     android:layout_width="match_parent" android:layout_height="wrap_content"
+-                    android:inputType="textCapCharacters" android:saveEnabled="false" />
++                    android:inputType="textVisiblePassword" android:saveEnabled="false" />
+             </com.google.android.material.textfield.TextInputLayout>
+             <com.google.android.material.button.MaterialButton android:id="@+id/ef_join"
+                 style="@style/CivaWidget.SecondaryButton"
+                 android:layout_width="match_parent" android:layout_height="wrap_content"
+                 android:layout_marginTop="16dp" android:text="@string/ef_join_household" />
++            <com.google.android.material.button.MaterialButton android:id="@+id/ef_leave"
++                style="@style/CivaWidget.SecondaryButton" android:layout_width="match_parent" android:layout_height="wrap_content"
++                android:layout_marginTop="14dp" android:text="@string/ef_leave_household" android:textColor="@color/civa_primary_dark" android:visibility="gone" />
+             <com.google.android.material.button.MaterialButton android:id="@+id/ef_abandon"
+                 style="@style/CivaWidget.TextButton"
+                 android:layout_width="match_parent" android:layout_height="wrap_content"
+@@ -52,3 +55,6 @@
+         </LinearLayout>
+     </ScrollView>
+ </edu.xjtlu.civa.core.ui.BakeryWelcomeLayout>
++
++    <com.google.android.material.button.MaterialButton android:id="@+id/ef_household_close" style="@style/CivaWidget.TextButton" android:layout_width="48dp" android:layout_height="48dp" android:layout_gravity="top|start" android:layout_margin="10dp" android:minWidth="0dp" android:padding="0dp" android:text="@string/ef_close_symbol" android:textSize="22sp" android:textColor="@color/civa_surface" android:contentDescription="@string/ef_household_close" />
++</FrameLayout>
+--- before/feature-ef/src/main/res/values/ef_strings.xml
++++ after/feature-ef/src/main/res/values/ef_strings.xml
+@@ -31,11 +31,11 @@
+     <string name="ef_profile_account">登录账号</string>
+     <string name="ef_profile_signed_out">未登录</string>
+     <string name="ef_profile_household">当前家庭</string>
+-    <string name="ef_profile_no_household">尚未加入家庭</string>
++    <string name="ef_profile_no_household">还尚未加入家庭哦</string>
+     <string name="ef_profile_household_note">家庭成员共享菜谱、冰箱与排餐</string>
+     <string name="ef_profile_household_missing">创建或加入家庭后可使用共享功能</string>
+     <string name="ef_profile_household_settings">家庭设置</string>
+-    <string name="ef_profile_household_join">创建 / 加入家庭</string>
++    <string name="ef_profile_household_join">加入家庭</string>
+     <string name="ef_profile_logout">退出登录</string>
+     <string name="ef_profile_footer">Civa · CSI301 小组项目</string>
+     <string name="ef_login_title">和我一起CIVA</string>
+@@ -49,4 +49,11 @@
+     <string name="ef_profile_save_error">请输入 1–60 个字的名字，或稍后重试保存。</string>
+     <string name="ef_photo_loading">正在准备照片…</string><string name="ef_photo_error">这张照片没能打开，换一张试试吧。</string>
+     <string name="ef_language_title">语言选择</string>
++    <string name="ef_leave_household">退出家庭</string>
++    <string name="ef_household_close">返回我的，稍后再设置家庭</string>
++    <string name="ef_household_owner_leave">你是这个家庭的家主，请先处理家主身份，再退出家庭。当前版本暂不提供转让入口。</string>
++    <string name="ef_household_leave_confirm">退出当前家庭？退出后将无法查看该家庭的共享内容，个人资料和个人菜谱会保留。</string>
++    <string name="ef_household_leave_yes">确认退出</string>
++    <string name="ef_household_leave_cancel">再想想</string>
++    <string name="ef_household_version_conflict">家庭成员信息已更新，请重试。</string>
+ </resources>
+--- before/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdFragment.java
++++ after/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdFragment.java
+@@ -28,7 +28,7 @@
+             }
+         }).get(HouseholdViewModel.class);
+         binding = EfFragmentHouseholdBinding.bind(view);
+-        ((edu.xjtlu.civa.core.ui.BakeryWelcomeLayout)view).setGreeting(getString(R.string.ef_household_greeting));
++        ((edu.xjtlu.civa.core.ui.BakeryWelcomeLayout)view.findViewById(R.id.ef_welcome_scene)).setGreeting(getString(R.string.ef_household_greeting));
+         binding.efHouseholdName.setText(model.name);
+         binding.efHouseholdCode.setText(model.code);
+         binding.efHouseholdName.addTextChangedListener(watcher(value -> model.name = value));
+@@ -36,6 +36,15 @@
+         model.recover();
+         binding.efCreate.setOnClickListener(ignored -> model.create());
+         binding.efJoin.setOnClickListener(ignored -> model.join());
++        binding.efHouseholdClose.setOnClickListener(ignored -> close());
++        binding.efLeave.setVisibility(host.sessions().currentHouseholdId() == null ? View.GONE : View.VISIBLE);
++        binding.efLeave.setOnClickListener(ignored -> new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
++                .setMessage(R.string.ef_household_leave_confirm).setNegativeButton(R.string.ef_household_leave_cancel, null)
++                .setPositiveButton(R.string.ef_household_leave_yes, (dialog, which) -> model.leave()).show());
++        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), new androidx.activity.OnBackPressedCallback(true) {
++            @Override public void handleOnBackPressed() { if (!model.isPending()) close(); }
++        });
++        model.left.observe(getViewLifecycleOwner(), value -> { if (Boolean.TRUE.equals(value) && isResumed()) close(); });
+         binding.efAbandon.setOnClickListener(ignored -> model.abandon());
+         model.recovering.observe(getViewLifecycleOwner(), value -> {
+             boolean recovering = value != null && !value.isEmpty();
+@@ -51,6 +60,8 @@
+             boolean busy = Boolean.TRUE.equals(value);
+             binding.efCreate.setEnabled(!busy);
+             binding.efJoin.setEnabled(!busy);
++            binding.efLeave.setEnabled(!busy);
++            binding.efHouseholdClose.setEnabled(!busy);
+             binding.efCreate.setText(busy ? R.string.ef_busy : R.string.ef_create_household);
+         });
+         model.message.observe(getViewLifecycleOwner(), value -> {
+@@ -62,8 +73,11 @@
+         });
+     }
+ 
++    private void close() { ((edu.xjtlu.civa.core.ui.NavHost) requireActivity()).navigate(edu.xjtlu.civa.core.ui.Route.PROFILE, null); }
++
+     @Override public void onResume() {
+         super.onResume();
++        if (model != null && Boolean.TRUE.equals(model.left.getValue())) { close(); return; }
+         if (model != null && Boolean.TRUE.equals(model.ready.getValue())) ((HouseholdHost) requireActivity()).onHouseholdReady();
+     }
+ 
+@@ -72,6 +86,8 @@
+     private static int messageResource(String code) {
+         return switch (code) {
+             case "VALIDATION_ERROR" -> R.string.ef_invalid_input;
++            case "OWNER_CANNOT_LEAVE" -> R.string.ef_household_owner_leave;
++            case "VERSION_CONFLICT" -> R.string.ef_household_version_conflict;
+             case "ALREADY_IN_HOUSEHOLD" -> R.string.ef_already_in_household;
+             case "INVALID_INVITATION" -> R.string.ef_invalid_invitation;
+             case "LOCAL_STORAGE_ERROR" -> R.string.ef_generic_error;
+--- before/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdViewModel.java
++++ after/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdViewModel.java
+@@ -21,6 +21,7 @@
+ final class HouseholdViewModel extends ViewModel {
+     final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
+     final MutableLiveData<Boolean> ready = new MutableLiveData<>(false);
++    final MutableLiveData<Boolean> left = new MutableLiveData<>(false);
+     final MutableLiveData<String> message = new MutableLiveData<>();
+     final MutableLiveData<String> recovering = new MutableLiveData<>();
+     private final ApiProvider api;
+@@ -77,6 +78,18 @@
+         if (trimmed.isEmpty()) { message.postValue("VALIDATION_ERROR"); return; }
+         submit("joinHousehold", trimmed,
+                 () -> api.household().joinHousehold(UUID.fromString(pendingKey), new JoinHouseholdRequest().code(trimmed)));
++    }
++
++    void leave() {
++        if (pending || sessions.currentHouseholdId() == null) return;
++        pending = true; loading.postValue(true); message.postValue("");
++        auth.leaveHousehold(new ApiCallback<Void>() {
++            @Override public void onSuccess(Void value) {
++                if (closed) return;
++                pending = false; loading.postValue(false); left.postValue(true);
++            }
++            @Override public void onError(ApiError error) { fail(error); }
++        });
+     }
+ 
+     void abandon() {
+--- before/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/ProfileFragment.java
++++ after/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/ProfileFragment.java
+@@ -31,10 +31,8 @@
+         profile=new LocalProfileStore(requireContext(),userId);
+         TextView id=view.findViewById(R.id.ef_profile_id);id.setText(getString(R.string.ef_profile_id,userId));
+         TextView household=view.findViewById(R.id.ef_profile_household);TextView note=view.findViewById(R.id.ef_profile_note);
+-        String householdId=host.sessions().currentHouseholdId();boolean joined=householdId!=null&&!householdId.isEmpty();
+-        household.setText(joined?getString(R.string.ef_profile_id,householdId):getString(R.string.ef_profile_no_household));
+-        note.setText(joined?R.string.ef_profile_household_note:R.string.ef_profile_household_missing);
+-        MaterialButton settings=view.findViewById(R.id.ef_profile_household_action);settings.setText(joined?R.string.ef_profile_household_settings:R.string.ef_profile_household_join);settings.setOnClickListener(v->host.navigate(Route.HOUSEHOLD,null));
++        paintHousehold(view,host);
++        view.findViewById(R.id.ef_profile_household_action).setOnClickListener(v->host.navigate(Route.HOUSEHOLD,null));
+         view.findViewById(R.id.ef_profile_language).setOnClickListener(v->{if(getChildFragmentManager().findFragmentByTag("language")==null)new LanguageDialog().show(getChildFragmentManager(),"language");});
+         view.findViewById(R.id.ef_profile_edit).setOnClickListener(v->{if(getChildFragmentManager().findFragmentByTag("edit-profile")==null)ProfileEditDialog.create(userId,shownName()).show(getChildFragmentManager(),"edit-profile");});
+         MaterialButton logout=view.findViewById(R.id.ef_profile_logout);logout.setOnClickListener(v->{logout.setEnabled(false);host.authRepository().logout(new ApiCallback<Void>(){
+@@ -45,11 +43,18 @@
+         host.authRepository().refreshMe(new ApiCallback<User>(){
+             @Override public void onSuccess(@Nullable User user){
+                 if(getView()!=view||user==null||!userId.equals(host.sessions().currentUserId()))return;
++                paintHousehold(view,host);
+                 registeredName=user.getDisplayName()==null||user.getDisplayName().isBlank()?user.getUsername():user.getDisplayName();
+                 if(profile.name().isBlank())profile.save(registeredName,null);paint(view);
+             }
+             @Override public void onError(ApiError error){ }
+         });
++    }
++    private void paintHousehold(View view, ProfileHost host) {
++        String householdId=host.sessions().currentHouseholdId(); boolean joined=householdId!=null&&!householdId.isEmpty();
++        ((TextView)view.findViewById(R.id.ef_profile_household)).setText(joined?getString(R.string.ef_profile_id,householdId):getString(R.string.ef_profile_no_household));
++        view.findViewById(R.id.ef_profile_note).setVisibility(joined?View.VISIBLE:View.GONE);
++        ((MaterialButton)view.findViewById(R.id.ef_profile_household_action)).setText(joined?R.string.ef_profile_household_settings:R.string.ef_profile_household_join);
+     }
+     private String shownName(){String local=profile.name();return !local.isBlank()?local:registeredName.isBlank()?getString(R.string.ef_profile_default_name):registeredName;}
+     private void paint(View view){if(profile==null)return;((TextView)view.findViewById(R.id.ef_profile_account)).setText(shownName());ProfileEditDialog.paintAvatar((ImageView)view.findViewById(R.id.ef_profile_avatar),profile.avatar());}
+--- before/app/src/main/java/edu/xjtlu/civa/MainActivity.java
++++ after/app/src/main/java/edu/xjtlu/civa/MainActivity.java
+@@ -79,6 +79,8 @@
+     private void updateChrome(androidx.fragment.app.Fragment fragment) {
+         boolean auth = fragment instanceof LoginFragment || fragment instanceof edu.xjtlu.civa.feature.ef.HouseholdFragment || !container.sessions.isLoggedIn();
+         navigation.setVisibility(auth ? View.GONE : View.VISIBLE);
++        if (fragment instanceof edu.xjtlu.civa.feature.ef.ProfileFragment) navigation.getMenu().findItem(R.id.app_profile).setChecked(true);
++        else if (fragment instanceof edu.xjtlu.civa.feature.bd.BdHomeFragment) navigation.getMenu().findItem(R.id.app_today).setChecked(true);
+         int dark = androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_welcome_brown);
+         int paper = androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_welcome_paper);
+         View content=findViewById(android.R.id.content);
+@@ -128,6 +130,8 @@
+ 
+     @Override public void onAuthenticated() {
+         if (!container.sessions.isLoggedIn() || getSupportFragmentManager().isStateSaved()) return;
++        View focused = getCurrentFocus(); if (focused != null) focused.clearFocus();
++        androidx.core.view.WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView()).hide(androidx.core.view.WindowInsetsCompat.Type.ime());
+         navigate(container.sessions.currentHouseholdId() == null ? Route.HOUSEHOLD : Route.TODAY, null);
+     }
+ }
+--- before/core-data/src/main/java/edu/xjtlu/civa/core/data/AuthRepository.java
++++ after/core-data/src/main/java/edu/xjtlu/civa/core/data/AuthRepository.java
+@@ -100,6 +100,67 @@
+         }
+     }
+ 
++    /** Leave only the current user's membership; revoke household-scoped work after server confirmation. */
++    public void leaveHousehold(ApiCallback<Void> callback) {
++        synchronized (sessions) {
++            SessionStore.Snapshot owner = sessions.snapshot();
++            if (owner.token == null || owner.userId == null || owner.householdId == null) {
++                callback.onError(ApiCalls.localError("NOT_FOUND")); return;
++            }
++            findMembership(owner, 0, callback);
++        }
++    }
++
++    private void findMembership(SessionStore.Snapshot owner, int page, ApiCallback<Void> callback) {
++        calls.enqueue(provider.household().listMembers(java.util.UUID.fromString(owner.householdId), page, 100), new ApiCallback<edu.xjtlu.civa.api.model.MembershipPage>() {
++            @Override public void onSuccess(edu.xjtlu.civa.api.model.MembershipPage result) {
++                if (sessions.snapshot().generation != owner.generation) return;
++                if (result == null || result.getItems() == null) { callback.onError(ApiCalls.localError("INVALID_RESPONSE")); return; }
++                for (var member : result.getItems()) {
++                    if (member != null && member.getUserId() != null && owner.userId.equals(member.getUserId().toString()) && Boolean.TRUE.equals(member.getActive())) {
++                        if (member.getVersion() == null) { callback.onError(ApiCalls.localError("INVALID_RESPONSE")); return; }
++                        removeMembership(owner, member.getVersion(), callback); return;
++                    }
++                }
++                if (!result.getItems().isEmpty() && result.getTotal() != null && (page + 1L) * 100 < result.getTotal()) findMembership(owner, page + 1, callback);
++                else callback.onError(ApiCalls.localError("NOT_FOUND"));
++            }
++            @Override public void onError(ApiError error) { leaveFailed(owner, error, callback); }
++        });
++    }
++
++    private void removeMembership(SessionStore.Snapshot owner, long version, ApiCallback<Void> callback) {
++        calls.enqueue(provider.household().removeMember(java.util.UUID.fromString(owner.householdId), java.util.UUID.fromString(owner.userId), version), new ApiCallback<Void>() {
++            @Override public void onSuccess(Void value) {
++                synchronized (sessions) {
++                    if (sessions.revokeHouseholdIfCurrent(owner.generation, owner.householdId)) callback.onSuccess(null);
++                }
++            }
++            @Override public void onError(ApiError error) { leaveFailed(owner, error, callback); }
++        });
++    }
++
++    private void leaveFailed(SessionStore.Snapshot owner, ApiError error, ApiCallback<Void> callback) {
++        SessionStore.Snapshot current = sessions.snapshot();
++        if ("HOUSEHOLD_ACCESS_REVOKED".equals(error.code) && current.generation == owner.generation + 1
++                && Objects.equals(current.userId, owner.userId) && current.householdId == null && current.token != null) {
++            callback.onSuccess(null); return;
++        }
++        if (current.generation != owner.generation) return;
++        if (!"NETWORK_ERROR".equals(error.code) && !"TIMEOUT".equals(error.code)) { callback.onError(error); return; }
++        // A lost DELETE response is unknown, not a local-only successful exit. Reconcile with getMe.
++        calls.enqueue(provider.profile().getMe(), new ApiCallback<User>() {
++            @Override public void onSuccess(User user) {
++                synchronized (sessions) {
++                    if (validUser(user) && owner.userId.equals(user.getId().toString()) && user.getHouseholdId() == null
++                            && sessions.revokeHouseholdIfCurrent(owner.generation, owner.householdId)) callback.onSuccess(null);
++                    else callback.onError(error);
++                }
++            }
++            @Override public void onError(ApiError ignored) { callback.onError(error); }
++        });
++    }
++
+     private static boolean valid(AuthSession session) {
+         if (session == null || session.getToken() == null || session.getToken().isEmpty() || !validUser(session.getUser())
+                 || session.getExpiresAt() == null) return false;
+--- before/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdConfiguration.java
++++ after/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdConfiguration.java
+@@ -15,6 +15,7 @@
+ 
+ @Configuration(proxyBeanMethods = false)
+ class HouseholdConfiguration {
++    @Bean HouseholdMembershipService householdMembershipService(JdbcTemplate jdbc, PlatformTransactionManager manager) { return new HouseholdMembershipService(jdbc, manager); }
+     @Bean HouseholdReadService householdReadService(JdbcTemplate jdbc) { return new HouseholdReadService(jdbc); }
+     @Bean IdempotencyExecutor idempotencyExecutor(JdbcTemplate jdbc, PlatformTransactionManager manager) { return new IdempotencyExecutor(jdbc, manager); }
+     @Bean HouseholdWriteService householdWriteService(JdbcTemplate jdbc, IdempotencyExecutor executor, JsonbCodec json) {
+--- before/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdController.java
++++ after/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdController.java
+@@ -25,13 +25,14 @@
+ class HouseholdController implements HouseholdApi {
+     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
+     private final HouseholdReadService read;
++    private final HouseholdMembershipService membership;
+     private final HouseholdWriteService write;
+     private final CanonicalRequestDigest digest;
+     private final JsonNode schemas;
+     private final ObjectMapper json;
+ 
+-    HouseholdController(HouseholdReadService read, HouseholdWriteService write, CanonicalRequestDigest digest, JsonNode schemas, ObjectMapper json) {
+-        this.read = read; this.write = write; this.digest = digest; this.schemas = schemas; this.json = json;
++    HouseholdController(HouseholdReadService read, HouseholdMembershipService membership, HouseholdWriteService write, CanonicalRequestDigest digest, JsonNode schemas, ObjectMapper json) {
++        this.read = read; this.membership = membership; this.write = write; this.digest = digest; this.schemas = schemas; this.json = json;
+     }
+ 
+     @Override public ResponseEntity<Household> createHousehold(UUID key, CreateHouseholdRequest input) {
+@@ -61,7 +62,7 @@
+     }
+ 
+     @Override public ResponseEntity<Invitation> createInvitation(UUID id, UUID key) { throw new NotImplemented(); }
+-    @Override public ResponseEntity<Void> removeMember(UUID id, UUID userId, Long version) { throw new NotImplemented(); }
++    @Override public ResponseEntity<Void> removeMember(UUID id, UUID userId, Long version) { membership.remove(actor(), id, userId, version); return ResponseEntity.noContent().build(); }
+ 
+     private byte[] hash(String path, Object input, String schema) {
+         try { return digest.digestJson("POST", path, json.writeValueAsString(input), schemas.get(schema)); }
+--- before/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdErrors.java
++++ after/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdErrors.java
+@@ -18,7 +18,9 @@
+     @ExceptionHandler(HouseholdWriteService.Failure.class)
+     ResponseEntity<Map<String, Object>> write(HouseholdWriteService.Failure failure, HttpServletRequest request) {
+         int status = switch (failure.code) {
+-            case "INVALID_INVITATION" -> 400;
++            case "INVALID_INVITATION", "OWNER_CANNOT_LEAVE" -> 400;
++            case "FORBIDDEN" -> 403;
++            case "VERSION_CONFLICT" -> 409;
+             case "HOUSEHOLD_ACCESS_REVOKED" -> 403;
+             case "NOT_FOUND" -> 404;
+             case "ALREADY_IN_HOUSEHOLD" -> 409;
+--- before/contracts/public-surface.draft.json
++++ after/contracts/public-surface.draft.json
+@@ -461,7 +461,8 @@
+         "void login(LoginRequest request, ApiCallback<User> callback)",
+         "void cancelLogin()",
+         "void logout(ApiCallback<Void> callback)",
+-        "void refreshMe(ApiCallback<User> callback)"
++        "void refreshMe(ApiCallback<User> callback)",
++        "void leaveHousehold(ApiCallback<Void> callback)"
+       ],
+       "incomplete": [
+         "session cache cleanup",
+--- before/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdMembershipService.java
++++ after/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdMembershipService.java
+@@ -0,0 +1,46 @@
++package edu.xjtlu.civa.server.household;
++
++import java.util.List;
++import java.util.UUID;
++import org.springframework.jdbc.core.JdbcTemplate;
++import org.springframework.transaction.PlatformTransactionManager;
++import org.springframework.transaction.support.TransactionTemplate;
++
++/** Existing removeMember contract: self-leave or owner removal, never remove an owner. */
++final class HouseholdMembershipService {
++    private final JdbcTemplate jdbc;
++    private final TransactionTemplate transactions;
++
++    HouseholdMembershipService(JdbcTemplate jdbc, PlatformTransactionManager manager) {
++        this.jdbc = jdbc;
++        transactions = new TransactionTemplate(manager);
++    }
++
++    void remove(UUID actor, UUID household, UUID target, long expectedVersion) {
++        if (expectedVersion < 0) throw new IllegalArgumentException("Invalid membership version");
++        transactions.executeWithoutResult(status -> {
++            List<UUID> homes = jdbc.query("SELECT id FROM households WHERE id=? FOR UPDATE", (rs, n) -> rs.getObject(1, UUID.class), household);
++            if (homes.isEmpty()) throw new HouseholdWriteService.Failure("NOT_FOUND");
++            Member acting = active(household, actor);
++            if (acting == null) {
++                Boolean revoked = jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM memberships WHERE household_id=? AND user_id=? AND NOT active)", Boolean.class, household, actor);
++                throw new HouseholdWriteService.Failure(Boolean.TRUE.equals(revoked) ? "HOUSEHOLD_ACCESS_REVOKED" : "NOT_FOUND");
++            }
++            if (!actor.equals(target) && !"OWNER".equals(acting.role)) throw new HouseholdWriteService.Failure("FORBIDDEN");
++            Member leaving = active(household, target);
++            if (leaving == null) throw new HouseholdWriteService.Failure("NOT_FOUND");
++            if ("OWNER".equals(leaving.role)) throw new HouseholdWriteService.Failure("OWNER_CANNOT_LEAVE");
++            if (leaving.version != expectedVersion) throw new HouseholdWriteService.Failure("VERSION_CONFLICT");
++            int count = jdbc.update("UPDATE memberships SET active=false,version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND active AND version=?", leaving.id, expectedVersion);
++            if (count != 1) throw new HouseholdWriteService.Failure("VERSION_CONFLICT");
++        });
++    }
++
++    private Member active(UUID household, UUID user) {
++        List<Member> members = jdbc.query("SELECT id,role,version FROM memberships WHERE household_id=? AND user_id=? AND active FOR UPDATE",
++                (rs, n) -> new Member(rs.getObject(1, UUID.class), rs.getString(2), rs.getLong(3)), household, user);
++        return members.isEmpty() ? null : members.get(0);
++    }
++
++    private record Member(UUID id, String role, long version) { }
++}
+--- before/core-data/src/test/java/edu/xjtlu/civa/core/data/HouseholdLeaveTest.java
++++ after/core-data/src/test/java/edu/xjtlu/civa/core/data/HouseholdLeaveTest.java
+@@ -0,0 +1,77 @@
++package edu.xjtlu.civa.core.data;
++
++import edu.xjtlu.civa.core.ui.ApiError;
++import java.util.concurrent.BlockingQueue;
++import java.util.concurrent.LinkedBlockingQueue;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.atomic.AtomicBoolean;
++import java.util.concurrent.atomic.AtomicReference;
++import okhttp3.mockwebserver.MockResponse;
++import okhttp3.mockwebserver.MockWebServer;
++import okhttp3.mockwebserver.SocketPolicy;
++import org.junit.Test;
++import static org.junit.Assert.*;
++
++public class HouseholdLeaveTest {
++    private static final String USER="7e0dd3fb-30d6-4df5-b495-fd067610db79", HOME="8e0dd3fb-30d6-4df5-b495-fd067610db79";
++    private static final String MEMBERS="{\"items\":[{\"userId\":\""+USER+"\",\"active\":true,\"version\":7}],\"page\":0,\"size\":100,\"total\":1}";
++
++    @Test public void confirmedLeaveKeepsLoginAndInvalidatesQueuedHouseholdWork() throws Exception {
++        try(MockWebServer server=new MockWebServer()) {
++            server.start();SessionStore sessions=new SessionStore();sessions.installIfCurrent(0,"test-token",USER,HOME);
++            BlockingQueue<Runnable> main=new LinkedBlockingQueue<>();ApiCalls calls=new ApiCalls(sessions,main::add);
++            AuthRepository auth=new AuthRepository(new RealApiProvider(server.url("/").toString(),sessions),sessions,calls);
++            AtomicBoolean left=new AtomicBoolean();server.enqueue(new MockResponse().setBody(MEMBERS));server.enqueue(new MockResponse().setResponseCode(204));
++            auth.leaveHousehold(callback(left));assertNotNull(server.takeRequest(5,TimeUnit.SECONDS));run(main);
++            var deletion=server.takeRequest(5,TimeUnit.SECONDS);assertNotNull(deletion);
++            assertEquals("DELETE",deletion.getMethod());assertEquals("/api/v1/households/"+HOME+"/members/"+USER+"?expectedVersion=7",deletion.getPath());
++            Runnable deletionResult=main.poll(5,TimeUnit.SECONDS);assertNotNull(deletionResult);
++            AtomicBoolean stale=new AtomicBoolean();calls.deliver(sessions.snapshot().generation,()->stale.set(true));
++            deletionResult.run();run(main);assertTrue(left.get());assertFalse(stale.get());assertTrue(sessions.isLoggedIn());assertNull(sessions.currentHouseholdId());
++        }
++    }
++
++    @Test public void ownerRejectionDoesNotChangeHouseholdOrLogin() throws Exception {
++        try(MockWebServer server=new MockWebServer()) {
++            server.start();SessionStore sessions=new SessionStore();sessions.installIfCurrent(0,"test-token",USER,HOME);
++            BlockingQueue<Runnable> main=new LinkedBlockingQueue<>();ApiCalls calls=new ApiCalls(sessions,main::add);
++            AuthRepository auth=new AuthRepository(new RealApiProvider(server.url("/").toString(),sessions),sessions,calls);
++            AtomicReference<String> failure=new AtomicReference<>();server.enqueue(new MockResponse().setBody(MEMBERS));
++            server.enqueue(new MockResponse().setResponseCode(400).setBody("{\"code\":\"OWNER_CANNOT_LEAVE\",\"message\":\"Owner cannot leave\",\"traceId\":\"test-trace\",\"fieldErrors\":[]}"));
++            auth.leaveHousehold(new ApiCallback<Void>() {public void onSuccess(Void value){fail("Owner left");}public void onError(ApiError error){failure.set(error.code);}});
++            assertNotNull(server.takeRequest(5,TimeUnit.SECONDS));run(main);assertNotNull(server.takeRequest(5,TimeUnit.SECONDS));run(main);
++            assertEquals("OWNER_CANNOT_LEAVE",failure.get());assertEquals(HOME,sessions.currentHouseholdId());assertTrue(sessions.isLoggedIn());
++        }
++    }
++
++    @Test public void lateDeleteCannotClearAnotherAccount() throws Exception {
++        try(MockWebServer server=new MockWebServer()) {
++            server.start();SessionStore sessions=new SessionStore();sessions.installIfCurrent(0,"test-token",USER,HOME);
++            BlockingQueue<Runnable> main=new LinkedBlockingQueue<>();ApiCalls calls=new ApiCalls(sessions,main::add);
++            AuthRepository auth=new AuthRepository(new RealApiProvider(server.url("/").toString(),sessions),sessions,calls);
++            AtomicBoolean delivered=new AtomicBoolean();server.enqueue(new MockResponse().setBody(MEMBERS));server.enqueue(new MockResponse().setResponseCode(204));
++            auth.leaveHousehold(callback(delivered));assertNotNull(server.takeRequest(5,TimeUnit.SECONDS));run(main);assertNotNull(server.takeRequest(5,TimeUnit.SECONDS));
++            Runnable queued=main.poll(5,TimeUnit.SECONDS);assertNotNull(queued);
++            sessions.clear();sessions.installIfCurrent(sessions.snapshot().generation,"another-token","another-user","another-home");queued.run();
++            assertFalse(delivered.get());assertEquals("another-home",sessions.currentHouseholdId());
++        }
++    }
++
++    @Test public void lostDeleteResponseReconcilesWithServerProfile() throws Exception {
++        try(MockWebServer server=new MockWebServer()) {
++            server.start();SessionStore sessions=new SessionStore();sessions.installIfCurrent(0,"test-token",USER,HOME);
++            BlockingQueue<Runnable> main=new LinkedBlockingQueue<>();ApiCalls calls=new ApiCalls(sessions,main::add);
++            AuthRepository auth=new AuthRepository(new RealApiProvider(server.url("/").toString(),sessions),sessions,calls);
++            AtomicBoolean left=new AtomicBoolean();server.enqueue(new MockResponse().setBody(MEMBERS));
++            server.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST));
++            server.enqueue(new MockResponse().setBody("{\"id\":\""+USER+"\",\"username\":\"test\",\"displayName\":\"Test\",\"zoneId\":\"UTC\",\"createdAt\":\"2026-01-01T00:00:00Z\",\"updatedAt\":\"2026-01-01T00:00:00Z\",\"householdId\":null}"));
++            auth.leaveHousehold(callback(left));assertNotNull(server.takeRequest(5,TimeUnit.SECONDS));run(main);
++            assertNotNull(server.takeRequest(5,TimeUnit.SECONDS));run(main);
++            assertEquals("/api/v1/me",server.takeRequest(5,TimeUnit.SECONDS).getPath());run(main);
++            assertTrue(left.get());assertNull(sessions.currentHouseholdId());assertTrue(sessions.isLoggedIn());
++        }
++    }
++
++    private static ApiCallback<Void> callback(AtomicBoolean done){return new ApiCallback<Void>() {public void onSuccess(Void value){done.set(true);}public void onError(ApiError error){fail(error.code);}};}
++    private static void run(BlockingQueue<Runnable> main)throws Exception{Runnable value=main.poll(5,TimeUnit.SECONDS);assertNotNull(value);value.run();}
++}
+--- before/server/src/test/java/edu/xjtlu/civa/server/household/HouseholdLeaveIntegrationTest.java
++++ after/server/src/test/java/edu/xjtlu/civa/server/household/HouseholdLeaveIntegrationTest.java
+@@ -0,0 +1,60 @@
++package edu.xjtlu.civa.server.household;
++
++import edu.xjtlu.civa.server.CivaServer;
++import java.util.UUID;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.http.MediaType;
++import org.springframework.jdbc.core.JdbcTemplate;
++import org.springframework.security.crypto.password.PasswordEncoder;
++import org.springframework.test.web.servlet.MockMvc;
++import com.fasterxml.jackson.databind.ObjectMapper;
++import static org.junit.jupiter.api.Assertions.*;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
++
++@SpringBootTest(classes=CivaServer.class)
++@AutoConfigureMockMvc
++class HouseholdLeaveIntegrationTest {
++    @Autowired MockMvc http; @Autowired JdbcTemplate jdbc; @Autowired PasswordEncoder passwords; @Autowired ObjectMapper json;
++
++    @Test void leaveEnforcesOwnershipVersionAndAccessThenAllowsNewHousehold() throws Exception {
++        UUID owner=UUID.randomUUID(),member=UUID.randomUUID(),stranger=UUID.randomUUID(),home=UUID.randomUUID();
++        UUID[] actors={owner,member,stranger};
++        try {
++            for(UUID user:actors) jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",user,"leave_"+user.toString().replace("-", "").substring(0,16),"Leave fixture",passwords.encode("fixture-password"),"UTC");
++            jdbc.update("INSERT INTO households(id,name) VALUES (?,?)",home,"Leave fixture");
++            jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true)",UUID.randomUUID(),home,owner);
++            jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'MEMBER',true)",UUID.randomUUID(),home,member);
++            String ownerToken=login(owner),memberToken=login(member),strangerToken=login(stranger);
++            String path="/api/v1/households/"+home+"/members/";
++            http.perform(delete(path+owner).param("expectedVersion","1").header("Authorization",ownerToken)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("OWNER_CANNOT_LEAVE"));
++            http.perform(delete(path+owner).param("expectedVersion","1").header("Authorization",memberToken)).andExpect(status().isForbidden());
++            http.perform(delete(path+member).param("expectedVersion","1").header("Authorization",strangerToken)).andExpect(status().isNotFound());
++            http.perform(delete(path+member).param("expectedVersion","0").header("Authorization",memberToken)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
++            http.perform(delete(path+member).param("expectedVersion","1").header("Authorization",memberToken)).andExpect(status().isNoContent());
++            assertEquals(2L,jdbc.queryForObject("SELECT version FROM memberships WHERE household_id=? AND user_id=?",Long.class,home,member));
++            http.perform(get("/api/v1/me").header("Authorization",memberToken)).andExpect(status().isOk()).andExpect(jsonPath("$.householdId").isEmpty());
++            http.perform(get("/api/v1/households/"+home).header("Authorization",memberToken)).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOUSEHOLD_ACCESS_REVOKED"));
++            http.perform(delete(path+member).param("expectedVersion","1").header("Authorization",memberToken)).andExpect(status().isForbidden());
++            assertTrue(jdbc.queryForObject("SELECT active FROM memberships WHERE household_id=? AND user_id=?",Boolean.class,home,owner));
++            http.perform(post("/api/v1/households").header("Authorization",memberToken).header("Idempotency-Key",UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Next fixture home\"}")).andExpect(status().isCreated());
++        } finally {
++            // Random test-owned fixtures only; the guarded test database is separate from development.
++            for(UUID user:actors) {
++                jdbc.update("DELETE FROM idempotency_requests WHERE actor_id=?",user);
++                jdbc.update("DELETE FROM sessions WHERE user_id=?",user);
++            }
++            var owned=jdbc.query("SELECT household_id FROM memberships WHERE user_id IN (?,?,?) AND role='OWNER'",(rs,n)->rs.getObject(1,UUID.class),owner,member,stranger);
++            for(UUID user:actors)jdbc.update("DELETE FROM memberships WHERE user_id=?",user);
++            for(UUID id:owned)jdbc.update("DELETE FROM households WHERE id=?",id);
++            for(UUID user:actors)jdbc.update("DELETE FROM users WHERE id=?",user);
++        }
++    }
++    private String login(UUID user)throws Exception {
++        var response=http.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content("{\"username\":\"leave_"+user.toString().replace("-", "").substring(0,16)+"\",\"password\":\"fixture-password\"}")).andExpect(status().isOk()).andReturn();
++        return "Bearer "+json.readTree(response.getResponse().getContentAsString()).path("token").asText();
++    }
++}
+--- before/app/src/main/java/edu/xjtlu/civa/AppNavigator.java
++++ after/app/src/main/java/edu/xjtlu/civa/AppNavigator.java
+@@ -37,7 +37,12 @@
+             case COOKING_CONFIRM: title = R.string.app_cooking_confirm; break;
+             case MEAL_EDIT: title = R.string.app_meal_edit; break;
+             case LOGIN: title = R.string.app_login; primary = true; break;
+-            case HOUSEHOLD: title = R.string.app_household; break;
++            case HOUSEHOLD:
++                title = R.string.app_household;
++                // First-login onboarding replaces Login. Restoring an authenticated
++                // Login during Skip would otherwise navigate back to Household.
++                primary = fragments.findFragmentById(R.id.app_content) instanceof LoginFragment;
++                break;
+             case PREFERENCES: title = R.string.app_preferences; break;
+             default: throw new IllegalArgumentException("Unknown route: " + route);
+         }

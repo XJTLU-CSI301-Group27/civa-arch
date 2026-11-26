@@ -100,6 +100,67 @@ public final class AuthRepository {
         }
     }
 
+    /** Leave only the current user's membership; revoke household-scoped work after server confirmation. */
+    public void leaveHousehold(ApiCallback<Void> callback) {
+        synchronized (sessions) {
+            SessionStore.Snapshot owner = sessions.snapshot();
+            if (owner.token == null || owner.userId == null || owner.householdId == null) {
+                callback.onError(ApiCalls.localError("NOT_FOUND")); return;
+            }
+            findMembership(owner, 0, callback);
+        }
+    }
+
+    private void findMembership(SessionStore.Snapshot owner, int page, ApiCallback<Void> callback) {
+        calls.enqueue(provider.household().listMembers(java.util.UUID.fromString(owner.householdId), page, 100), new ApiCallback<edu.xjtlu.civa.api.model.MembershipPage>() {
+            @Override public void onSuccess(edu.xjtlu.civa.api.model.MembershipPage result) {
+                if (sessions.snapshot().generation != owner.generation) return;
+                if (result == null || result.getItems() == null) { callback.onError(ApiCalls.localError("INVALID_RESPONSE")); return; }
+                for (var member : result.getItems()) {
+                    if (member != null && member.getUserId() != null && owner.userId.equals(member.getUserId().toString()) && Boolean.TRUE.equals(member.getActive())) {
+                        if (member.getVersion() == null) { callback.onError(ApiCalls.localError("INVALID_RESPONSE")); return; }
+                        removeMembership(owner, member.getVersion(), callback); return;
+                    }
+                }
+                if (!result.getItems().isEmpty() && result.getTotal() != null && (page + 1L) * 100 < result.getTotal()) findMembership(owner, page + 1, callback);
+                else callback.onError(ApiCalls.localError("NOT_FOUND"));
+            }
+            @Override public void onError(ApiError error) { leaveFailed(owner, error, callback); }
+        });
+    }
+
+    private void removeMembership(SessionStore.Snapshot owner, long version, ApiCallback<Void> callback) {
+        calls.enqueue(provider.household().removeMember(java.util.UUID.fromString(owner.householdId), java.util.UUID.fromString(owner.userId), version), new ApiCallback<Void>() {
+            @Override public void onSuccess(Void value) {
+                synchronized (sessions) {
+                    if (sessions.revokeHouseholdIfCurrent(owner.generation, owner.householdId)) callback.onSuccess(null);
+                }
+            }
+            @Override public void onError(ApiError error) { leaveFailed(owner, error, callback); }
+        });
+    }
+
+    private void leaveFailed(SessionStore.Snapshot owner, ApiError error, ApiCallback<Void> callback) {
+        SessionStore.Snapshot current = sessions.snapshot();
+        if ("HOUSEHOLD_ACCESS_REVOKED".equals(error.code) && current.generation == owner.generation + 1
+                && Objects.equals(current.userId, owner.userId) && current.householdId == null && current.token != null) {
+            callback.onSuccess(null); return;
+        }
+        if (current.generation != owner.generation) return;
+        if (!"NETWORK_ERROR".equals(error.code) && !"TIMEOUT".equals(error.code)) { callback.onError(error); return; }
+        // A lost DELETE response is unknown, not a local-only successful exit. Reconcile with getMe.
+        calls.enqueue(provider.profile().getMe(), new ApiCallback<User>() {
+            @Override public void onSuccess(User user) {
+                synchronized (sessions) {
+                    if (validUser(user) && owner.userId.equals(user.getId().toString()) && user.getHouseholdId() == null
+                            && sessions.revokeHouseholdIfCurrent(owner.generation, owner.householdId)) callback.onSuccess(null);
+                    else callback.onError(error);
+                }
+            }
+            @Override public void onError(ApiError ignored) { callback.onError(error); }
+        });
+    }
+
     private static boolean valid(AuthSession session) {
         if (session == null || session.getToken() == null || session.getToken().isEmpty() || !validUser(session.getUser())
                 || session.getExpiresAt() == null) return false;

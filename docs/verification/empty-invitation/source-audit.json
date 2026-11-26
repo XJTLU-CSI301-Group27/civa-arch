@@ -1,0 +1,122 @@
+[
+  {
+    "file": "feature-ac/src/main/res/layout/ac_fragment_catalog.xml",
+    "beforeSha256": "6d393ae048bee98e0221b98838b78119bfe58a034bfd76d6c3e60b6ca9e15bef",
+    "afterSha256": "24de587e2ea6e793faeb243d45305c996a61f4697de8a7fa17d5f2ae66251516",
+    "new": false
+  },
+  {
+    "file": "feature-ac/src/main/java/edu/xjtlu/civa/feature/ac/catalog/RecipeCatalogFragment.java",
+    "beforeSha256": "b6769b05df2717cb79a3b36982fcbdc8cf83b852f9b2936a06b845d7f6d5b752",
+    "afterSha256": "7726be780b78be4b74ea92e0cb6ab54361a9209dff5038832da4f61ff8371845",
+    "new": false
+  },
+  {
+    "file": "feature-ac/src/main/res/values/ac_strings.xml",
+    "beforeSha256": "188b015a6348d07155d215412881f533893d5953010698783b4aa2b6e4ed3bf5",
+    "afterSha256": "e73934afbad4e041c10866e71bffe8e70fdbea224285515fb7e832f82f926c62",
+    "new": false
+  },
+  {
+    "file": "feature-bd/src/main/res/layout/bd_fragment_home.xml",
+    "beforeSha256": "5a7a33bcb6b22952a1cf8aa7ebc11db9750022b3d9b44af584e3e7ce1727a343",
+    "afterSha256": "19227fd3e387c4a1aeff6cafc063727acc320eca11eb51f02ec856be8f15916f",
+    "new": false
+  },
+  {
+    "file": "feature-bd/src/main/res/layout-w600dp/bd_fragment_home.xml",
+    "beforeSha256": "d829dae815ac2184d41a7c16816c98dbbbebcfd417c42b7af0fb108787a1a9ec",
+    "afterSha256": "12d472f9d3870b9bbd12b100e87a7bc827bbe9cf657c7743bc18bde78c5ec386",
+    "new": false
+  },
+  {
+    "file": "feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeLayout.java",
+    "beforeSha256": "f069a5d0f43574e0fcd4276c29aa386e50b22b57a01df5bb1d0b009f1e46acd2",
+    "afterSha256": "2922315ceffa73dfddece60de80f02d7aad7c43e5f9f69bc272e7c3fd4118f1c",
+    "new": false
+  },
+  {
+    "file": "app/src/main/java/edu/xjtlu/civa/AppNavigator.java",
+    "beforeSha256": "b893cfa1bae0a0177553631f9b41aeccce1d86ed3856025b4530a1db2488a92a",
+    "afterSha256": "154a62896f0e460fe2d9bc0344b2907ccb9dcf9b4ffc6a5dffa648106bf3c4cd",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdFragment.java",
+    "beforeSha256": "acb43cc0626d7de1a39fca618ffcfebea127b56e794812739dd7ce139973e213",
+    "afterSha256": "887fac6659c4f189644a623b4559ec7b88b93ae54b22f8e8f6743a69ae79bec5",
+    "new": false
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdController.java",
+    "beforeSha256": "83cd990bc21d4ee1853df730df2b3f04c182d32b0c7fac81e208d740a0f1fb36",
+    "afterSha256": "99446434408ccfd47df52772ec3f4163135ce10ad78d321362a7f4a6d2824557",
+    "new": false
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdConfiguration.java",
+    "beforeSha256": "8c236d9e450e73c065ab83539001fc2fb1e913abc3d18b9aea331b33726cb942",
+    "afterSha256": "d1cc2bcafbd31638d07441108e02be7b6f619257c15d3eba22a4fb1d43754b70",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/res/layout/ef_fragment_household.xml",
+    "beforeSha256": "5ec23d0ee6ba42e53490c761bc7ded17abaccca74677d9b7997d7d8153b48664",
+    "afterSha256": "cec399fe7f8875cf57e078734ee99c3b70b9ad816774428acff1229d682048d0",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/res/values/ef_strings.xml",
+    "beforeSha256": "36633e07d1736d77d20801fb1b77f6bc9d9c4141980168e33006a87406796a28",
+    "afterSha256": "b5df821260d77d47177511c2717ce3e8716501754353b1ed14746744532681b2",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdViewModel.java",
+    "beforeSha256": "dff09f4654758a4dc0896134517989bdc24226a850e58a62b8563165b9ea34f2",
+    "afterSha256": "69181be66b443f7e45b2b3e4adbbf166ce2b8e0ff1bf68dea0eb5c27cfd49dae",
+    "new": false
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/InvitationReceiptCipher.java",
+    "beforeSha256": null,
+    "afterSha256": "b925a0d5f89ff84c3845b57d593a197ebb027c7eb7a6d604beb5c06570f44f30",
+    "new": true
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdInvitationService.java",
+    "beforeSha256": null,
+    "afterSha256": "b0391e88de37edccf1bc30b3368a93d882ef4ac0ed22173fa7f8e7a04e7d9ff1",
+    "new": true
+  },
+  {
+    "file": "feature-ef/src/main/res/values/ef_ids.xml",
+    "beforeSha256": null,
+    "afterSha256": "345de1d16190e40e8458ee345ce8685798ba20cdb44b0a934863df9bfd32f074",
+    "new": true
+  },
+  {
+    "file": "server/src/test/java/edu/xjtlu/civa/server/household/HouseholdHttpIntegrationTest.java",
+    "beforeSha256": "d2cfead9dd31c7694632acb11a116d286aef8fdd29d8196ae7a85db9880858ac",
+    "afterSha256": "a1d0436a4b51aeb6e4ca7161336b01ea1ae6ebc794c99d5f78a3324a57b9e88e",
+    "new": false
+  },
+  {
+    "file": "server/src/test/java/edu/xjtlu/civa/server/household/InvitationReceiptCipherTest.java",
+    "beforeSha256": null,
+    "afterSha256": "6361a3be51955afff13850ac9961754f8c3631da69e9b827709c5ec767afbef7",
+    "new": true
+  },
+  {
+    "file": ".gitignore",
+    "beforeSha256": "ae3322d103324c6ed04d40a6357bf1c64f273a193ecb93c914eff3c6c0656e89",
+    "afterSha256": "c0b0c474b040196e3ca373768cd9f9e50f7ec94560672ab92d86892fc92967f4",
+    "new": false
+  },
+  {
+    "file": "server/src/main/resources/application.yml",
+    "beforeSha256": "38b5501a0c81758f05ada5c12da6418d6fb14a529b77acca400c57fe07ca27b9",
+    "afterSha256": "d7fe2b8aa10b05a4255bfc93697a0ba564ae888ef859d8b940f77b0a47857644",
+    "new": false
+  }
+]

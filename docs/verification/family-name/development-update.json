@@ -1,0 +1,24 @@
+{
+  "database": "civa_arch_dev",
+  "migrationNeeded": false,
+  "checkedBusinessTables": [
+    "users",
+    "sessions",
+    "households",
+    "memberships",
+    "invitations",
+    "user_recipes",
+    "recipe_favorites",
+    "recipes",
+    "inventory_batches",
+    "inventory_movements",
+    "plan_slots",
+    "plan_items",
+    "cooking_events",
+    "meal_entries",
+    "media",
+    "preferences"
+  ],
+  "allRowsAndContentFingerprintsUnchanged": true,
+  "privateInvitationKeyUnchanged": true
+}

@@ -1,0 +1,8 @@
+{
+  "studioNoFlagDebugAddress": "http://127.0.0.1:8080/",
+  "explicitCliOverrideWorks": true,
+  "otherMachinesWithoutLocalSettingKeepEmulatorDefault": true,
+  "localDebugSettingNotUsedForRelease": true,
+  "releaseRequiresExplicitHttps": true,
+  "finalLocalSettingsRestored": true
+}

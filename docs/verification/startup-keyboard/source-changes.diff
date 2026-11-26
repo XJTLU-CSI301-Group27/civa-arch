@@ -1,0 +1,25 @@
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -1,7 +1,8 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+     <uses-permission android:name="android.permission.INTERNET" />
+     <application android:name=".CivaApplication" android:label="@string/app_name" android:theme="@style/CivaTheme.Civa" android:usesCleartextTraffic="false">
+-        <activity android:name=".MainActivity" android:exported="true">
++        <activity android:name=".MainActivity" android:exported="true"
++            android:windowSoftInputMode="stateHidden|adjustResize">
+             <intent-filter>
+                 <action android:name="android.intent.action.MAIN" />
+                 <category android:name="android.intent.category.LAUNCHER" />
+--- a/feature-ef/src/main/res/layout/ef_fragment_login.xml
++++ b/feature-ef/src/main/res/layout/ef_fragment_login.xml
+@@ -1,6 +1,9 @@
+ <edu.xjtlu.civa.core.ui.BakeryWelcomeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/ef_welcome_scene"
+-    android:layout_width="match_parent" android:layout_height="match_parent">
++    android:layout_width="match_parent" android:layout_height="match_parent"
++    android:focusable="true" android:focusableInTouchMode="true">
++
++    <requestFocus />
+ 
+     <ScrollView android:layout_width="match_parent" android:layout_height="match_parent"
+         android:fillViewport="true">

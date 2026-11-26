@@ -1,0 +1,4 @@
+{
+  "sameFixedCodeAfterServerRestart": true,
+  "noRotationOrExpiry": true
+}

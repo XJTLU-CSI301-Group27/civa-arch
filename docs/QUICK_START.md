@@ -69,3 +69,8 @@ python .\scripts\test_android_smoke.py --adb "$env:ANDROID_HOME\platform-tools\a
 设备检查要求已安装最新 APK、系统启动完成和后端正常运行。每次会创建一个随机 `handoff_` 测试账号和 `HandoffSmoke` 家庭，只在开发数据库运行。它覆盖注册、登录、创建家庭、首页和五入口导航，不代表菜谱、库存、排餐、食记业务已完成。
 
 日志在 `build/server-local.log`、`build/server-local-error.log`；本机后端状态在 `build/server-local.json`。这些是本机运行文件，不提交。更完整的排障、已验证范围及功能缺口见 [本地调试与运行交接](LOCAL_RUN_HANDOFF.md)。
+
+
+## Android Studio在USB真机与模拟器之间切换（2026-11-26）
+
+USB真机先运行电脑后端，再运行start-civa-usb.bat；它会将本机local.properties的civa.debugApiBaseUrl设置为http://127.0.0.1:8080/，后续Studio Run沿用该目标。插线/ADB重启后转发可能失效，可执行scripts/start-usb-device.ps1 -CheckOnly恢复。切回模拟器时移除该本地键或改为http://10.0.2.2:8080/，再Sync/Run。其他电脑无键时默认模拟器，显式-PCIVA_API_BASE_URL优先，release始终要求显式HTTPS。不要分享个人local.properties。详见 [真机交接](EF_USB_TABLET_HANDOFF.md)。

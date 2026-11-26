@@ -21,6 +21,7 @@ public final class BakeryCatStage extends FrameLayout {
     private final View shadow;
     private final TextView bubble;
     private ImageView artwork;
+    private MeowSound voice;
     private final Runnable hideBubble = this::fadeBubble;
 
     public BakeryCatStage(Context context, AttributeSet attributes) {
@@ -69,7 +70,9 @@ public final class BakeryCatStage extends FrameLayout {
         bubble.layout(bubbleX, bubbleY, bubbleX + size, bubbleY + size);
     }
 
-    private void meow() {
+    @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); voice = new MeowSound(getContext()); }
+    private void meow() { if (voice != null) voice.play(this::showMeowBubble); }
+    private void showMeowBubble() {
         removeCallbacks(hideBubble); bubble.animate().cancel();
         bubble.setVisibility(VISIBLE); bubble.setAlpha(0); bubble.setScaleX(.6f); bubble.setScaleY(.6f); bubble.setTranslationY(dp(3));
         bubble.animate().alpha(1).scaleX(1).scaleY(1).translationY(0).setDuration(130)
@@ -85,6 +88,7 @@ public final class BakeryCatStage extends FrameLayout {
 
     @Override protected void onDetachedFromWindow() {
         removeCallbacks(hideBubble); bubble.animate().cancel(); bubble.setVisibility(INVISIBLE);
+        if (voice != null) { voice.close(); voice = null; }
         super.onDetachedFromWindow();
     }
 

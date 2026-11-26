@@ -1,0 +1,22 @@
+[
+  {
+    "file": "scripts/start-usb-device.ps1",
+    "beforeSha256": null,
+    "afterSha256": "fe20dc0889f405154774a7ef3cb5dad1e0f1ccc8dddf325796157e98b14b97b1"
+  },
+  {
+    "file": "start-civa-usb.bat",
+    "beforeSha256": null,
+    "afterSha256": "1a77ecc18d3e8e0fb4fc4a3c7df58e8db38264c1f6fedf3858d9a6f8d4fba285"
+  },
+  {
+    "file": "docs/EF_USB_TABLET_HANDOFF.md",
+    "beforeSha256": null,
+    "afterSha256": "a951d44c35ecb6c785e10dbd4ac5fd3a9cc505bfa29477536628e93c2c99db66"
+  },
+  {
+    "file": "docs/HANDOFF.md",
+    "beforeSha256": "e51eb4b74cf1730f682db82bdeec6216e539cfc79cdc3d8ca7ccebedac989b87",
+    "afterSha256": "f2af528e35997ec79c924e1b614c2348bc19c6c290df6d8f44576f855f2bdfd9"
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "path": "app/src/main/AndroidManifest.xml",
+    "beforeSha256": "7df090163bd2e06af87c00f8956f1ea8729f196e41977d8fd141a10fe891f506",
+    "afterSha256": "02f28b00816342e1a16d1d4a4005fd4cc7f2101afc297d1d568abfa52adf81b9"
+  },
+  {
+    "path": "feature-ef/src/main/res/layout/ef_fragment_login.xml",
+    "beforeSha256": "d8f4c00e6030f8bc7a77cdbd43ab9bd4497930a132c1ab9c25b4aa3d71c84a1f",
+    "afterSha256": "39e6759a982a26e23d95b37b97e57fd826f42f7b0b178dc264944b7203d45470"
+  }
+]

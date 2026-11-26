@@ -1,0 +1,12 @@
+[
+  {
+    "path": "app/build.gradle",
+    "beforeSha256": "c6587f943fc27214672695a2acc16821b476a0589cb1a7ac7e8e03b6296092f4",
+    "afterSha256": "726d4310609ff9e4a044d687f55a36643dd8f70d2f0f6645dd95ffd65ef283b4"
+  },
+  {
+    "path": "scripts/start-usb-device.ps1",
+    "beforeSha256": "fe20dc0889f405154774a7ef3cb5dad1e0f1ccc8dddf325796157e98b14b97b1",
+    "afterSha256": "c23e1982aa005e6516680978c8e1ffbf21c687fbc9af4149ade17df69977480d"
+  }
+]

@@ -8,4 +8,7 @@
     <item name="civa_dish_action_overlay" type="id" />
     <item name="civa_dish_action_menu" type="id" />
     <item name="civa_dish_peek_cat" type="id" />
+    <item type="id" name="civa_intro_blocked" />
+    <item type="id" name="civa_welcome_cat" />
+    <item type="id" name="civa_welcome_greeting" />
 </resources>

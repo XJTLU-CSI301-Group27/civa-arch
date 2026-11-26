@@ -28,6 +28,7 @@ public final class LoginFragment extends Fragment {
             }
         }).get(LoginViewModel.class);
         binding = EfFragmentLoginBinding.bind(view);
+        ((edu.xjtlu.civa.core.ui.BakeryWelcomeLayout)view).setGreeting(getString(R.string.ef_welcome));
         binding.efUsername.setText(model.username);
         binding.efPassword.setText(model.password);
         binding.efDisplayName.setText(model.displayName);

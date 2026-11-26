@@ -1,0 +1,7 @@
+{
+  "testBackendStopped": true,
+  "testDatabasePreserved": true,
+  "productionBackendPreserved": true,
+  "emulatorPreserved": true,
+  "qaPackageRemoved": true
+}

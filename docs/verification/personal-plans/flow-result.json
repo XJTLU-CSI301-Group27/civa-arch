@@ -1,0 +1,10 @@
+{
+  "legacyMigrationWithPhoto": true,
+  "createRetainsPersonalPlan": true,
+  "leaveRetainsPersonalPlan": true,
+  "joinRetainsPersonalPlan": true,
+  "anotherAccountIsolated": true,
+  "reloginRetainsPersonalPlan": true,
+  "testDatabase": "civa_family_test",
+  "testPackage": "edu.xjtlu.civa.uiverify"
+}

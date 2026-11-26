@@ -187,13 +187,11 @@ Suggested fields:
 
 ## Local BD planning drafts (2026-11-21)
 
-The home screen keeps **personal, on-device** planning drafts. They are not a
-second API and not the authority for shared household plans; the server remains
-the authority once `plan_slots` is implemented.
+The home screen keeps **personal, on-device** planning drafts, independent of household membership (2026-11-26 user decision). They do not read or write shared household `plan_slots`. Any future personal sync requires an explicit documented contract; implementing shared server plans must not silently change Today ownership.
 
 - Storage: `filesDir/home-plan-drafts/<scope>.json`, written through
   `AtomicFile` and read back byte-for-byte before success is reported.
-- Scope: `SHA-256("account:<userId>/<householdId>")`; `signed-out` for the
+- Scope (2026-11-26 user decision): `SHA-256("account:<userId>")`, independent of household; `signed-out` for the
   logged-out app and `local-preview` for the debug preview entry. Drafts never
   cross scopes, and a decoded file whose `scope` does not match its filename is
   rejected.
@@ -230,9 +228,7 @@ the authority once `plan_slots` is implemented.
 - No cooking event, inventory movement, meal entry or shared plan write is
   produced from these drafts. A future sync must go through the existing
   plan/records contract change process (currently 501 placeholders).
-- Version policy: unknown or mismatched `version`/`scope` is rejected rather
-  than silently migrated. A format change requires a new version and a
-  documented migration.
+- Version policy: unknown version / mismatched file scope remains rejected. Version1 optionally records `migratedScopes`; old version1 without it loads with an empty set. Explicit same-account old-scope migration is additive and retains sources/photos. See [BD_PERSONAL_PLAN_HANDOFF.md](BD_PERSONAL_PLAN_HANDOFF.md); current-family and old-null sources are known, other historical scopes require verified ownership.
 
 ## Server nutrition estimates (2026-11-21)
 
@@ -306,3 +302,57 @@ ecipe_favorites(kind, recipe_id)，
 创建家庭菜谱时在同一事务内把快照写入作者的 user_recipes（在家庭里添加的菜同时进入私人菜谱）。
 V20261123203000__BD_starter_ingredient_dictionary.sql 恢复 26 条标准食材字典（此前为空）。
 客户端家庭菜谱页面与加入家庭动作在 P3 客户端阶段接入。
+
+## Local display profile and shared UI internals (2026-11-25)
+
+- Existing `User.displayName` (fallback `username`) supplies the initial visible
+  profile name; UUID remains separately labelled ID. Login credentials, auth and
+  household APIs are unchanged. No server migration or generated API edits.
+- EF owns local display overrides, not a second server User model. Version 1
+  `files/profiles/<SHA256(userId)>/profile.json` contains `version`, `scope`,
+  `name`, `avatar`; validate account scope and atomically write metadata. Names
+  are trimmed and validated; avatar references are local validated filenames.
+- The optional photo is bounded/EXIF-normalized on a worker, copied to private
+  account storage on Save. Cancel discards the draft. Recheck the authenticated
+  owner before committing. These local edits do not rename login accounts or
+  synchronize across devices; a future server profile API needs its own review.
+- `ChefCatView`, `BakeryWelcomeLayout`, `MeowSound` and framework-recreated
+  `ProfileEditDialog` are registered as internalSymbols in the public-surface
+  draft. Existing host interfaces and module dependency boundaries are unchanged.
+- Full schema/ownership and transition notes: [EF_BAKERY_UI_HANDOFF.md](EF_BAKERY_UI_HANDOFF.md).
+
+
+## Presentation-only cat/media revision (2026-11-25, round 2)
+
+The second visual pass changes shared drawable/color resources, welcome layout,
+default avatar selection and app-private intro playback. User/session/profile
+metadata version, account scope, image-import persistence, recipe APIs and host
+interfaces remain unchanged. No new public symbols, runtime dependencies or
+server schema are introduced; legacy ChefCatView remains available to callers.
+See [EF_CAT_REFRESH_HANDOFF.md](EF_CAT_REFRESH_HANDOFF.md).
+
+
+## Membership removal and current-session leave (2026-11-25)
+
+Existing removeMember is implemented using expectedVersion, household/member row locks and inactive membership history. Members can leave themselves; owners can remove ordinary members; owners cannot leave or be removed (OWNER_CANNOT_LEAVE). No new endpoint/schema/migration. AuthRepository.leaveHousehold(ApiCallback<Void>) is an additive helper: captured-user membership lookup, confirmed server delete, household-only invalidation, and getMe reconciliation of unknown network results; login and personal data remain. See [EF_FAMILY_CATALOG_HANDOFF.md](EF_FAMILY_CATALOG_HANDOFF.md) for consumers, errors and tests.
+
+## Invitation receipt and household entry origin (2026-11-25)
+
+Existing createInvitation is implemented locally: OWNER only, 128-bit / 26-character Base32, 24h expiry, single-use, hash-only invitation table. The candidate encrypts the code within idempotency response storage using AES-GCM and a separate persistent private media key, preserving public wire responses. Status: 用户已确认采用；小组整合时仍需按团队流程审阅。
+No OpenAPI/public method/schema/migration/dependency changes. Android invitation pending records contain request identity, not returned plaintext code. Internal Fragment arguments persist return origin: initial setup → Today, Profile-origin setup → Profile, for close and successful create/join/leave. Owner leave restriction remains. See [EF_EMPTY_INVITATION_HANDOFF.md](EF_EMPTY_INVITATION_HANDOFF.md) for key lifecycle, replay policy and exact affected files.
+
+## Equal members and permanent invitation (2026-11-25, current)
+
+User explicitly supersedes prior owner-leave / one-use policies. All active users including creator are MEMBER and may leave themselves; none may remove someone else. Last self-leave closes household identity under the same row lock as join; no revival, preserve historical FKs. Additive migration V20261125210000 normalizes active OWNER, adds closure and permanent encrypted invitations. Existing populated homes receive one code on locked startup backfill; old temporary codes cease authorizing joins.
+New getHouseholdInvitation GET reads Invitation for any active member, raw ApiCalls (no durable code cache). Required expiresAt is now nullable: JSON null for permanent. Legacy createInvitation POST remains idempotent/deprecated and returns the same fixed code. removeMember keeps version/path but becomes self-only, no OWNER_CANNOT_LEAVE. Constructor provisioner added to HouseholdWriteService and public-surface draft updated. Both generated sides rebuilt from the single spec.
+Hash lookup plus AES-GCM sealed_code/private persistent key, never plaintext DB. Persist key and DB together; see [EF_SHARED_FAMILY_HANDOFF.md](EF_SHARED_FAMILY_HANDOFF.md) and [IC](../contracts/changes/IC-20261125-EF-PERMANENT-FAMILY.md) for exact compatibility, migration, affected callers and verification. This local user-authorized implementation is not a claimed team baseline approval.
+
+## Household rename (2026-11-25, current)
+
+New renameHousehold: PUT /api/v1/households/{householdId}, required expectedVersion query, existing CreateHouseholdRequest name body, existing Household response. Any active member; trim/nonblank/max120 Unicode characters; 400invalid, 403revoked, 404nonmember/closed, 409stale version. Lock household before authorization/version check, update name/version/updated_at only; same-name no-op keeps version. No schema migration/new DTO/public host signature/dependency.
+EF uses ApiCalls/generated API. Save stays in settings; GET reconciliation on stale/unknown result preserves draft, only explicit retry may overwrite a newly read version. Profile reads shared updated name, fixed invitation/ID unchanged. Registration and exact verification: [IC](../contracts/changes/IC-20261125-EF-FAMILY-NAME.md), [EF_FAMILY_NAME_HANDOFF.md](EF_FAMILY_NAME_HANDOFF.md). Local implementation is user-authorized, not a claimed team contract freeze.
+
+
+## Tablet presentation only (2026-11-26)
+
+Bottom navigation, vertical meal measurement and explicit welcome-sheet clipping change presentation only. No public signature, DTO, API, schema, ownership, persistence or dependencies changed. See [EF_TABLET_LAYOUT_HANDOFF.md](EF_TABLET_LAYOUT_HANDOFF.md) for the four-file audit; previous family contracts remain unchanged.

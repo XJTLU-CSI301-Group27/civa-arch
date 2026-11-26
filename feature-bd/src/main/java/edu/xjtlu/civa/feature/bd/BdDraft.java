@@ -41,6 +41,7 @@ final class BdDraft {
     int version;
     String scope;
     Map<String, List<Dish>> meals;
+    java.util.Set<String> migratedScopes = new java.util.LinkedHashSet<>();
 
     static BdDraft empty(String scope) {
         BdDraft data = new BdDraft();
@@ -112,6 +113,7 @@ final class BdDraft {
     static BdDraft decode(String json, String expectedScope) {
         BdDraft data = new Gson().fromJson(json, BdDraft.class);
         if (data == null || data.version != 1 || !expectedScope.equals(data.scope) || data.meals == null) throw new IllegalArgumentException("Invalid local draft");
+        if (data.migratedScopes == null) data.migratedScopes = new java.util.LinkedHashSet<>();
         for (Map.Entry<String, List<Dish>> entry : data.meals.entrySet()) {
             String[] parts = entry.getKey().split("/", -1);
             if (parts.length != 2 || !key(LocalDate.parse(parts[0]), parts[1]).equals(entry.getKey()) || entry.getValue() == null) throw new IllegalArgumentException("Invalid meal key");
@@ -122,6 +124,24 @@ final class BdDraft {
             }
         }
         return data;
+    }
+
+    /** Copy an explicitly owned old scope once; current entries win and removed entries stay removed. */
+    BdDraft importLegacy(BdDraft legacy, java.util.function.UnaryOperator<String> copyImage) {
+        if (scope.equals(legacy.scope) || migratedScopes.contains(legacy.scope)) return this;
+        BdDraft copy = decode(new Gson().toJson(this), scope);
+        java.util.Set<String> existing = new java.util.HashSet<>();
+        for (List<Dish> rows : copy.meals.values()) for (Dish dish : rows) existing.add(dish.id);
+        for (Map.Entry<String, List<Dish>> entry : legacy.meals.entrySet()) {
+            for (Dish dish : entry.getValue()) {
+                if (!existing.add(dish.id)) continue;
+                Dish imported = new Gson().fromJson(new Gson().toJson(dish), Dish.class);
+                if (imported.image != null && imported.image.startsWith("local:")) imported.image = copyImage.apply(imported.image);
+                copy.meals.computeIfAbsent(entry.getKey(), ignored -> new ArrayList<>()).add(imported);
+            }
+        }
+        copy.migratedScopes.add(legacy.scope);
+        return decode(new Gson().toJson(copy), scope);
     }
 
     static String scopeHash(String owner) {

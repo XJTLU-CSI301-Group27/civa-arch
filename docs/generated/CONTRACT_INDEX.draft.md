@@ -21,6 +21,7 @@
 | estimateNutrition | POST | /api/v1/nutrition/estimates | B | application/json: NutritionEstimateRequest | 200 application/json: NutritionEstimate |
 | getCatalogRecipe | GET | /api/v1/recipe-catalog/{recipeId} | A | — | 200 application/json: CatalogRecipe |
 | getHousehold | GET | /api/v1/households/{householdId} | E | — | 200 application/json: Household |
+| getHouseholdInvitation | GET | /api/v1/households/{householdId}/invitations | E | — | 200 application/json: Invitation |
 | getMe | GET | /api/v1/me | E | — | 200 application/json: User |
 | getMealSummary | GET | /api/v1/me/meal-summary | D | — | 200 application/json: PeriodSummary |
 | getMediaContent | GET | /api/v1/media/{mediaId}/content | E | — | 200 image/jpeg: binary, image/png: binary |
@@ -49,6 +50,7 @@
 | removeMember | DELETE | /api/v1/households/{householdId}/members/{userId} | E | — | 204 — |
 | removeRecipeFavorite | DELETE | /api/v1/me/recipe-favorites/{kind}/{recipeId} | A | — | 204 — |
 | removeWishlist | DELETE | /api/v1/me/wishlist/{recipeId} | A | — | 204 — |
+| renameHousehold | PUT | /api/v1/households/{householdId} | E | application/json: CreateHouseholdRequest | 200 application/json: Household |
 | replacePlanSlot | PUT | /api/v1/households/{householdId}/plan-slots/{date}/{mealType} | B | application/json: ReplacePlanSlotRequest | 200 application/json: PlanSlot |
 | setPersonalRecipeArchived | PUT | /api/v1/me/recipes/{recipeId}/archive | A | application/json: ArchivePersonalRecipeRequest | 200 application/json: PersonalRecipe |
 | setPlanSlotLock | PUT | /api/v1/households/{householdId}/plan-slots/{date}/{mealType}/lock | B | application/json: SetPlanLockRequest | 200 application/json: PlanSlot |

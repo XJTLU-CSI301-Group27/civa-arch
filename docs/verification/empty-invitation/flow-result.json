@@ -1,0 +1,17 @@
+{
+  "initialSkipToday": true,
+  "initialCreateToday": true,
+  "initialJoinToday": true,
+  "profileCloseProfile": true,
+  "profileCreateProfile": true,
+  "profileJoinProfile": true,
+  "profileLeaveProfile": true,
+  "originSurvivesResize": true,
+  "realUiInvitationGeneratedAndJoined": true,
+  "sameKeyInvitationReplay": true,
+  "familyIdGuidance": true,
+  "duplicateEmptyButtonRemoved": true,
+  "favoriteEmptyText": true,
+  "phoneWideScreens": true,
+  "testDatabase": "civa_family_test"
+}

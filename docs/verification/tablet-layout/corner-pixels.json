@@ -1,0 +1,13 @@
+{
+  "before": {
+    "left": 510,
+    "center": 510,
+    "right": 510
+  },
+  "after": {
+    "left": 550,
+    "center": 510,
+    "right": 551
+  },
+  "bothTopCornersRestored": true
+}

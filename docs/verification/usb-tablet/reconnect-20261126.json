@@ -1,0 +1,12 @@
+{
+  "date": "2026-11-26",
+  "device": "MI_PAD_4_PLUS",
+  "backend8080Listening": true,
+  "database55433Listening": true,
+  "reverseBefore": "absent",
+  "reverseAfter": "tcp:8080 tcp:8080",
+  "deviceUnauthenticatedMeHttpStatus": 401,
+  "credentialsSubmitted": false,
+  "sourceCodeChanged": false,
+  "appDataChanged": false
+}

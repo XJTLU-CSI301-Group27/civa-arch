@@ -250,3 +250,47 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\test_start_loc
 - 设备联调成功只证明本次实际验证的路径，不代表全部业务、双账号权限、离线恢复、真机、release、远端 CI 或全新机器构建均已通过。
 
 服务端集成测试只允许使用名称以 `_test` 结尾的隔离 PostgreSQL 数据库。已有 guard 会拒绝其他数据库；不要为了使测试通过而关闭它。本次后端启动使用的是开发数据库，不能直接拿来运行集成测试。
+
+
+## 2026-11-24：本机 civa-arch-main 设备等待问题排查
+
+本条仅记录当前电脑和本次解压目录，不能沿用前文其他电脑的 F 盘、JDK 副本或 Docker 已就绪等环境结论。
+
+- 实际工程根目录：`C:\Users\18192\Desktop\civa-arch-main\civa-arch-main`，包含settings.gradle；外层同名目录只是解压容器。本机SDK为`C:\Android Studio`，Studio Gradle JDK为独立的`C:\Users\18192\.jdks\jbr-17.0.14`，Wrapper为Gradle 8.13。
+- 现象：Run卡在Waiting for all target devices to come online。Studio日志反复出现`device unauthorized`，随后Medium_Phone断开并退出；未据此认定应用代码或Gradle构建失败，也未查明原调试服务认证异常的底层原因。
+- 处理：重启同一SDK的ADB服务（`adb kill-server`、`adb start-server`），关闭退出提示，从本工程Studio正常Run入口重新启动原Medium_Phone。AVD原本已设置forceColdBoot=yes、forceFastBoot=no，本轮没有修改AVD配置、密钥或图形设置。没有Wipe Data、卸载应用、清空排餐或数据库。
+- 实际验证：使用上述JDK运行`gradlew.bat :app:assembleDebug -PdevStackOff --console=plain`，BUILD SUCCESSFUL。随后Studio Run完成安装并启动`edu.xjtlu.civa/.MainActivity`；emulator-5554为device、sys.boot_completed=1，确认进程存在且MainActivity在前台，实际画面为登录页。短暂启动黑屏随后正常显示，没有执行不必要的GPU设置更改。保留用户可见模拟器和应用运行。
+- 后端独立缺项：`gradlew.bat devDoctor --console=plain`正常完成诊断；当前Docker/Compose命令不可用，工程`.env`缺失、后端JAR缺失、8080关闭。5432已有PostgreSQL监听，但没有验证其数据库密码/数据与本项目兼容，不能将端口开放视为后端就绪。未复制其他工程凭据、创建随机密码、重置现有库或自动执行迁移。
+- 当前可验证范围是Android构建、安装、启动和登录界面显示；登录/注册及依赖后端的功能尚未验证。若继续配置，需按本机数据库实际凭据创建被忽略的`.env`并构建启动本工程后端；如使用Docker，应先确认5432已有实例，避免端口冲突或误删旧数据。不要把这些缺项归因于JDK17或重新下载Gradle。
+- 没有修改业务源码、公共接口、Gradle依赖或主题，也没有GitHub发布。本轮仅补充本文和[实际启动截图](verification/screenshots/local-run-20261124.png)。未运行单元测试、lint或服务端测试；本次没有业务代码改动，依据实际构建/部署和设备状态验收启动问题。
+- 构建日志、devDoctor日志、设备状态和本文修改前备份保存在本机`C:\Users\18192\Desktop\CSI301\tmp\civa-arch-run-recovery`。该本机目录不是交付依赖。
+
+
+## 2026-11-24：本机登录后端已接通（独立原生 PostgreSQL）
+
+本条更新上一条“后端未启动”的状态，作用于`C:\Users\18192\Desktop\civa-arch-main\civa-arch-main`。`civa-arch-main2`未同步修改。团队原有Docker方案及`start-civa.bat`保持原样。
+
+### 本机启动和停止
+
+1. 首次或重启电脑后，双击工程根目录`start-civa-local.bat`，看到Backend ready后回到Android Studio Run app。首次使用在App中创建自己的账号，再登录并创建家庭。
+2. 可重复运行该入口，复用本项目已有后端和数据库；不会创建第二份服务。安全停止为`start-civa-local.bat -Stop`，保留账号、家庭、数据库和上传文件。账号及上传文件保存在被忽略的.civa-local内，与build构建缓存分离；普通Gradle clean不会删除账号。不要删除.civa-local来清理缓存。
+3. 该入口使用已安装的PostgreSQL命令行工具及独立JDK17，不需要Docker。当前工具为`C:\Program Files\PostgreSQL\18\bin`与`C:\Users\18192\.jdks\jbr-17.0.14`；脚本按JAVA_HOME/常见安装目录发现工具，未把本机绝对路径写进业务代码。
+
+### 环境、数据和改动边界
+
+- 新增`start-civa-local.bat`及`scripts/start-native-local.ps1`；.gitignore新增.civa-local/以排除本机数据库、媒体及日志。后者首次生成被忽略的`.env`、随机数据库密码，并初始化本工程专用的数据库集群；已有其他用途的.env会拒绝覆盖，缺失原集群密码时不会重置。只停止项目状态文件与启动时间一致的Java进程，避免误停复用PID；已有8080无本项目身份记录时拒绝接管。
+- 数据库仅监听127.0.0.1:55433，库名civa_arch_dev，数据目录.civa-local/postgres-data；原先5432监听PID10712未改。数据库按原有8项Flyway迁移初始化，没有重置已有系统数据库、修改既有迁移或关闭迁移校验。
+- 后端仅本机监听127.0.0.1:8080，继续使用项目原始debug地址http://10.0.2.2:8080/供模拟器访问。后端日志及进程身份文件在.civa-local，媒体文件在.civa-local/media。PostgreSQL和Java以后台进程运行，分别使用独立的空输入文件和独立日志；不重写运行中被占用的输入文件，避免启动时文件占用冲突。后台服务不弹出额外终端窗口。
+- `.env`中的营养供应商为stub，用于本地无密钥联调，并非真实AI营养分析；没有复制此前DeepSeek密钥。密码与API令牌不得放进交接截图、日志或压缩包。其他组员应使用自己的本地配置；本地账号仅保存在本机这份开发库，不会自动同步到其他电脑。
+- 第一次后端构建因repo.maven.apache.org的TLS握手失败；临时HTTPS镜像重试后成功。未改依赖版本、锁文件、TLS检查或全局Gradle配置。本机镜像配置保存在被忽略的.civa-local/server-maven.init.gradle，启动脚本只在该文件存在且需重新构建JAR时使用；网络正常可不用该文件。Gradle源码仓库声明保持原样。
+- 未修改Android/服务端业务源码、公共接口、模块边界、数据库迁移、现有Docker入口或依赖，没有GitHub发布。交付新增的两个入口文件和本说明即可；本机.env、数据库/媒体、编译产物及测试凭据不作为源码压缩包交付。备份账号数据需另行备份数据库及媒体，不能靠只打包源码。
+
+### 实际验证与限制
+
+- JDK17执行server目录`gradlew.bat bootJar unitTest -I <本机镜像配置> --console=plain`，BUILD SUCCESSFUL；25项隔离单元测试、0失败、0错误。测试仅运行unitTest，没有在开发库执行需_test数据库的服务端集成测试，也没有关闭测试库保护。
+- HTTP真实验证：创建1个合成测试账号；登录及读取本人资料成功；错误密码、无身份请求返回401；退出返回204且原令牌失效。停止并重启本项目的数据库和后端后，同一测试账号仍可登录；重复启动可复用服务。
+- 模拟器通过原始10.0.2.2地址实际登录，创建1个合成测试家庭并到达今天页，进入我的后正常退出，最后保留登录页和运行中的本地服务供用户注册。设备验收脚本最初把中文输入法候选文字当作已提交，已改为确认实际输入并使用数字测试家庭名；没有因此改动业务表单。截图：[登录就绪](verification/screenshots/native-local-login-20261124.png)、[真实首页](verification/screenshots/native-local-today-20261124.png)。
+- PostgreSQL18.3启动时Flyway提示其正式测试版本最高为17；本次8项迁移及上述登录/家庭流程实测成功，不代表整个产品已在PG18全面验收。团队Docker的PostgreSQL16配置未改。没有全面验证库存、营养模型、全新机器、真机、release或GitHub CI。
+- 本轮源文件副本、文档原件备份、首次失败与镜像成功日志、HTTP/设备验收脚本和汇总保存在本机`C:\Users\18192\Desktop\CSI301\tmp\civa-arch-local-login`。测试账号凭据仅存在其中的.local.json文件，不打印或随文档分享。
+
+最终复核：普通Android `gradlew.bat :app:assembleDebug --console=plain`（未跳过devStackEnsure）BUILD SUCCESSFUL，识别已运行的本机服务；数据目录从构建缓存安全迁入.civa-local后，HTTP再次验证原测试账号及家庭仍在、登录/退出正常，重复启动复用成功。原5432服务保持运行。启动器迭代及数据搬迁过程中的失败日志保留供溯源，最终结果以api-persistent-runtime.log、native-final-reuse.log及上述普通构建日志为准。

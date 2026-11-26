@@ -18,7 +18,9 @@ class HouseholdErrors {
     @ExceptionHandler(HouseholdWriteService.Failure.class)
     ResponseEntity<Map<String, Object>> write(HouseholdWriteService.Failure failure, HttpServletRequest request) {
         int status = switch (failure.code) {
-            case "INVALID_INVITATION" -> 400;
+            case "INVALID_INVITATION", "OWNER_CANNOT_LEAVE" -> 400;
+            case "FORBIDDEN" -> 403;
+            case "VERSION_CONFLICT" -> 409;
             case "HOUSEHOLD_ACCESS_REVOKED" -> 403;
             case "NOT_FOUND" -> 404;
             case "ALREADY_IN_HOUSEHOLD" -> 409;

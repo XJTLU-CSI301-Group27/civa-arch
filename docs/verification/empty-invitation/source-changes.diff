@@ -1,0 +1,1904 @@
+--- before/feature-ac/src/main/res/layout/ac_fragment_catalog.xml
++++ after/feature-ac/src/main/res/layout/ac_fragment_catalog.xml
+@@ -24,8 +24,7 @@
+     <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="8dp">
+         <androidx.recyclerview.widget.RecyclerView android:id="@+id/ac_catalog_grid" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:paddingBottom="8dp" android:scrollbars="none" />
+         <LinearLayout android:id="@+id/ac_catalog_empty" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center" android:padding="24dp" android:visibility="gone">
+-            <TextView style="@style/CivaText.Title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="20sp" android:gravity="center" android:text="@string/ac_catalog_empty_mine" />
+-            <com.google.android.material.button.MaterialButton android:id="@+id/ac_catalog_empty_create" style="@style/CivaWidget.SecondaryButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="@string/ac_catalog_empty_add" />
++            <TextView android:id="@+id/ac_catalog_empty_text" style="@style/CivaText.Title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="20sp" android:gravity="center" android:text="@string/ac_catalog_empty_mine" />
+         </LinearLayout>
+     </FrameLayout>
+     <TextView android:id="@+id/ac_catalog_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="4dp" android:textSize="13sp" android:textColor="@color/civa_muted" />
+--- before/feature-ac/src/main/java/edu/xjtlu/civa/feature/ac/catalog/RecipeCatalogFragment.java
++++ after/feature-ac/src/main/java/edu/xjtlu/civa/feature/ac/catalog/RecipeCatalogFragment.java
+@@ -51,6 +51,7 @@
+     private EditText search;
+     private ChipGroup chips, sources;
+     private View empty, catClearance;
++    private TextView emptyText;
+     private Call<?> call;
+     private Source source = Source.PUBLIC;
+     private String query = "", category = "";
+@@ -76,7 +77,7 @@
+         sources = view.findViewById(R.id.ac_catalog_sources);
+         empty = view.findViewById(R.id.ac_catalog_empty);
+         catClearance = view.findViewById(R.id.ac_catalog_cat_clearance);
+-        view.findViewById(R.id.ac_catalog_empty_create).setOnClickListener(ignored -> create.performClick());
++        emptyText = view.findViewById(R.id.ac_catalog_empty_text);
+ 
+         int columns = getResources().getConfiguration().screenWidthDp >= 600 ? 3 : 2;
+         grid.setLayoutManager(new GridLayoutManager(requireContext(), columns));
+@@ -294,7 +295,8 @@
+ 
+     private void render(int requestPage) {
+         adapter.submit(loaded);
+-        empty.setVisibility(loaded.isEmpty() && (source == Source.PERSONAL || source == Source.HOUSEHOLD) ? View.VISIBLE : View.GONE);
++        emptyText.setText(source == Source.FAVORITES ? R.string.ac_catalog_empty_favorites : R.string.ac_catalog_empty_mine);
++        empty.setVisibility(loaded.isEmpty() && source != Source.PUBLIC ? View.VISIBLE : View.GONE);
+         page = requestPage + 1;
+         status.setText(getString(R.string.ac_catalog_total, (int) total));
+         more.setVisibility(loaded.size() < total ? View.VISIBLE : View.GONE);
+@@ -329,6 +331,7 @@
+         chips = null;
+         sources = null;
+         empty = null;
++        emptyText = null;
+         catClearance = null;
+         host = null;
+         super.onDestroyView();
+--- before/feature-ac/src/main/res/values/ac_strings.xml
++++ after/feature-ac/src/main/res/values/ac_strings.xml
+@@ -67,7 +67,7 @@
+ <string name="ac_detail_close_symbol">×</string><string name="ac_detail_close">返回菜谱列表</string>
+     <string name="ac_catalog_create_label">＋ 新建菜谱</string>
+     <string name="ac_catalog_empty_mine">这里还空着，放进你的第一道拿手菜吧</string>
+-    <string name="ac_catalog_empty_add">＋ 添加菜谱</string>
++    <string name="ac_catalog_empty_favorites">这里还空着，快加入你最想吃的菜吧</string>
+     <string name="ac_catalog_join_first">先加入家庭，再和家人分享菜谱吧</string>
+ </resources>
+ 
+--- before/feature-bd/src/main/res/layout/bd_fragment_home.xml
++++ after/feature-bd/src/main/res/layout/bd_fragment_home.xml
+@@ -1,72 +1,72 @@
+-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent" android:layout_height="match_parent" tools:context=".HomeFragment">
+-    <edu.xjtlu.civa.core.ui.PaperBackdropView android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" />
+-    <edu.xjtlu.civa.feature.bd.BdHomeLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingHorizontal="20dp" android:paddingTop="10dp" android:paddingBottom="8dp">
+-        <LinearLayout android:id="@+id/bd_home_header" android:layout_width="match_parent" android:layout_height="50dp" android:orientation="horizontal" android:gravity="center_vertical">
+-            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center_vertical" android:orientation="vertical">
+-                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+-                    <TextView android:id="@+id/bd_home_weekday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textSize="26sp" android:textColor="@color/civa_primary_dark" android:includeFontPadding="false" tools:text="周五" />
+-                    <TextView android:id="@+id/bd_home_weekday_en" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:fontFamily="serif" android:textStyle="italic" android:textSize="14sp" android:textColor="@color/civa_secondary" tools:text="Friday" />
+-                </LinearLayout>
+-                <TextView android:id="@+id/bd_home_date" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textSize="10sp" android:textColor="@color/civa_muted" android:letterSpacing="0.14" tools:text="2026.11.20" />
+-            </LinearLayout>
+-            <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/bd_home_calendar" android:layout_width="48dp" android:layout_height="48dp" android:padding="10dp" android:background="@drawable/bd_home_calendar_background" app:srcCompat="@drawable/bd_ic_calendar" android:contentDescription="@string/bd_home_calendar" />
+-        </LinearLayout>
+-        <FrameLayout android:id="@+id/bd_home_hero" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:paddingVertical="3dp">
+-            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_gravity="center" android:orientation="horizontal" android:gravity="center">
+-                <LinearLayout android:layout_width="132dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp" android:translationX="24dp">
+-                    <TextView android:id="@+id/bd_home_hero_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bd_home_hero_title" android:fontFamily="@font/civa_kuaile" android:textSize="34sp" android:includeFontPadding="false" android:lineSpacingExtra="3dp" android:textColor="@color/civa_primary_dark" />
+-                </LinearLayout>
+-                <edu.xjtlu.civa.core.ui.BakeryCatStage android:id="@id/bd_cat_stage" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:padding="12dp">
+-                    <ImageView android:id="@id/civa_cat_art" android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/civa_cat_bread" android:scaleType="fitCenter" android:contentDescription="@string/civa_cat_greeting" />
+-                </edu.xjtlu.civa.core.ui.BakeryCatStage>
+-            </LinearLayout>
+-        </FrameLayout>
+-        <LinearLayout android:id="@+id/bd_home_meals" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="10dp">
+-                <LinearLayout android:id="@+id/bd_home_breakfast_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
+-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_breakfast" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_breakfast_en" />
+-                </LinearLayout>
+-                <FrameLayout android:id="@+id/bd_home_breakfast_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_breakfast_card" android:padding="10dp">
+-                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
+-                        <HorizontalScrollView android:id="@+id/bd_home_breakfast_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+-                            <LinearLayout android:id="@+id/bd_home_breakfast_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
+-                        </HorizontalScrollView>
+-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_breakfast" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_breakfast" android:text="@string/bd_home_add_dish" />
+-                    </LinearLayout>
+-                </FrameLayout>
+-            </LinearLayout>
+-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="10dp">
+-                <LinearLayout android:id="@+id/bd_home_lunch_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="end|center_vertical">
+-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_lunch" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_lunch_en" />
+-                </LinearLayout>
+-                <FrameLayout android:id="@+id/bd_home_lunch_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_lunch_card" android:padding="10dp">
+-                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
+-                        <HorizontalScrollView android:id="@+id/bd_home_lunch_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+-                            <LinearLayout android:id="@+id/bd_home_lunch_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
+-                        </HorizontalScrollView>
+-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_lunch" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_lunch" android:text="@string/bd_home_add_dish" />
+-                    </LinearLayout>
+-                </FrameLayout>
+-            </LinearLayout>
+-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+-                <LinearLayout android:id="@+id/bd_home_dinner_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
+-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_dinner" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_dinner_en" />
+-                </LinearLayout>
+-                <FrameLayout android:id="@+id/bd_home_dinner_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_dinner_card" android:padding="10dp">
+-                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
+-                        <HorizontalScrollView android:id="@+id/bd_home_dinner_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+-                            <LinearLayout android:id="@+id/bd_home_dinner_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
+-                        </HorizontalScrollView>
+-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_dinner" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_dinner" android:text="@string/bd_home_add_dish" />
+-                    </LinearLayout>
+-                </FrameLayout>
+-            </LinearLayout>
+-        </LinearLayout>
+-    </edu.xjtlu.civa.feature.bd.BdHomeLayout>
+-</FrameLayout>
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent" android:layout_height="match_parent" tools:context=".HomeFragment">
++    <edu.xjtlu.civa.core.ui.PaperBackdropView android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" />
++    <edu.xjtlu.civa.feature.bd.BdHomeLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingHorizontal="20dp" android:paddingTop="10dp" android:paddingBottom="8dp">
++        <LinearLayout android:id="@+id/bd_home_header" android:layout_width="match_parent" android:layout_height="50dp" android:orientation="horizontal" android:gravity="center_vertical">
++            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center_vertical" android:orientation="vertical">
++                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
++                    <TextView android:id="@+id/bd_home_weekday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textSize="26sp" android:textColor="@color/civa_primary_dark" android:includeFontPadding="false" tools:text="周五" />
++                    <TextView android:id="@+id/bd_home_weekday_en" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:fontFamily="serif" android:textStyle="italic" android:textSize="14sp" android:textColor="@color/civa_secondary" tools:text="Friday" />
++                </LinearLayout>
++                <TextView android:id="@+id/bd_home_date" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textSize="10sp" android:textColor="@color/civa_muted" android:letterSpacing="0.14" tools:text="2026.11.20" />
++            </LinearLayout>
++            <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/bd_home_calendar" android:layout_width="48dp" android:layout_height="48dp" android:padding="10dp" android:background="@drawable/bd_home_calendar_background" app:srcCompat="@drawable/bd_ic_calendar" android:contentDescription="@string/bd_home_calendar" />
++        </LinearLayout>
++        <FrameLayout android:id="@+id/bd_home_hero" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:paddingVertical="3dp">
++            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_gravity="center" android:orientation="horizontal" android:gravity="center">
++                <LinearLayout android:layout_width="132dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp" android:translationX="36dp">
++                    <TextView android:id="@+id/bd_home_hero_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bd_home_hero_title" android:fontFamily="@font/civa_kuaile" android:textSize="38sp" android:includeFontPadding="false" android:lineSpacingExtra="3dp" android:textColor="@color/civa_primary_dark" />
++                </LinearLayout>
++                <edu.xjtlu.civa.core.ui.BakeryCatStage android:id="@id/bd_cat_stage" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:padding="12dp">
++                    <ImageView android:id="@id/civa_cat_art" android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/civa_cat_bread" android:scaleType="fitCenter" android:contentDescription="@string/civa_cat_greeting" />
++                </edu.xjtlu.civa.core.ui.BakeryCatStage>
++            </LinearLayout>
++        </FrameLayout>
++        <LinearLayout android:id="@+id/bd_home_meals" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
++            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="10dp">
++                <LinearLayout android:id="@+id/bd_home_breakfast_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
++                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_breakfast" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_breakfast_en" />
++                </LinearLayout>
++                <FrameLayout android:id="@+id/bd_home_breakfast_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_breakfast_card" android:padding="10dp">
++                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
++                        <HorizontalScrollView android:id="@+id/bd_home_breakfast_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
++                            <LinearLayout android:id="@+id/bd_home_breakfast_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
++                        </HorizontalScrollView>
++                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_breakfast" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_breakfast" android:text="@string/bd_home_add_dish" />
++                    </LinearLayout>
++                </FrameLayout>
++            </LinearLayout>
++            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="10dp">
++                <LinearLayout android:id="@+id/bd_home_lunch_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="end|center_vertical">
++                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_lunch" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_lunch_en" />
++                </LinearLayout>
++                <FrameLayout android:id="@+id/bd_home_lunch_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_lunch_card" android:padding="10dp">
++                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
++                        <HorizontalScrollView android:id="@+id/bd_home_lunch_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
++                            <LinearLayout android:id="@+id/bd_home_lunch_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
++                        </HorizontalScrollView>
++                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_lunch" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_lunch" android:text="@string/bd_home_add_dish" />
++                    </LinearLayout>
++                </FrameLayout>
++            </LinearLayout>
++            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
++                <LinearLayout android:id="@+id/bd_home_dinner_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
++                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_dinner" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_dinner_en" />
++                </LinearLayout>
++                <FrameLayout android:id="@+id/bd_home_dinner_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_dinner_card" android:padding="10dp">
++                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
++                        <HorizontalScrollView android:id="@+id/bd_home_dinner_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
++                            <LinearLayout android:id="@+id/bd_home_dinner_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
++                        </HorizontalScrollView>
++                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_dinner" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_dinner" android:text="@string/bd_home_add_dish" />
++                    </LinearLayout>
++                </FrameLayout>
++            </LinearLayout>
++        </LinearLayout>
++    </edu.xjtlu.civa.feature.bd.BdHomeLayout>
++</FrameLayout>
+--- before/feature-bd/src/main/res/layout-w600dp/bd_fragment_home.xml
++++ after/feature-bd/src/main/res/layout-w600dp/bd_fragment_home.xml
+@@ -1,72 +1,72 @@
+-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent" android:layout_height="match_parent" tools:context=".HomeFragment">
+-    <edu.xjtlu.civa.core.ui.PaperBackdropView android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" />
+-    <edu.xjtlu.civa.feature.bd.BdHomeLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingHorizontal="20dp" android:paddingTop="10dp" android:paddingBottom="8dp">
+-        <LinearLayout android:id="@+id/bd_home_header" android:layout_width="match_parent" android:layout_height="50dp" android:orientation="horizontal" android:gravity="center_vertical">
+-            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center_vertical" android:orientation="vertical">
+-                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+-                    <TextView android:id="@+id/bd_home_weekday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textSize="26sp" android:textColor="@color/civa_primary_dark" android:includeFontPadding="false" tools:text="周五" />
+-                    <TextView android:id="@+id/bd_home_weekday_en" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:fontFamily="serif" android:textStyle="italic" android:textSize="14sp" android:textColor="@color/civa_secondary" tools:text="Friday" />
+-                </LinearLayout>
+-                <TextView android:id="@+id/bd_home_date" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textSize="10sp" android:textColor="@color/civa_muted" android:letterSpacing="0.14" tools:text="2026.11.20" />
+-            </LinearLayout>
+-            <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/bd_home_calendar" android:layout_width="48dp" android:layout_height="48dp" android:padding="10dp" android:background="@drawable/bd_home_calendar_background" app:srcCompat="@drawable/bd_ic_calendar" android:contentDescription="@string/bd_home_calendar" />
+-        </LinearLayout>
+-        <FrameLayout android:id="@+id/bd_home_hero" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:paddingVertical="3dp">
+-            <LinearLayout android:layout_width="300dp" android:layout_height="match_parent" android:layout_gravity="center" android:orientation="horizontal" android:gravity="center">
+-                <LinearLayout android:layout_width="132dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp" android:translationX="24dp">
+-                    <TextView android:id="@+id/bd_home_hero_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bd_home_hero_title" android:fontFamily="@font/civa_kuaile" android:textSize="34sp" android:includeFontPadding="false" android:lineSpacingExtra="3dp" android:textColor="@color/civa_primary_dark" />
+-                </LinearLayout>
+-                <edu.xjtlu.civa.core.ui.BakeryCatStage android:id="@id/bd_cat_stage" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:padding="12dp">
+-                    <ImageView android:id="@id/civa_cat_art" android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/civa_cat_bread" android:scaleType="fitCenter" android:contentDescription="@string/civa_cat_greeting" />
+-                </edu.xjtlu.civa.core.ui.BakeryCatStage>
+-            </LinearLayout>
+-        </FrameLayout>
+-        <LinearLayout android:id="@+id/bd_home_meals" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+-            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp">
+-                <LinearLayout android:id="@+id/bd_home_breakfast_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
+-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_breakfast" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_breakfast_en" />
+-                </LinearLayout>
+-                <FrameLayout android:id="@+id/bd_home_breakfast_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_breakfast_card" android:padding="10dp">
+-                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
+-                        <HorizontalScrollView android:id="@+id/bd_home_breakfast_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+-                            <LinearLayout android:id="@+id/bd_home_breakfast_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
+-                        </HorizontalScrollView>
+-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_breakfast" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_breakfast" android:text="@string/bd_home_add_dish" />
+-                    </LinearLayout>
+-                </FrameLayout>
+-            </LinearLayout>
+-            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp">
+-                <LinearLayout android:id="@+id/bd_home_lunch_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
+-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_lunch" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_lunch_en" />
+-                </LinearLayout>
+-                <FrameLayout android:id="@+id/bd_home_lunch_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_lunch_card" android:padding="10dp">
+-                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
+-                        <HorizontalScrollView android:id="@+id/bd_home_lunch_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+-                            <LinearLayout android:id="@+id/bd_home_lunch_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
+-                        </HorizontalScrollView>
+-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_lunch" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_lunch" android:text="@string/bd_home_add_dish" />
+-                    </LinearLayout>
+-                </FrameLayout>
+-            </LinearLayout>
+-            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+-                <LinearLayout android:id="@+id/bd_home_dinner_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
+-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_dinner" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_dinner_en" />
+-                </LinearLayout>
+-                <FrameLayout android:id="@+id/bd_home_dinner_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_dinner_card" android:padding="10dp">
+-                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
+-                        <HorizontalScrollView android:id="@+id/bd_home_dinner_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+-                            <LinearLayout android:id="@+id/bd_home_dinner_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
+-                        </HorizontalScrollView>
+-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_dinner" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_dinner" android:text="@string/bd_home_add_dish" />
+-                    </LinearLayout>
+-                </FrameLayout>
+-            </LinearLayout>
+-        </LinearLayout>
+-    </edu.xjtlu.civa.feature.bd.BdHomeLayout>
+-</FrameLayout>
++<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent" android:layout_height="match_parent" tools:context=".HomeFragment">
++    <edu.xjtlu.civa.core.ui.PaperBackdropView android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" />
++    <edu.xjtlu.civa.feature.bd.BdHomeLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingHorizontal="20dp" android:paddingTop="10dp" android:paddingBottom="8dp">
++        <LinearLayout android:id="@+id/bd_home_header" android:layout_width="match_parent" android:layout_height="50dp" android:orientation="horizontal" android:gravity="center_vertical">
++            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center_vertical" android:orientation="vertical">
++                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
++                    <TextView android:id="@+id/bd_home_weekday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textSize="26sp" android:textColor="@color/civa_primary_dark" android:includeFontPadding="false" tools:text="周五" />
++                    <TextView android:id="@+id/bd_home_weekday_en" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:fontFamily="serif" android:textStyle="italic" android:textSize="14sp" android:textColor="@color/civa_secondary" tools:text="Friday" />
++                </LinearLayout>
++                <TextView android:id="@+id/bd_home_date" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textSize="10sp" android:textColor="@color/civa_muted" android:letterSpacing="0.14" tools:text="2026.11.20" />
++            </LinearLayout>
++            <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/bd_home_calendar" android:layout_width="48dp" android:layout_height="48dp" android:padding="10dp" android:background="@drawable/bd_home_calendar_background" app:srcCompat="@drawable/bd_ic_calendar" android:contentDescription="@string/bd_home_calendar" />
++        </LinearLayout>
++        <FrameLayout android:id="@+id/bd_home_hero" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:paddingVertical="3dp">
++            <LinearLayout android:layout_width="300dp" android:layout_height="match_parent" android:layout_gravity="center" android:orientation="horizontal" android:gravity="center">
++                <LinearLayout android:layout_width="132dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp" android:translationX="28dp">
++                    <TextView android:id="@+id/bd_home_hero_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bd_home_hero_title" android:fontFamily="@font/civa_kuaile" android:textSize="38sp" android:includeFontPadding="false" android:lineSpacingExtra="3dp" android:textColor="@color/civa_primary_dark" />
++                </LinearLayout>
++                <edu.xjtlu.civa.core.ui.BakeryCatStage android:id="@id/bd_cat_stage" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:padding="12dp">
++                    <ImageView android:id="@id/civa_cat_art" android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/civa_cat_bread" android:scaleType="fitCenter" android:contentDescription="@string/civa_cat_greeting" />
++                </edu.xjtlu.civa.core.ui.BakeryCatStage>
++            </LinearLayout>
++        </FrameLayout>
++        <LinearLayout android:id="@+id/bd_home_meals" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
++            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp">
++                <LinearLayout android:id="@+id/bd_home_breakfast_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
++                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_breakfast" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_breakfast_en" />
++                </LinearLayout>
++                <FrameLayout android:id="@+id/bd_home_breakfast_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_breakfast_card" android:padding="10dp">
++                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
++                        <HorizontalScrollView android:id="@+id/bd_home_breakfast_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
++                            <LinearLayout android:id="@+id/bd_home_breakfast_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
++                        </HorizontalScrollView>
++                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_breakfast" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_breakfast" android:text="@string/bd_home_add_dish" />
++                    </LinearLayout>
++                </FrameLayout>
++            </LinearLayout>
++            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp">
++                <LinearLayout android:id="@+id/bd_home_lunch_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
++                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_lunch" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_lunch_en" />
++                </LinearLayout>
++                <FrameLayout android:id="@+id/bd_home_lunch_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_lunch_card" android:padding="10dp">
++                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
++                        <HorizontalScrollView android:id="@+id/bd_home_lunch_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
++                            <LinearLayout android:id="@+id/bd_home_lunch_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
++                        </HorizontalScrollView>
++                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_lunch" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_lunch" android:text="@string/bd_home_add_dish" />
++                    </LinearLayout>
++                </FrameLayout>
++            </LinearLayout>
++            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
++                <LinearLayout android:id="@+id/bd_home_dinner_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
++                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_dinner" />
++                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_dinner_en" />
++                </LinearLayout>
++                <FrameLayout android:id="@+id/bd_home_dinner_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_dinner_card" android:padding="10dp">
++                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
++                        <HorizontalScrollView android:id="@+id/bd_home_dinner_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
++                            <LinearLayout android:id="@+id/bd_home_dinner_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
++                        </HorizontalScrollView>
++                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_dinner" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_dinner" android:text="@string/bd_home_add_dish" />
++                    </LinearLayout>
++                </FrameLayout>
++            </LinearLayout>
++        </LinearLayout>
++    </edu.xjtlu.civa.feature.bd.BdHomeLayout>
++</FrameLayout>
+--- before/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeLayout.java
++++ after/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeLayout.java
+@@ -1,47 +1,47 @@
+-package edu.xjtlu.civa.feature.bd;
+-
+-import android.content.Context;
+-import android.util.AttributeSet;
+-import android.view.View;
+-import android.widget.LinearLayout;
+-import android.widget.TextView;
+-import androidx.core.widget.TextViewCompat;
+-
+-/** Gives empty and populated meals identical bounds; only the hero absorbs spare space. */
+-public final class BdHomeLayout extends LinearLayout {
+-    private Boolean compactTitle;
+-    public BdHomeLayout(Context context, AttributeSet attrs) { super(context, attrs); }
+-
+-    @Override protected void onMeasure(int widthSpec, int heightSpec) {
+-        if (MeasureSpec.getMode(heightSpec) != MeasureSpec.UNSPECIFIED) {
+-            float density = getResources().getDisplayMetrics().density;
+-            float height = (MeasureSpec.getSize(heightSpec) - getPaddingTop() - getPaddingBottom()) / density;
+-            float font = Math.min(1.6f, getResources().getConfiguration().fontScale);
+-            boolean wide = ((LinearLayout) findViewById(R.id.bd_home_meals)).getOrientation() == HORIZONTAL;
+-            int header = Math.round(Math.max(wide ? 44 : 50, 44 * font) * density);
+-            int label = Math.round(Math.max(34, 33 * font) * density);
+-            float reserved = header / density + (wide ? 64 : 82 + 20) + label / density * (wide ? 1 : 3);
+-            int card = Math.round(Math.max(66, Math.min(112, (height - reserved) / (wide ? 1 : 3))) * density);
+-            float heroHeight = height - header / density - (label + card) / density * (wide ? 1 : 3) - (wide ? 0 : 20);
+-            boolean compact = wide || heroHeight < 150;
+-            if (compactTitle == null || compactTitle != compact) {
+-                TextView title = findViewById(R.id.bd_home_hero_title);
+-                String text = getResources().getString(R.string.bd_home_hero_title);
+-                title.setText(compact ? text.replace(String.valueOf((char) 10), "") : text);
+-                title.setMaxLines(compact ? 1 : 2);
+-                TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(title, 16, compact ? 24 : 34, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
+-                compactTitle = compact;
+-            }
+-            size(R.id.bd_home_header, header);
+-            for (int id : new int[]{R.id.bd_home_breakfast_heading, R.id.bd_home_lunch_heading, R.id.bd_home_dinner_heading}) size(id, label);
+-            for (int id : new int[]{R.id.bd_home_breakfast_card, R.id.bd_home_lunch_card, R.id.bd_home_dinner_card}) size(id, card);
+-        }
+-        super.onMeasure(widthSpec, heightSpec);
+-    }
+-
+-    private void size(int id, int height) {
+-        View view = findViewById(id);
+-        // Mutate before the normal measurement pass; do not enqueue another layout from onMeasure.
+-        view.getLayoutParams().height = height;
+-    }
+-}
++package edu.xjtlu.civa.feature.bd;
++
++import android.content.Context;
++import android.util.AttributeSet;
++import android.view.View;
++import android.widget.LinearLayout;
++import android.widget.TextView;
++import androidx.core.widget.TextViewCompat;
++
++/** Gives empty and populated meals identical bounds; only the hero absorbs spare space. */
++public final class BdHomeLayout extends LinearLayout {
++    private Boolean compactTitle;
++    public BdHomeLayout(Context context, AttributeSet attrs) { super(context, attrs); }
++
++    @Override protected void onMeasure(int widthSpec, int heightSpec) {
++        if (MeasureSpec.getMode(heightSpec) != MeasureSpec.UNSPECIFIED) {
++            float density = getResources().getDisplayMetrics().density;
++            float height = (MeasureSpec.getSize(heightSpec) - getPaddingTop() - getPaddingBottom()) / density;
++            float font = Math.min(1.6f, getResources().getConfiguration().fontScale);
++            boolean wide = ((LinearLayout) findViewById(R.id.bd_home_meals)).getOrientation() == HORIZONTAL;
++            int header = Math.round(Math.max(wide ? 44 : 50, 44 * font) * density);
++            int label = Math.round(Math.max(34, 33 * font) * density);
++            float reserved = header / density + (wide ? 64 : 82 + 20) + label / density * (wide ? 1 : 3);
++            int card = Math.round(Math.max(66, Math.min(112, (height - reserved) / (wide ? 1 : 3))) * density);
++            float heroHeight = height - header / density - (label + card) / density * (wide ? 1 : 3) - (wide ? 0 : 20);
++            boolean compact = wide || heroHeight < 150;
++            if (compactTitle == null || compactTitle != compact) {
++                TextView title = findViewById(R.id.bd_home_hero_title);
++                String text = getResources().getString(R.string.bd_home_hero_title);
++                title.setText(compact ? text.replace(String.valueOf((char) 10), "") : text);
++                title.setMaxLines(compact ? 1 : 2);
++                TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(title, 16, compact ? 25 : 38, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
++                compactTitle = compact;
++            }
++            size(R.id.bd_home_header, header);
++            for (int id : new int[]{R.id.bd_home_breakfast_heading, R.id.bd_home_lunch_heading, R.id.bd_home_dinner_heading}) size(id, label);
++            for (int id : new int[]{R.id.bd_home_breakfast_card, R.id.bd_home_lunch_card, R.id.bd_home_dinner_card}) size(id, card);
++        }
++        super.onMeasure(widthSpec, heightSpec);
++    }
++
++    private void size(int id, int height) {
++        View view = findViewById(id);
++        // Mutate before the normal measurement pass; do not enqueue another layout from onMeasure.
++        view.getLayoutParams().height = height;
++    }
++}
+--- before/app/src/main/java/edu/xjtlu/civa/AppNavigator.java
++++ after/app/src/main/java/edu/xjtlu/civa/AppNavigator.java
+@@ -1,66 +1,77 @@
+-package edu.xjtlu.civa;
+-
+-import androidx.fragment.app.FragmentManager;
+-import edu.xjtlu.civa.core.ui.NavHost;
+-import edu.xjtlu.civa.core.ui.Route;
+-import edu.xjtlu.civa.core.data.SessionStore;
+-import edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogDetailFragment;
+-import edu.xjtlu.civa.feature.ac.catalog.HouseholdRecipeEditorFragment;
+-import edu.xjtlu.civa.feature.ac.catalog.PersonalRecipeEditorFragment;
+-import edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogFragment;
+-import edu.xjtlu.civa.feature.ac.inventory.InventoryFragment;
+-import edu.xjtlu.civa.feature.bd.BdHomeFragment;
+-import edu.xjtlu.civa.feature.ef.HouseholdFragment;
+-import edu.xjtlu.civa.feature.ef.LoginFragment;
+-import edu.xjtlu.civa.feature.ef.ProfileFragment;
+-
+-final class AppNavigator implements NavHost {
+-    private final FragmentManager fragments;
+-    private final SessionStore sessions;
+-
+-    AppNavigator(FragmentManager fragments, SessionStore sessions) { this.fragments = fragments; this.sessions = sessions; }
+-
+-    @Override public void navigate(Route route, String entityId) {
+-        if (!sessions.isLoggedIn() && route != Route.LOGIN) route = Route.LOGIN;
+-        int title;
+-        boolean primary = false;
+-        switch (route) {
+-            case TODAY: title = R.string.app_today; primary = true; break;
+-            case RECIPES: title = R.string.app_recipes; primary = true; break;
+-            case INVENTORY: title = R.string.app_inventory; primary = true; break;
+-            case DIARY: title = R.string.app_diary; primary = true; break;
+-            case PROFILE: title = R.string.app_profile; primary = true; break;
+-            case RECIPE_DETAIL: title = R.string.app_recipe_detail; break;
+-            case RECIPE_EDIT: title = R.string.app_recipe_edit; break;
+-            case INVENTORY_EDIT: title = R.string.app_inventory_edit; break;
+-            case PLAN: title = R.string.app_plan; break;
+-            case COOKING_CONFIRM: title = R.string.app_cooking_confirm; break;
+-            case MEAL_EDIT: title = R.string.app_meal_edit; break;
+-            case LOGIN: title = R.string.app_login; primary = true; break;
+-            case HOUSEHOLD:
+-                title = R.string.app_household;
+-                // First-login onboarding replaces Login. Restoring an authenticated
+-                // Login during Skip would otherwise navigate back to Household.
+-                primary = fragments.findFragmentById(R.id.app_content) instanceof LoginFragment;
+-                break;
+-            case PREFERENCES: title = R.string.app_preferences; break;
+-            default: throw new IllegalArgumentException("Unknown route: " + route);
+-        }
+-        // Queue the pop with the replacement; onResume callbacks can navigate during a pop.
+-        if (primary) fragments.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+-        var fragment = route == Route.LOGIN ? new LoginFragment()
+-                : route == Route.HOUSEHOLD ? new HouseholdFragment()
+-                : route == Route.TODAY ? new BdHomeFragment()
+-                : route == Route.RECIPES ? new RecipeCatalogFragment()
+-                : route == Route.RECIPE_DETAIL ? RecipeCatalogDetailFragment.create(entityId)
+-                : route == Route.RECIPE_EDIT ? (entityId != null && (entityId.equals("hnew") || entityId.startsWith("h:"))
+-                        ? HouseholdRecipeEditorFragment.create(entityId)
+-                        : PersonalRecipeEditorFragment.create(entityId))
+-                : route == Route.PROFILE ? new ProfileFragment()
+-                : route == Route.INVENTORY ? new InventoryFragment()
+-                : PlaceholderFragment.create(title, entityId);
+-        var transaction = fragments.beginTransaction().replace(R.id.app_content, fragment);
+-        if (!primary) transaction.addToBackStack(null);
+-        transaction.commit();
+-    }
+-}
++package edu.xjtlu.civa;
++
++import androidx.fragment.app.FragmentManager;
++import edu.xjtlu.civa.core.ui.NavHost;
++import edu.xjtlu.civa.core.ui.Route;
++import edu.xjtlu.civa.core.data.SessionStore;
++import edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogDetailFragment;
++import edu.xjtlu.civa.feature.ac.catalog.HouseholdRecipeEditorFragment;
++import edu.xjtlu.civa.feature.ac.catalog.PersonalRecipeEditorFragment;
++import edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogFragment;
++import edu.xjtlu.civa.feature.ac.inventory.InventoryFragment;
++import edu.xjtlu.civa.feature.bd.BdHomeFragment;
++import edu.xjtlu.civa.feature.ef.HouseholdFragment;
++import edu.xjtlu.civa.feature.ef.LoginFragment;
++import edu.xjtlu.civa.feature.ef.ProfileFragment;
++
++final class AppNavigator implements NavHost {
++    private final FragmentManager fragments;
++    private final SessionStore sessions;
++
++    AppNavigator(FragmentManager fragments, SessionStore sessions) { this.fragments = fragments; this.sessions = sessions; }
++
++    @Override public void navigate(Route route, String entityId) {
++        if (!sessions.isLoggedIn() && route != Route.LOGIN) route = Route.LOGIN;
++        int title;
++        boolean primary = false;
++        switch (route) {
++            case TODAY: title = R.string.app_today; primary = true; break;
++            case RECIPES: title = R.string.app_recipes; primary = true; break;
++            case INVENTORY: title = R.string.app_inventory; primary = true; break;
++            case DIARY: title = R.string.app_diary; primary = true; break;
++            case PROFILE: title = R.string.app_profile; primary = true; break;
++            case RECIPE_DETAIL: title = R.string.app_recipe_detail; break;
++            case RECIPE_EDIT: title = R.string.app_recipe_edit; break;
++            case INVENTORY_EDIT: title = R.string.app_inventory_edit; break;
++            case PLAN: title = R.string.app_plan; break;
++            case COOKING_CONFIRM: title = R.string.app_cooking_confirm; break;
++            case MEAL_EDIT: title = R.string.app_meal_edit; break;
++            case LOGIN: title = R.string.app_login; primary = true; break;
++            case HOUSEHOLD:
++                title = R.string.app_household;
++                // First-login onboarding replaces Login. Restoring an authenticated
++                // Login during Skip would otherwise navigate back to Household.
++                primary = fragments.findFragmentById(R.id.app_content) instanceof LoginFragment;
++                break;
++            case PREFERENCES: title = R.string.app_preferences; break;
++            default: throw new IllegalArgumentException("Unknown route: " + route);
++        }
++        // Queue the pop with the replacement; onResume callbacks can navigate during a pop.
++        if (primary) fragments.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
++        var fragment = route == Route.LOGIN ? new LoginFragment()
++                : route == Route.HOUSEHOLD ? householdFragment(entityId)
++                : route == Route.TODAY ? new BdHomeFragment()
++                : route == Route.RECIPES ? new RecipeCatalogFragment()
++                : route == Route.RECIPE_DETAIL ? RecipeCatalogDetailFragment.create(entityId)
++                : route == Route.RECIPE_EDIT ? (entityId != null && (entityId.equals("hnew") || entityId.startsWith("h:"))
++                        ? HouseholdRecipeEditorFragment.create(entityId)
++                        : PersonalRecipeEditorFragment.create(entityId))
++                : route == Route.PROFILE ? new ProfileFragment()
++                : route == Route.INVENTORY ? new InventoryFragment()
++                : PlaceholderFragment.create(title, entityId);
++        var transaction = fragments.beginTransaction().replace(R.id.app_content, fragment);
++        if (!primary) transaction.addToBackStack(null);
++        transaction.commit();
++    }
++
++    private HouseholdFragment householdFragment(String requestedReturn) {
++        HouseholdFragment fragment = new HouseholdFragment();
++        android.os.Bundle args = new android.os.Bundle();
++        boolean profile = "PROFILE".equals(requestedReturn)
++                || fragments.findFragmentById(R.id.app_content) instanceof ProfileFragment;
++        args.putString("ef.household.return", profile ? "PROFILE" : "TODAY");
++        fragment.setArguments(args);
++        return fragment;
++    }
++
++}
+--- before/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdFragment.java
++++ after/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdFragment.java
+@@ -1,106 +1,154 @@
+-package edu.xjtlu.civa.feature.ef;
+-
+-import android.os.Bundle;
+-import android.text.Editable;
+-import android.text.TextWatcher;
+-import android.view.View;
+-import androidx.annotation.NonNull;
+-import androidx.annotation.Nullable;
+-import androidx.fragment.app.Fragment;
+-import androidx.lifecycle.ViewModel;
+-import androidx.lifecycle.ViewModelProvider;
+-import edu.xjtlu.civa.feature.ef.databinding.EfFragmentHouseholdBinding;
+-import java.util.function.Consumer;
+-
+-public final class HouseholdFragment extends Fragment {
+-    private HouseholdViewModel model;
+-    private EfFragmentHouseholdBinding binding;
+-
+-    public HouseholdFragment() { super(R.layout.ef_fragment_household); }
+-
+-    @Override public void onViewCreated(@NonNull View view, @Nullable Bundle state) {
+-        super.onViewCreated(view, state);
+-        HouseholdHost host = (HouseholdHost) requireActivity();
+-        model = new ViewModelProvider(this, new ViewModelProvider.Factory() {
+-            @NonNull @Override public <T extends ViewModel> T create(@NonNull Class<T> type) {
+-                if (type != HouseholdViewModel.class) throw new IllegalArgumentException("Unknown ViewModel");
+-                return type.cast(new HouseholdViewModel(host.api(), host.calls(), host.authRepository(), host.sessions()));
+-            }
+-        }).get(HouseholdViewModel.class);
+-        binding = EfFragmentHouseholdBinding.bind(view);
+-        ((edu.xjtlu.civa.core.ui.BakeryWelcomeLayout)view.findViewById(R.id.ef_welcome_scene)).setGreeting(getString(R.string.ef_household_greeting));
+-        binding.efHouseholdName.setText(model.name);
+-        binding.efHouseholdCode.setText(model.code);
+-        binding.efHouseholdName.addTextChangedListener(watcher(value -> model.name = value));
+-        binding.efHouseholdCode.addTextChangedListener(watcher(value -> model.code = value));
+-        model.recover();
+-        binding.efCreate.setOnClickListener(ignored -> model.create());
+-        binding.efJoin.setOnClickListener(ignored -> model.join());
+-        binding.efHouseholdClose.setOnClickListener(ignored -> close());
+-        binding.efLeave.setVisibility(host.sessions().currentHouseholdId() == null ? View.GONE : View.VISIBLE);
+-        binding.efLeave.setOnClickListener(ignored -> new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+-                .setMessage(R.string.ef_household_leave_confirm).setNegativeButton(R.string.ef_household_leave_cancel, null)
+-                .setPositiveButton(R.string.ef_household_leave_yes, (dialog, which) -> model.leave()).show());
+-        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), new androidx.activity.OnBackPressedCallback(true) {
+-            @Override public void handleOnBackPressed() { if (!model.isPending()) close(); }
+-        });
+-        model.left.observe(getViewLifecycleOwner(), value -> { if (Boolean.TRUE.equals(value) && isResumed()) close(); });
+-        binding.efAbandon.setOnClickListener(ignored -> model.abandon());
+-        model.recovering.observe(getViewLifecycleOwner(), value -> {
+-            boolean recovering = value != null && !value.isEmpty();
+-            binding.efAbandon.setVisibility(recovering ? View.VISIBLE : View.GONE);
+-            if (recovering) {
+-                binding.efHouseholdName.setText(model.name);
+-                binding.efHouseholdCode.setText(model.code);
+-                binding.efHouseholdMessage.setVisibility(View.VISIBLE);
+-                binding.efHouseholdMessage.setText(R.string.ef_recovered);
+-            }
+-        });
+-        model.loading.observe(getViewLifecycleOwner(), value -> {
+-            boolean busy = Boolean.TRUE.equals(value);
+-            binding.efCreate.setEnabled(!busy);
+-            binding.efJoin.setEnabled(!busy);
+-            binding.efLeave.setEnabled(!busy);
+-            binding.efHouseholdClose.setEnabled(!busy);
+-            binding.efCreate.setText(busy ? R.string.ef_busy : R.string.ef_create_household);
+-        });
+-        model.message.observe(getViewLifecycleOwner(), value -> {
+-            binding.efHouseholdMessage.setVisibility(value == null || value.isEmpty() ? View.GONE : View.VISIBLE);
+-            if (value != null && !value.isEmpty()) binding.efHouseholdMessage.setText(messageResource(value));
+-        });
+-        model.ready.observe(getViewLifecycleOwner(), value -> {
+-            if (Boolean.TRUE.equals(value) && isResumed()) host.onHouseholdReady();
+-        });
+-    }
+-
+-    private void close() { ((edu.xjtlu.civa.core.ui.NavHost) requireActivity()).navigate(edu.xjtlu.civa.core.ui.Route.PROFILE, null); }
+-
+-    @Override public void onResume() {
+-        super.onResume();
+-        if (model != null && Boolean.TRUE.equals(model.left.getValue())) { close(); return; }
+-        if (model != null && Boolean.TRUE.equals(model.ready.getValue())) ((HouseholdHost) requireActivity()).onHouseholdReady();
+-    }
+-
+-    @Override public void onDestroyView() { binding = null; super.onDestroyView(); }
+-
+-    private static int messageResource(String code) {
+-        return switch (code) {
+-            case "VALIDATION_ERROR" -> R.string.ef_invalid_input;
+-            case "OWNER_CANNOT_LEAVE" -> R.string.ef_household_owner_leave;
+-            case "VERSION_CONFLICT" -> R.string.ef_household_version_conflict;
+-            case "ALREADY_IN_HOUSEHOLD" -> R.string.ef_already_in_household;
+-            case "INVALID_INVITATION" -> R.string.ef_invalid_invitation;
+-            case "LOCAL_STORAGE_ERROR" -> R.string.ef_generic_error;
+-            case "NETWORK_ERROR", "TIMEOUT" -> R.string.ef_network_error;
+-            default -> R.string.ef_generic_error;
+-        };
+-    }
+-
+-    private static TextWatcher watcher(Consumer<String> change) {
+-        return new TextWatcher() {
+-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { change.accept(s.toString()); }
+-            @Override public void afterTextChanged(Editable s) { }
+-        };
+-    }
+-}
++package edu.xjtlu.civa.feature.ef;
++
++import android.os.Bundle;
++import android.text.Editable;
++import android.text.TextWatcher;
++import android.view.View;
++import androidx.annotation.NonNull;
++import androidx.annotation.Nullable;
++import androidx.fragment.app.Fragment;
++import androidx.lifecycle.ViewModel;
++import androidx.lifecycle.ViewModelProvider;
++import edu.xjtlu.civa.feature.ef.databinding.EfFragmentHouseholdBinding;
++import java.util.function.Consumer;
++
++public final class HouseholdFragment extends Fragment {
++    private HouseholdViewModel model;
++    private androidx.appcompat.app.AlertDialog invitationDialog;
++    private EfFragmentHouseholdBinding binding;
++
++    public HouseholdFragment() { super(R.layout.ef_fragment_household); }
++
++    @Override public void onViewCreated(@NonNull View view, @Nullable Bundle state) {
++        super.onViewCreated(view, state);
++        HouseholdHost host = (HouseholdHost) requireActivity();
++        model = new ViewModelProvider(this, new ViewModelProvider.Factory() {
++            @NonNull @Override public <T extends ViewModel> T create(@NonNull Class<T> type) {
++                if (type != HouseholdViewModel.class) throw new IllegalArgumentException("Unknown ViewModel");
++                return type.cast(new HouseholdViewModel(host.api(), host.calls(), host.authRepository(), host.sessions()));
++            }
++        }).get(HouseholdViewModel.class);
++        binding = EfFragmentHouseholdBinding.bind(view);
++        ((edu.xjtlu.civa.core.ui.BakeryWelcomeLayout)view.findViewById(R.id.ef_welcome_scene)).setGreeting(getString(R.string.ef_household_greeting));
++        binding.efHouseholdName.setText(model.name);
++        binding.efHouseholdCode.setText(model.code);
++        binding.efHouseholdName.addTextChangedListener(watcher(value -> model.name = value));
++        binding.efHouseholdCode.addTextChangedListener(watcher(value -> model.code = value));
++        model.recover();
++        model.loadInvitationPermission(0);
++        binding.efGenerateInvitation.setOnClickListener(ignored -> model.generateInvitation());
++        model.canInvite.observe(getViewLifecycleOwner(), allowed -> binding.efGenerateInvitation.setVisibility(Boolean.TRUE.equals(allowed) ? View.VISIBLE : View.GONE));
++        model.invitation.observe(getViewLifecycleOwner(), value -> { if (value != null && isResumed()) showInvitation(); });
++        binding.efCreate.setOnClickListener(ignored -> { dismissKeyboard(); model.create(); });
++        binding.efJoin.setOnClickListener(ignored -> { dismissKeyboard(); model.join(); });
++        binding.efHouseholdClose.setOnClickListener(ignored -> close());
++        binding.efLeave.setVisibility(host.sessions().currentHouseholdId() == null ? View.GONE : View.VISIBLE);
++        binding.efLeave.setOnClickListener(ignored -> new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
++                .setMessage(R.string.ef_household_leave_confirm).setNegativeButton(R.string.ef_household_leave_cancel, null)
++                .setPositiveButton(R.string.ef_household_leave_yes, (dialog, which) -> model.leave()).show());
++        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), new androidx.activity.OnBackPressedCallback(true) {
++            @Override public void handleOnBackPressed() { if (!model.isPending()) close(); }
++        });
++        model.left.observe(getViewLifecycleOwner(), value -> { if (Boolean.TRUE.equals(value) && isResumed()) close(); });
++        binding.efAbandon.setOnClickListener(ignored -> model.abandon());
++        model.recovering.observe(getViewLifecycleOwner(), value -> {
++            boolean recovering = value != null && !value.isEmpty();
++            binding.efAbandon.setVisibility(recovering ? View.VISIBLE : View.GONE);
++            if (recovering) {
++                binding.efHouseholdName.setText(model.name);
++                binding.efHouseholdCode.setText(model.code);
++                binding.efHouseholdMessage.setVisibility(View.VISIBLE);
++                binding.efHouseholdMessage.setText(R.string.ef_recovered);
++            }
++        });
++        model.loading.observe(getViewLifecycleOwner(), value -> {
++            boolean busy = Boolean.TRUE.equals(value);
++            binding.efCreate.setEnabled(!busy);
++            binding.efJoin.setEnabled(!busy);
++            binding.efLeave.setEnabled(!busy);
++            binding.efGenerateInvitation.setEnabled(!busy);
++            binding.efHouseholdClose.setEnabled(!busy);
++            binding.efCreate.setText(busy ? R.string.ef_busy : R.string.ef_create_household);
++        });
++        model.message.observe(getViewLifecycleOwner(), value -> {
++            binding.efHouseholdMessage.setVisibility(value == null || value.isEmpty() ? View.GONE : View.VISIBLE);
++            if (value != null && !value.isEmpty()) {
++                binding.efHouseholdMessage.setText(messageResource(value));
++                View message = binding.efHouseholdMessage;
++                message.post(() -> { if (binding != null && binding.efHouseholdMessage == message) message.requestRectangleOnScreen(new android.graphics.Rect(0, 0, message.getWidth(), message.getHeight()), false); });
++            }
++        });
++        model.ready.observe(getViewLifecycleOwner(), value -> {
++            if (Boolean.TRUE.equals(value) && isResumed()) close();
++        });
++    }
++
++    private void dismissKeyboard() {
++        View focus = requireActivity().getCurrentFocus(); if (focus != null) focus.clearFocus();
++        androidx.core.view.WindowCompat.getInsetsController(requireActivity().getWindow(), requireActivity().getWindow().getDecorView()).hide(androidx.core.view.WindowInsetsCompat.Type.ime());
++    }
++
++    private void close() {
++        boolean profile = getArguments() != null && "PROFILE".equals(getArguments().getString("ef.household.return"));
++        ((edu.xjtlu.civa.core.ui.NavHost) requireActivity()).navigate(
++                profile ? edu.xjtlu.civa.core.ui.Route.PROFILE : edu.xjtlu.civa.core.ui.Route.TODAY, null);
++    }
++
++    @Override public void onResume() {
++        super.onResume();
++        showInvitation();
++        if (model != null && Boolean.TRUE.equals(model.left.getValue())) { close(); return; }
++        if (model != null && Boolean.TRUE.equals(model.ready.getValue())) close();
++    }
++
++    @Override public void onDestroyView() {
++        binding = null;
++        if (invitationDialog != null) { invitationDialog.setOnDismissListener(null); invitationDialog.dismiss(); invitationDialog = null; }
++        super.onDestroyView();
++    }
++    private void showInvitation() {
++        if (binding == null || model == null || invitationDialog != null || model.invitation.getValue() == null) return;
++        var invitation = model.invitation.getValue();
++        android.widget.LinearLayout body = new android.widget.LinearLayout(requireContext()); body.setOrientation(android.widget.LinearLayout.VERTICAL);
++        int pad = Math.round(22 * getResources().getDisplayMetrics().density); body.setPadding(pad, pad, pad, pad);
++        android.widget.TextView code = new android.widget.TextView(requireContext()); code.setId(R.id.ef_invitation_code);
++        code.setText(invitation.getCode()); code.setTextSize(18); code.setTypeface(android.graphics.Typeface.MONOSPACE); code.setTextIsSelectable(true); body.addView(code);
++        android.widget.TextView help = new android.widget.TextView(requireContext()); help.setText(R.string.ef_invitation_help); help.setTextSize(14); help.setPadding(0, pad, 0, 0); body.addView(help);
++        invitationDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
++                .setTitle(R.string.ef_invitation_title).setView(body)
++                .setNegativeButton(R.string.ef_close, (dialog, which) -> { })
++                .setPositiveButton(R.string.ef_invitation_copy, (dialog, which) -> {
++                    var clipboard = (android.content.ClipboardManager)requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
++                    android.content.ClipData clip = android.content.ClipData.newPlainText(getString(R.string.ef_invitation_title), invitation.getCode());
++                    if (android.os.Build.VERSION.SDK_INT >= 33) { android.os.PersistableBundle extras = new android.os.PersistableBundle(); extras.putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true); clip.getDescription().setExtras(extras); }
++                    clipboard.setPrimaryClip(clip);
++                    android.widget.Toast.makeText(requireContext(), R.string.ef_invitation_copied, android.widget.Toast.LENGTH_SHORT).show();
++                }).create();
++        invitationDialog.setOnDismissListener(dialog -> { invitationDialog = null; if (model != null) model.invitation.setValue(null); });
++        invitationDialog.show(); edu.xjtlu.civa.core.ui.PressBounce.bindButtons(invitationDialog.getWindow().getDecorView());
++    }
++
++
++    private static int messageResource(String code) {
++        return switch (code) {
++            case "VALIDATION_ERROR" -> R.string.ef_invalid_input;
++            case "OWNER_CANNOT_LEAVE" -> R.string.ef_household_owner_leave;
++            case "VERSION_CONFLICT" -> R.string.ef_household_version_conflict;
++            case "ALREADY_IN_HOUSEHOLD" -> R.string.ef_already_in_household;
++            case "INVITATION_IS_HOUSEHOLD_ID" -> R.string.ef_invitation_is_id;
++            case "FORBIDDEN" -> R.string.ef_invitation_owner_only;
++            case "INVALID_INVITATION" -> R.string.ef_invalid_invitation;
++            case "LOCAL_STORAGE_ERROR" -> R.string.ef_generic_error;
++            case "NETWORK_ERROR", "TIMEOUT" -> R.string.ef_network_error;
++            default -> R.string.ef_generic_error;
++        };
++    }
++
++    private static TextWatcher watcher(Consumer<String> change) {
++        return new TextWatcher() {
++            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
++            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { change.accept(s.toString()); }
++            @Override public void afterTextChanged(Editable s) { }
++        };
++    }
++}
+--- before/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdController.java
++++ after/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdController.java
+@@ -1,78 +1,82 @@
+-package edu.xjtlu.civa.server.household;
+-
+-import com.fasterxml.jackson.core.JsonProcessingException;
+-import com.fasterxml.jackson.databind.JsonNode;
+-import com.fasterxml.jackson.databind.ObjectMapper;
+-import edu.xjtlu.civa.server.api.HouseholdApi;
+-import edu.xjtlu.civa.server.api.model.CreateHouseholdRequest;
+-import edu.xjtlu.civa.server.api.model.Household;
+-import edu.xjtlu.civa.server.api.model.Invitation;
+-import edu.xjtlu.civa.server.api.model.JoinHouseholdRequest;
+-import edu.xjtlu.civa.server.api.model.Membership;
+-import edu.xjtlu.civa.server.api.model.MembershipPage;
+-import edu.xjtlu.civa.server.api.model.Role;
+-import edu.xjtlu.civa.server.application.CanonicalRequestDigest;
+-import edu.xjtlu.civa.server.application.IdempotencyExecutor;
+-import java.time.Instant;
+-import java.time.ZoneOffset;
+-import java.time.format.DateTimeFormatter;
+-import java.util.UUID;
+-import org.springframework.http.ResponseEntity;
+-import org.springframework.security.core.context.SecurityContextHolder;
+-import org.springframework.web.bind.annotation.RestController;
+-
+-@RestController
+-class HouseholdController implements HouseholdApi {
+-    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
+-    private final HouseholdReadService read;
+-    private final HouseholdMembershipService membership;
+-    private final HouseholdWriteService write;
+-    private final CanonicalRequestDigest digest;
+-    private final JsonNode schemas;
+-    private final ObjectMapper json;
+-
+-    HouseholdController(HouseholdReadService read, HouseholdMembershipService membership, HouseholdWriteService write, CanonicalRequestDigest digest, JsonNode schemas, ObjectMapper json) {
+-        this.read = read; this.membership = membership; this.write = write; this.digest = digest; this.schemas = schemas; this.json = json;
+-    }
+-
+-    @Override public ResponseEntity<Household> createHousehold(UUID key, CreateHouseholdRequest input) {
+-        String name = input.getName().trim();
+-        byte[] hash = hash("/api/v1/households", new CreateHouseholdRequest(name), "CreateHouseholdRequest");
+-        return response(write.createHousehold(actor(), key, hash, name), Household.class);
+-    }
+-
+-    @Override public ResponseEntity<Membership> joinHousehold(UUID key, JoinHouseholdRequest input) {
+-        String code;
+-        try { code = InvitationCodes.normalize(input.getCode()); }
+-        catch (IllegalArgumentException ex) { throw new HouseholdWriteService.Failure("INVALID_INVITATION"); }
+-        byte[] hash = hash("/api/v1/households/join", new JoinHouseholdRequest(code), "JoinHouseholdRequest");
+-        return response(write.joinHousehold(actor(), key, hash, code), Membership.class);
+-    }
+-
+-    @Override public ResponseEntity<Household> getHousehold(UUID id) {
+-        HouseholdReadService.Household home = read.getHousehold(actor(), id);
+-        return ResponseEntity.ok(new Household(home.id, time(home.createdAt), time(home.updatedAt), home.name, home.zoneId, home.version));
+-    }
+-
+-    @Override public ResponseEntity<MembershipPage> listMembers(UUID id, Integer page, Integer size) {
+-        HouseholdReadService.MemberPage result = read.listMembers(actor(), id, page, size);
+-        var members = result.items.stream().map(m -> new Membership(m.id, time(m.createdAt), time(m.updatedAt),
+-                m.householdId, m.userId, Role.valueOf(m.role), m.active, m.version)).toList();
+-        return ResponseEntity.ok(new MembershipPage(members, result.page, result.size, result.total));
+-    }
+-
+-    @Override public ResponseEntity<Invitation> createInvitation(UUID id, UUID key) { throw new NotImplemented(); }
+-    @Override public ResponseEntity<Void> removeMember(UUID id, UUID userId, Long version) { membership.remove(actor(), id, userId, version); return ResponseEntity.noContent().build(); }
+-
+-    private byte[] hash(String path, Object input, String schema) {
+-        try { return digest.digestJson("POST", path, json.writeValueAsString(input), schemas.get(schema)); }
+-        catch (JsonProcessingException ex) { throw new IllegalArgumentException("Invalid request"); }
+-    }
+-    private <T> ResponseEntity<T> response(IdempotencyExecutor.Result result, Class<T> type) {
+-        try { return ResponseEntity.status(result.status).body(json.readValue(result.body, type)); }
+-        catch (JsonProcessingException ex) { throw new IllegalStateException("Invalid stored response"); }
+-    }
+-    private static UUID actor() { return (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal(); }
+-    private static String time(Instant instant) { return TIME.format(instant); }
+-    static final class NotImplemented extends RuntimeException { }
+-}
++package edu.xjtlu.civa.server.household;
++
++import com.fasterxml.jackson.core.JsonProcessingException;
++import com.fasterxml.jackson.databind.JsonNode;
++import com.fasterxml.jackson.databind.ObjectMapper;
++import edu.xjtlu.civa.server.api.HouseholdApi;
++import edu.xjtlu.civa.server.api.model.CreateHouseholdRequest;
++import edu.xjtlu.civa.server.api.model.Household;
++import edu.xjtlu.civa.server.api.model.Invitation;
++import edu.xjtlu.civa.server.api.model.JoinHouseholdRequest;
++import edu.xjtlu.civa.server.api.model.Membership;
++import edu.xjtlu.civa.server.api.model.MembershipPage;
++import edu.xjtlu.civa.server.api.model.Role;
++import edu.xjtlu.civa.server.application.CanonicalRequestDigest;
++import edu.xjtlu.civa.server.application.IdempotencyExecutor;
++import java.time.Instant;
++import java.time.ZoneOffset;
++import java.time.format.DateTimeFormatter;
++import java.util.UUID;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.context.SecurityContextHolder;
++import org.springframework.web.bind.annotation.RestController;
++
++@RestController
++class HouseholdController implements HouseholdApi {
++    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
++    private final HouseholdReadService read;
++    private final HouseholdInvitationService invitations;
++    private final HouseholdMembershipService membership;
++    private final HouseholdWriteService write;
++    private final CanonicalRequestDigest digest;
++    private final JsonNode schemas;
++    private final ObjectMapper json;
++
++    HouseholdController(HouseholdInvitationService invitations, HouseholdReadService read, HouseholdMembershipService membership, HouseholdWriteService write, CanonicalRequestDigest digest, JsonNode schemas, ObjectMapper json) {
++        this.invitations = invitations; this.read = read; this.membership = membership; this.write = write; this.digest = digest; this.schemas = schemas; this.json = json;
++    }
++
++    @Override public ResponseEntity<Household> createHousehold(UUID key, CreateHouseholdRequest input) {
++        String name = input.getName().trim();
++        byte[] hash = hash("/api/v1/households", new CreateHouseholdRequest(name), "CreateHouseholdRequest");
++        return response(write.createHousehold(actor(), key, hash, name), Household.class);
++    }
++
++    @Override public ResponseEntity<Membership> joinHousehold(UUID key, JoinHouseholdRequest input) {
++        String code;
++        try { code = InvitationCodes.normalize(input.getCode()); }
++        catch (IllegalArgumentException ex) { throw new HouseholdWriteService.Failure("INVALID_INVITATION"); }
++        byte[] hash = hash("/api/v1/households/join", new JoinHouseholdRequest(code), "JoinHouseholdRequest");
++        return response(write.joinHousehold(actor(), key, hash, code), Membership.class);
++    }
++
++    @Override public ResponseEntity<Household> getHousehold(UUID id) {
++        HouseholdReadService.Household home = read.getHousehold(actor(), id);
++        return ResponseEntity.ok(new Household(home.id, time(home.createdAt), time(home.updatedAt), home.name, home.zoneId, home.version));
++    }
++
++    @Override public ResponseEntity<MembershipPage> listMembers(UUID id, Integer page, Integer size) {
++        HouseholdReadService.MemberPage result = read.listMembers(actor(), id, page, size);
++        var members = result.items.stream().map(m -> new Membership(m.id, time(m.createdAt), time(m.updatedAt),
++                m.householdId, m.userId, Role.valueOf(m.role), m.active, m.version)).toList();
++        return ResponseEntity.ok(new MembershipPage(members, result.page, result.size, result.total));
++    }
++
++    @Override public ResponseEntity<Invitation> createInvitation(UUID id, UUID key) {
++        byte[] hash = digest.digestJson("POST", "/api/v1/households/" + id + "/invitations", null, null);
++        return response(invitations.create(actor(), id, key, hash), Invitation.class);
++    }
++    @Override public ResponseEntity<Void> removeMember(UUID id, UUID userId, Long version) { membership.remove(actor(), id, userId, version); return ResponseEntity.noContent().build(); }
++
++    private byte[] hash(String path, Object input, String schema) {
++        try { return digest.digestJson("POST", path, json.writeValueAsString(input), schemas.get(schema)); }
++        catch (JsonProcessingException ex) { throw new IllegalArgumentException("Invalid request"); }
++    }
++    private <T> ResponseEntity<T> response(IdempotencyExecutor.Result result, Class<T> type) {
++        try { return ResponseEntity.status(result.status).body(json.readValue(result.body, type)); }
++        catch (JsonProcessingException ex) { throw new IllegalStateException("Invalid stored response"); }
++    }
++    private static UUID actor() { return (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal(); }
++    private static String time(Instant instant) { return TIME.format(instant); }
++    static final class NotImplemented extends RuntimeException { }
++}
+--- before/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdConfiguration.java
++++ after/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdConfiguration.java
+@@ -16,6 +16,12 @@
+ @Configuration(proxyBeanMethods = false)
+ class HouseholdConfiguration {
+     @Bean HouseholdMembershipService householdMembershipService(JdbcTemplate jdbc, PlatformTransactionManager manager) { return new HouseholdMembershipService(jdbc, manager); }
++    @Bean InvitationReceiptCipher invitationReceiptCipher(@org.springframework.beans.factory.annotation.Value("${civa.media-dir}") String mediaDir) throws IOException {
++        return new InvitationReceiptCipher(java.nio.file.Path.of(mediaDir).resolve(".private/invitation-receipt.key"));
++    }
++    @Bean HouseholdInvitationService householdInvitationService(JdbcTemplate jdbc, IdempotencyExecutor executor, JsonbCodec json, InvitationReceiptCipher receipts) {
++        return new HouseholdInvitationService(jdbc, executor, json, receipts, Clock.systemUTC());
++    }
+     @Bean HouseholdReadService householdReadService(JdbcTemplate jdbc) { return new HouseholdReadService(jdbc); }
+     @Bean IdempotencyExecutor idempotencyExecutor(JdbcTemplate jdbc, PlatformTransactionManager manager) { return new IdempotencyExecutor(jdbc, manager); }
+     @Bean HouseholdWriteService householdWriteService(JdbcTemplate jdbc, IdempotencyExecutor executor, JsonbCodec json) {
+--- before/feature-ef/src/main/res/layout/ef_fragment_household.xml
++++ after/feature-ef/src/main/res/layout/ef_fragment_household.xml
+@@ -32,7 +32,7 @@
+                 android:layout_width="match_parent" android:layout_height="wrap_content"
+                 android:layout_marginTop="20dp" android:text="@string/ef_join_household" />
+             <com.google.android.material.textfield.TextInputLayout style="@style/CivaWidget.WelcomeInput" android:layout_width="match_parent"
+-                android:layout_height="wrap_content" android:layout_marginTop="8dp" android:hint="@string/ef_household_code">
++                android:layout_height="wrap_content" android:layout_marginTop="8dp" android:hint="@string/ef_household_code" app:helperText="@string/ef_household_code_help">
+                 <com.google.android.material.textfield.TextInputEditText android:fontFamily="@font/civa_kuaile" android:paddingHorizontal="16dp" android:paddingVertical="14dp" android:id="@+id/ef_household_code"
+                     android:layout_width="match_parent" android:layout_height="wrap_content"
+                     android:inputType="textVisiblePassword" android:saveEnabled="false" />
+@@ -41,6 +41,9 @@
+                 style="@style/CivaWidget.SecondaryButton"
+                 android:layout_width="match_parent" android:layout_height="wrap_content"
+                 android:layout_marginTop="16dp" android:text="@string/ef_join_household" />
++            <com.google.android.material.button.MaterialButton android:id="@+id/ef_generate_invitation"
++                style="@style/CivaWidget.SecondaryButton" android:layout_width="match_parent" android:layout_height="wrap_content"
++                android:layout_marginTop="14dp" android:text="@string/ef_generate_invitation" android:visibility="gone" />
+             <com.google.android.material.button.MaterialButton android:id="@+id/ef_leave"
+                 style="@style/CivaWidget.SecondaryButton" android:layout_width="match_parent" android:layout_height="wrap_content"
+                 android:layout_marginTop="14dp" android:text="@string/ef_leave_household" android:textColor="@color/civa_primary_dark" android:visibility="gone" />
+--- before/feature-ef/src/main/res/values/ef_strings.xml
++++ after/feature-ef/src/main/res/values/ef_strings.xml
+@@ -56,4 +56,12 @@
+     <string name="ef_household_leave_yes">确认退出</string>
+     <string name="ef_household_leave_cancel">再想想</string>
+     <string name="ef_household_version_conflict">家庭成员信息已更新，请重试。</string>
++    <string name="ef_household_code_help">填写家主生成的26位邀请码，不是家庭ID</string>
++    <string name="ef_invitation_is_id">这是家庭ID，请向家主要26位邀请码。</string>
++    <string name="ef_generate_invitation">生成家庭邀请码</string>
++    <string name="ef_invitation_title">家庭邀请码</string>
++    <string name="ef_invitation_help">24小时内有效，仅可使用一次。复制给想邀请的家人吧。</string>
++    <string name="ef_invitation_copy">复制邀请码</string>
++    <string name="ef_invitation_copied">已复制邀请码</string>
++    <string name="ef_invitation_owner_only">只有家主可以生成邀请码。</string>
+ </resources>
+--- before/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdViewModel.java
++++ after/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdViewModel.java
+@@ -1,168 +1,231 @@
+-package edu.xjtlu.civa.feature.ef;
+-
+-import androidx.lifecycle.MutableLiveData;
+-import androidx.lifecycle.ViewModel;
+-import edu.xjtlu.civa.api.model.CreateHouseholdRequest;
+-import edu.xjtlu.civa.api.model.JoinHouseholdRequest;
+-import edu.xjtlu.civa.api.model.User;
+-import edu.xjtlu.civa.core.data.ApiCallback;
+-import edu.xjtlu.civa.core.data.ApiCalls;
+-import edu.xjtlu.civa.core.data.ApiProvider;
+-import edu.xjtlu.civa.core.data.AuthRepository;
+-import edu.xjtlu.civa.core.data.PendingWrite;
+-import edu.xjtlu.civa.core.data.SessionStore;
+-import edu.xjtlu.civa.core.ui.ApiError;
+-import java.util.List;
+-import java.util.UUID;
+-import java.util.function.Supplier;
+-import retrofit2.Call;
+-
+-/** Create or join a household with an idempotency key and a durable pending-write record. */
+-final class HouseholdViewModel extends ViewModel {
+-    final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
+-    final MutableLiveData<Boolean> ready = new MutableLiveData<>(false);
+-    final MutableLiveData<Boolean> left = new MutableLiveData<>(false);
+-    final MutableLiveData<String> message = new MutableLiveData<>();
+-    final MutableLiveData<String> recovering = new MutableLiveData<>();
+-    private final ApiProvider api;
+-    private final ApiCalls calls;
+-    private final AuthRepository auth;
+-    private final SessionStore sessions;
+-    String name = "", code = "";
+-    private boolean closed;
+-    private boolean pending;
+-    private String pendingKey;
+-
+-    HouseholdViewModel(ApiProvider api, ApiCalls calls, AuthRepository auth, SessionStore sessions) {
+-        this.api = api;
+-        this.calls = calls;
+-        this.auth = auth;
+-        this.sessions = sessions;
+-    }
+-
+-    /** Restores an unconfirmed create/join intent after a process death; never auto-replays. */
+-    void recover() {
+-        String userId = sessions.currentUserId();
+-        if (userId == null || pendingKey != null) return;
+-        calls.pendingWrites().listPending(userId, new ApiCallback<List<PendingWrite>>() {
+-            @Override public void onSuccess(List<PendingWrite> writes) {
+-                if (closed) return;
+-                for (PendingWrite write : writes) {
+-                    if ("createHousehold".equals(write.operationId)) {
+-                        pendingKey = write.key;
+-                        name = write.canonicalPayload;
+-                        recovering.postValue("createHousehold");
+-                        return;
+-                    }
+-                    if ("joinHousehold".equals(write.operationId)) {
+-                        pendingKey = write.key;
+-                        code = write.canonicalPayload;
+-                        recovering.postValue("joinHousehold");
+-                        return;
+-                    }
+-                }
+-            }
+-            @Override public void onError(ApiError error) { /* best-effort; a fresh intent is still allowed */ }
+-        });
+-    }
+-
+-    void create() {
+-        String trimmed = name == null ? "" : name.trim();
+-        if (trimmed.isEmpty()) { message.postValue("VALIDATION_ERROR"); return; }
+-        submit("createHousehold", trimmed,
+-                () -> api.household().createHousehold(UUID.fromString(pendingKey), new CreateHouseholdRequest().name(trimmed)));
+-    }
+-
+-    void join() {
+-        String trimmed = code == null ? "" : code.trim();
+-        if (trimmed.isEmpty()) { message.postValue("VALIDATION_ERROR"); return; }
+-        submit("joinHousehold", trimmed,
+-                () -> api.household().joinHousehold(UUID.fromString(pendingKey), new JoinHouseholdRequest().code(trimmed)));
+-    }
+-
+-    void leave() {
+-        if (pending || sessions.currentHouseholdId() == null) return;
+-        pending = true; loading.postValue(true); message.postValue("");
+-        auth.leaveHousehold(new ApiCallback<Void>() {
+-            @Override public void onSuccess(Void value) {
+-                if (closed) return;
+-                pending = false; loading.postValue(false); left.postValue(true);
+-            }
+-            @Override public void onError(ApiError error) { fail(error); }
+-        });
+-    }
+-
+-    void abandon() {
+-        if (pendingKey == null) return;
+-        calls.pendingWrites().confirm(sessions.currentUserId(), pendingKey, new ApiCallback<Void>() {
+-            @Override public void onSuccess(Void value) { if (!closed) clearRecovery(); }
+-            @Override public void onError(ApiError error) { if (!closed) message.postValue(error.code); }
+-        });
+-    }
+-
+-    private void clearRecovery() {
+-        pendingKey = null;
+-        name = "";
+-        code = "";
+-        recovering.postValue(null);
+-    }
+-
+-    private <T> void submit(String operation, String payload, Supplier<Call<T>> request) {
+-        if (pending) return;
+-        pending = true;
+-        loading.postValue(true);
+-        message.postValue("");
+-        if (pendingKey == null) {
+-            pendingKey = UUID.randomUUID().toString();
+-            calls.pendingWrites().record(pendingKey, sessions.currentUserId(), null, operation, payload,
+-                    null, null, new ApiCallback<Void>() {
+-                        @Override public void onSuccess(Void value) { dispatch(request); }
+-                        @Override public void onError(ApiError error) { fail(error); }
+-                    });
+-        } else {
+-            dispatch(request);
+-        }
+-    }
+-
+-    private <T> void dispatch(Supplier<Call<T>> request) {
+-        calls.enqueue(request.get(), new ApiCallback<T>() {
+-            @Override public void onSuccess(T value) { confirmed(); }
+-            @Override public void onError(ApiError error) { fail(error); }
+-        });
+-    }
+-
+-    private void confirmed() {
+-        String key = pendingKey;
+-        pendingKey = null;
+-        calls.pendingWrites().confirm(sessions.currentUserId(), key, new ApiCallback<Void>() {
+-            @Override public void onSuccess(Void value) { refresh(); }
+-            @Override public void onError(ApiError error) { refresh(); } // confirm failure is non-fatal
+-        });
+-    }
+-
+-    private void refresh() {
+-        auth.refreshMe(new ApiCallback<User>() {
+-            @Override public void onSuccess(User user) {
+-                if (closed) return;
+-                pending = false;
+-                loading.postValue(false);
+-                recovering.postValue(null);
+-                ready.postValue(true);
+-            }
+-            @Override public void onError(ApiError error) { fail(error); }
+-        });
+-    }
+-
+-    private void fail(ApiError error) {
+-        if (closed) return;
+-        pending = false;
+-        loading.postValue(false);
+-        // Keep the key only when the result is unknown; a rejected request gets a fresh key next time.
+-        if (!"NETWORK_ERROR".equals(error.code) && !"TIMEOUT".equals(error.code)) pendingKey = null;
+-        message.postValue(error.code);
+-    }
+-
+-    boolean isPending() { return pending; }
+-
+-    @Override protected void onCleared() { closed = true; }
+-}
++package edu.xjtlu.civa.feature.ef;
++
++import androidx.lifecycle.MutableLiveData;
++import androidx.lifecycle.ViewModel;
++import edu.xjtlu.civa.api.model.CreateHouseholdRequest;
++import edu.xjtlu.civa.api.model.JoinHouseholdRequest;
++import edu.xjtlu.civa.api.model.User;
++import edu.xjtlu.civa.core.data.ApiCallback;
++import edu.xjtlu.civa.core.data.ApiCalls;
++import edu.xjtlu.civa.core.data.ApiProvider;
++import edu.xjtlu.civa.core.data.AuthRepository;
++import edu.xjtlu.civa.core.data.PendingWrite;
++import edu.xjtlu.civa.core.data.SessionStore;
++import edu.xjtlu.civa.core.ui.ApiError;
++import java.util.List;
++import java.util.UUID;
++import java.util.function.Supplier;
++import retrofit2.Call;
++
++/** Create or join a household with an idempotency key and a durable pending-write record. */
++final class HouseholdViewModel extends ViewModel {
++    final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
++    final MutableLiveData<Boolean> ready = new MutableLiveData<>(false);
++    final MutableLiveData<Boolean> canInvite = new MutableLiveData<>(false);
++    final MutableLiveData<edu.xjtlu.civa.api.model.Invitation> invitation = new MutableLiveData<>();
++    private String invitationKey;
++    final MutableLiveData<Boolean> left = new MutableLiveData<>(false);
++    final MutableLiveData<String> message = new MutableLiveData<>();
++    final MutableLiveData<String> recovering = new MutableLiveData<>();
++    private final ApiProvider api;
++    private final ApiCalls calls;
++    private final AuthRepository auth;
++    private final SessionStore sessions;
++    String name = "", code = "";
++    private boolean closed;
++    private boolean pending;
++    private String pendingKey;
++
++    HouseholdViewModel(ApiProvider api, ApiCalls calls, AuthRepository auth, SessionStore sessions) {
++        this.api = api;
++        this.calls = calls;
++        this.auth = auth;
++        this.sessions = sessions;
++    }
++
++    /** Restores an unconfirmed create/join intent after a process death; never auto-replays. */
++    void recover() {
++        String userId = sessions.currentUserId();
++        if (userId == null || pendingKey != null) return;
++        calls.pendingWrites().listPending(userId, new ApiCallback<List<PendingWrite>>() {
++            @Override public void onSuccess(List<PendingWrite> writes) {
++                if (closed) return;
++                for (PendingWrite write : writes) {
++                    if ("createInvitation".equals(write.operationId) && java.util.Objects.equals(write.householdId, sessions.currentHouseholdId())) {
++                        invitationKey = write.key;
++                        continue;
++                    }
++                    if ("createHousehold".equals(write.operationId)) {
++                        pendingKey = write.key;
++                        name = write.canonicalPayload;
++                        recovering.postValue("createHousehold");
++                        return;
++                    }
++                    if ("joinHousehold".equals(write.operationId)) {
++                        pendingKey = write.key;
++                        code = write.canonicalPayload;
++                        recovering.postValue("joinHousehold");
++                        return;
++                    }
++                }
++            }
++            @Override public void onError(ApiError error) { /* best-effort; a fresh intent is still allowed */ }
++        });
++    }
++
++    void create() {
++        String trimmed = name == null ? "" : name.trim();
++        if (trimmed.isEmpty()) { message.postValue("VALIDATION_ERROR"); return; }
++        submit("createHousehold", trimmed,
++                () -> api.household().createHousehold(UUID.fromString(pendingKey), new CreateHouseholdRequest().name(trimmed)));
++    }
++
++    void join() {
++        String trimmed = code == null ? "" : code.trim();
++        if (trimmed.isEmpty()) { message.postValue("VALIDATION_ERROR"); return; }
++        if (trimmed.matches("(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) { message.postValue("INVITATION_IS_HOUSEHOLD_ID"); return; }
++        submit("joinHousehold", trimmed,
++                () -> api.household().joinHousehold(UUID.fromString(pendingKey), new JoinHouseholdRequest().code(trimmed)));
++    }
++
++    void loadInvitationPermission(int page) {
++        String home = sessions.currentHouseholdId(), owner = sessions.currentUserId();
++        if (home == null || owner == null) return;
++        calls.enqueue(api.household().listMembers(UUID.fromString(home), page, 100), new ApiCallback<edu.xjtlu.civa.api.model.MembershipPage>() {
++            @Override public void onSuccess(edu.xjtlu.civa.api.model.MembershipPage result) {
++                if (closed || !owner.equals(sessions.currentUserId()) || !home.equals(sessions.currentHouseholdId()) || result == null || result.getItems() == null) return;
++                for (var member : result.getItems()) {
++                    if (member.getUserId() != null && owner.equals(member.getUserId().toString())) {
++                        canInvite.postValue(member.getRole() == edu.xjtlu.civa.api.model.Role.OWNER); return;
++                    }
++                }
++                if (!result.getItems().isEmpty() && result.getTotal() != null && (page + 1L) * 100 < result.getTotal()) loadInvitationPermission(page + 1);
++            }
++            @Override public void onError(ApiError error) { /* Unknown permission never grants the owner action. */ }
++        });
++    }
++
++    void generateInvitation() {
++        if (pending || !Boolean.TRUE.equals(canInvite.getValue())) return;
++        String home = sessions.currentHouseholdId(), owner = sessions.currentUserId();
++        if (home == null || owner == null) return;
++        pending = true; loading.postValue(true); message.postValue("");
++        boolean recorded = invitationKey != null;
++        if (invitationKey == null) invitationKey = UUID.randomUUID().toString();
++        String key = invitationKey;
++        ApiCallback<Void> dispatch = new ApiCallback<Void>() {
++            @Override public void onSuccess(Void ignored) {
++                if (closed || !owner.equals(sessions.currentUserId()) || !home.equals(sessions.currentHouseholdId())) return;
++                calls.enqueue(api.household().createInvitation(UUID.fromString(home), UUID.fromString(key)), new ApiCallback<edu.xjtlu.civa.api.model.Invitation>() {
++                    @Override public void onSuccess(edu.xjtlu.civa.api.model.Invitation result) {
++                        if (closed) return;
++                        if (result == null || result.getCode() == null || result.getId() == null) { failed("INVALID_RESPONSE"); return; }
++                        calls.pendingWrites().confirm(owner, key, new ApiCallback<Void>() {
++                            @Override public void onSuccess(Void value) { complete(); }
++                            @Override public void onError(ApiError error) { complete(); }
++                            private void complete() {
++                                if (closed || !owner.equals(sessions.currentUserId()) || !home.equals(sessions.currentHouseholdId())) return;
++                                invitationKey = null; pending = false; loading.postValue(false); invitation.postValue(result);
++                            }
++                        });
++                    }
++                    @Override public void onError(ApiError error) { failed(error.code); }
++                    private void failed(String error) {
++                        if (closed) return;
++                        if (!"NETWORK_ERROR".equals(error) && !"TIMEOUT".equals(error)) invitationKey = null;
++                        pending = false; loading.postValue(false); message.postValue(error);
++                    }
++                });
++            }
++            @Override public void onError(ApiError error) { if (!closed) { pending = false; loading.postValue(false); message.postValue(error.code); } }
++        };
++        if (recorded) dispatch.onSuccess(null);
++        else calls.pendingWrites().record(key, owner, home, "createInvitation", home, null, null, dispatch);
++    }
++
++    void leave() {
++        if (pending || sessions.currentHouseholdId() == null) return;
++        pending = true; loading.postValue(true); message.postValue("");
++        auth.leaveHousehold(new ApiCallback<Void>() {
++            @Override public void onSuccess(Void value) {
++                if (closed) return;
++                pending = false; loading.postValue(false); left.postValue(true);
++            }
++            @Override public void onError(ApiError error) { fail(error); }
++        });
++    }
++
++    void abandon() {
++        if (pendingKey == null) return;
++        calls.pendingWrites().confirm(sessions.currentUserId(), pendingKey, new ApiCallback<Void>() {
++            @Override public void onSuccess(Void value) { if (!closed) clearRecovery(); }
++            @Override public void onError(ApiError error) { if (!closed) message.postValue(error.code); }
++        });
++    }
++
++    private void clearRecovery() {
++        pendingKey = null;
++        name = "";
++        code = "";
++        recovering.postValue(null);
++    }
++
++    private <T> void submit(String operation, String payload, Supplier<Call<T>> request) {
++        if (pending) return;
++        pending = true;
++        loading.postValue(true);
++        message.postValue("");
++        if (pendingKey == null) {
++            pendingKey = UUID.randomUUID().toString();
++            calls.pendingWrites().record(pendingKey, sessions.currentUserId(), null, operation, payload,
++                    null, null, new ApiCallback<Void>() {
++                        @Override public void onSuccess(Void value) { dispatch(request); }
++                        @Override public void onError(ApiError error) { fail(error); }
++                    });
++        } else {
++            dispatch(request);
++        }
++    }
++
++    private <T> void dispatch(Supplier<Call<T>> request) {
++        calls.enqueue(request.get(), new ApiCallback<T>() {
++            @Override public void onSuccess(T value) { confirmed(); }
++            @Override public void onError(ApiError error) { fail(error); }
++        });
++    }
++
++    private void confirmed() {
++        String key = pendingKey;
++        pendingKey = null;
++        calls.pendingWrites().confirm(sessions.currentUserId(), key, new ApiCallback<Void>() {
++            @Override public void onSuccess(Void value) { refresh(); }
++            @Override public void onError(ApiError error) { refresh(); } // confirm failure is non-fatal
++        });
++    }
++
++    private void refresh() {
++        auth.refreshMe(new ApiCallback<User>() {
++            @Override public void onSuccess(User user) {
++                if (closed) return;
++                pending = false;
++                loading.postValue(false);
++                recovering.postValue(null);
++                ready.postValue(true);
++            }
++            @Override public void onError(ApiError error) { fail(error); }
++        });
++    }
++
++    private void fail(ApiError error) {
++        if (closed) return;
++        pending = false;
++        loading.postValue(false);
++        // Keep the key only when the result is unknown; a rejected request gets a fresh key next time.
++        if (!"NETWORK_ERROR".equals(error.code) && !"TIMEOUT".equals(error.code)) pendingKey = null;
++        message.postValue(error.code);
++    }
++
++    boolean isPending() { return pending; }
++
++    @Override protected void onCleared() { closed = true; }
++}
+--- before/server/src/main/java/edu/xjtlu/civa/server/household/InvitationReceiptCipher.java
++++ after/server/src/main/java/edu/xjtlu/civa/server/household/InvitationReceiptCipher.java
+@@ -0,0 +1,58 @@
++package edu.xjtlu.civa.server.household;
++
++import java.io.IOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.nio.file.StandardOpenOption;
++import java.security.GeneralSecurityException;
++import java.security.SecureRandom;
++import java.util.Arrays;
++import java.util.Base64;
++import javax.crypto.Cipher;
++import javax.crypto.spec.GCMParameterSpec;
++import javax.crypto.spec.SecretKeySpec;
++
++/** Encrypts retry receipts so the invitation table and database never retain a plaintext invite. */
++final class InvitationReceiptCipher {
++    private final SecretKeySpec key;
++    private final SecureRandom random = new SecureRandom();
++
++    InvitationReceiptCipher(Path keyFile) throws IOException {
++        Files.createDirectories(keyFile.toAbsolutePath().getParent());
++        if (!Files.exists(keyFile)) {
++            byte[] bytes = new byte[32]; random.nextBytes(bytes);
++            try { Files.write(keyFile, bytes, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); }
++            catch (java.nio.file.FileAlreadyExistsException anotherServer) { /* Read the existing key, never replace it. */ }
++        }
++        try {
++            Files.setPosixFilePermissions(keyFile.getParent(), java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"));
++            Files.setPosixFilePermissions(keyFile, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
++        } catch (UnsupportedOperationException windowsAcl) { /* Inherit the private media directory's Windows ACL. */ }
++        byte[] bytes = Files.readAllBytes(keyFile);
++        if (bytes.length != 32) throw new IOException("Invalid invitation receipt key; restore it instead of replacing it");
++        key = new SecretKeySpec(bytes, "AES");
++    }
++
++    String seal(String code) {
++        try {
++            byte[] nonce = new byte[12]; random.nextBytes(nonce);
++            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
++            cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, nonce));
++            byte[] encrypted = cipher.doFinal(code.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
++            byte[] packed = Arrays.copyOf(nonce, nonce.length + encrypted.length);
++            System.arraycopy(encrypted, 0, packed, nonce.length, encrypted.length);
++            return "sealed-v1:" + Base64.getEncoder().encodeToString(packed);
++        } catch (GeneralSecurityException failure) { throw new IllegalStateException("Cannot protect invitation receipt", failure); }
++    }
++
++    String open(String stored) {
++        try {
++            if (stored == null || !stored.startsWith("sealed-v1:")) throw new GeneralSecurityException("Unknown receipt version");
++            byte[] packed = Base64.getDecoder().decode(stored.substring(10));
++            if (packed.length < 29) throw new GeneralSecurityException("Invalid receipt length");
++            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
++            cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, Arrays.copyOf(packed, 12)));
++            return new String(cipher.doFinal(Arrays.copyOfRange(packed, 12, packed.length)), java.nio.charset.StandardCharsets.US_ASCII);
++        } catch (GeneralSecurityException | IllegalArgumentException failure) { throw new IllegalStateException("Cannot read protected invitation receipt", failure); }
++    }
++}
+--- before/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdInvitationService.java
++++ after/server/src/main/java/edu/xjtlu/civa/server/household/HouseholdInvitationService.java
+@@ -0,0 +1,51 @@
++package edu.xjtlu.civa.server.household;
++
++import edu.xjtlu.civa.server.application.IdempotencyExecutor;
++import edu.xjtlu.civa.server.config.JsonbCodec;
++import java.security.SecureRandom;
++import java.sql.Timestamp;
++import java.time.Clock;
++import java.time.temporal.ChronoUnit;
++import java.time.ZoneOffset;
++import java.time.format.DateTimeFormatter;
++import java.util.UUID;
++import org.springframework.jdbc.core.JdbcTemplate;
++
++/** Owner-only, 128-bit, single-use invitations, expiring after 24 hours. */
++final class HouseholdInvitationService {
++    private static final DateTimeFormatter TIME=DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
++    private final JdbcTemplate jdbc;
++    private final IdempotencyExecutor idempotency;
++    private final JsonbCodec json;
++    private final InvitationReceiptCipher receipts;
++    private final Clock clock;
++    private final SecureRandom random=new SecureRandom();
++
++    HouseholdInvitationService(JdbcTemplate jdbc, IdempotencyExecutor idempotency, JsonbCodec json, InvitationReceiptCipher receipts, Clock clock) {
++        this.jdbc=jdbc;this.idempotency=idempotency;this.json=json;this.receipts=receipts;this.clock=clock;
++    }
++
++    IdempotencyExecutor.Result create(UUID actor, UUID home, UUID key, byte[] digest) {
++        IdempotencyExecutor.Result protectedResult=idempotency.execute(actor,key,digest,()->{
++            requireOwner(actor,home);
++            String code=InvitationCodes.generate(random);UUID id=UUID.randomUUID();var expiry=clock.instant().plus(24,ChronoUnit.HOURS);
++            jdbc.update("INSERT INTO invitations(id,household_id,created_by,code_hash,expires_at) VALUES (?,?,?,?,?)",id,home,actor,InvitationCodes.hash(code),Timestamp.from(expiry));
++            var body=json.object();body.put("id",id.toString());body.put("householdId",home.toString());body.put("expiresAt",TIME.format(expiry));body.put("code",receipts.seal(code));
++            return new IdempotencyExecutor.Result(201,json.write(body));
++        }, result->requireOwner(actor,home));
++        var body=json.read(protectedResult.body).deepCopy();
++        ((com.fasterxml.jackson.databind.node.ObjectNode)body).put("code",receipts.open(body.path("code").asText()));
++        return new IdempotencyExecutor.Result(protectedResult.status,json.write(body));
++    }
++
++    private void requireOwner(UUID actor, UUID home) {
++        var homes=jdbc.query("SELECT id FROM households WHERE id=? FOR UPDATE",(rs,n)->rs.getObject(1,UUID.class),home);
++        if(homes.isEmpty())throw new HouseholdWriteService.Failure("NOT_FOUND");
++        var roles=jdbc.query("SELECT role FROM memberships WHERE household_id=? AND user_id=? AND active FOR UPDATE",(rs,n)->rs.getString(1),home,actor);
++        if(roles.isEmpty()) {
++            Boolean revoked=jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM memberships WHERE household_id=? AND user_id=? AND NOT active)",Boolean.class,home,actor);
++            throw new HouseholdWriteService.Failure(Boolean.TRUE.equals(revoked)?"HOUSEHOLD_ACCESS_REVOKED":"NOT_FOUND");
++        }
++        if(!"OWNER".equals(roles.get(0)))throw new HouseholdWriteService.Failure("FORBIDDEN");
++    }
++}
+--- before/feature-ef/src/main/res/values/ef_ids.xml
++++ after/feature-ef/src/main/res/values/ef_ids.xml
+@@ -0,0 +1,3 @@
++<resources>
++    <item name="ef_invitation_code" type="id" />
++</resources>
+--- before/server/src/test/java/edu/xjtlu/civa/server/household/HouseholdHttpIntegrationTest.java
++++ after/server/src/test/java/edu/xjtlu/civa/server/household/HouseholdHttpIntegrationTest.java
+@@ -1,113 +1,136 @@
+-package edu.xjtlu.civa.server.household;
+-
+-import com.fasterxml.jackson.databind.ObjectMapper;
+-import edu.xjtlu.civa.server.CivaServer;
+-import java.security.SecureRandom;
+-import java.sql.Timestamp;
+-import java.time.Instant;
+-import java.util.Locale;
+-import java.util.Map;
+-import java.util.UUID;
+-import org.junit.jupiter.api.Test;
+-import org.springframework.beans.factory.annotation.Autowired;
+-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+-import org.springframework.boot.test.context.SpringBootTest;
+-import org.springframework.http.MediaType;
+-import org.springframework.jdbc.core.JdbcTemplate;
+-import org.springframework.security.crypto.password.PasswordEncoder;
+-import org.springframework.test.web.servlet.MockMvc;
+-import static org.junit.jupiter.api.Assertions.*;
+-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+-
+-@SpringBootTest(classes = CivaServer.class)
+-@AutoConfigureMockMvc
+-class HouseholdHttpIntegrationTest {
+-    @Autowired MockMvc http;
+-    @Autowired JdbcTemplate jdbc;
+-    @Autowired PasswordEncoder passwords;
+-    @Autowired ObjectMapper json;
+-
+-    @Test void householdWritesReplayAndMembershipReadsEnforceAccess() throws Exception {
+-        UUID owner = UUID.randomUUID(), member = UUID.randomUUID(), outsider = UUID.randomUUID();
+-        UUID[] actors = {owner, member, outsider};
+-        UUID home = null;
+-        try {
+-            String hash = passwords.encode("long-password");
+-            for (UUID actor : actors) jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
+-                    actor, username(actor), "Test", hash, "UTC");
+-            String ownerToken = login(owner), memberToken = login(member), outsiderToken = login(outsider);
+-            UUID key = UUID.randomUUID();
+-            var created = http.perform(post("/api/v1/households").header("Authorization", bearer(ownerToken))
+-                            .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\" Shared home \"}"))
+-                    .andExpect(status().isCreated()).andExpect(jsonPath("$.name").value("Shared home")).andReturn();
+-            home = UUID.fromString(json.readTree(created.getResponse().getContentAsString()).path("id").asText());
+-            http.perform(post("/api/v1/households").header("Authorization", bearer(ownerToken))
+-                            .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Shared home\"}"))
+-                    .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(home.toString()));
+-            http.perform(post("/api/v1/households").header("Authorization", bearer(ownerToken))
+-                            .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Different\"}"))
+-                    .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
+-            http.perform(post("/api/v1/households").header("Authorization", bearer(ownerToken))
+-                            .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"X\"}"))
+-                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+-            http.perform(post("/api/v1/households").header("Authorization", bearer(ownerToken))
+-                            .header("Idempotency-Key", UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON)
+-                            .content("{\"name\":\"X\",\"name\":\"Y\"}"))
+-                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+-            http.perform(get("/api/v1/households/{id}", home).header("Authorization", bearer(outsiderToken)))
+-                    .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("NOT_FOUND"));
+-
+-            String invite = InvitationCodes.generate(new SecureRandom());
+-            jdbc.update("INSERT INTO invitations(id,household_id,created_by,code_hash,expires_at) VALUES (?,?,?,?,?)",
+-                    UUID.randomUUID(), home, owner, InvitationCodes.hash(invite), Timestamp.from(Instant.now().plusSeconds(3600)));
+-            UUID joinKey = UUID.randomUUID();
+-            var joined = http.perform(post("/api/v1/households/join").header("Authorization", bearer(memberToken))
+-                            .header("Idempotency-Key", joinKey).contentType(MediaType.APPLICATION_JSON)
+-                            .content(json.writeValueAsString(Map.of("code", " " + invite.toLowerCase(Locale.ROOT) + " "))))
+-                    .andExpect(status().isCreated()).andExpect(jsonPath("$.householdId").value(home.toString())).andReturn();
+-            String membershipId = json.readTree(joined.getResponse().getContentAsString()).path("id").asText();
+-            http.perform(post("/api/v1/households/join").header("Authorization", bearer(memberToken))
+-                            .header("Idempotency-Key", joinKey).contentType(MediaType.APPLICATION_JSON)
+-                            .content(json.writeValueAsString(Map.of("code", invite))))
+-                    .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(membershipId));
+-            http.perform(get("/api/v1/households/{id}/members", home).header("Authorization", bearer(memberToken)))
+-                    .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2));
+-            http.perform(post("/api/v1/households/{id}/invitations", home).header("Authorization", bearer(ownerToken))
+-                            .header("Idempotency-Key", UUID.randomUUID()))
+-                    .andExpect(status().isNotImplemented()).andExpect(jsonPath("$.code").value("CONTRACT_NOT_IMPLEMENTED"));
+-            jdbc.update("UPDATE memberships SET active=false WHERE household_id=? AND user_id=?", home, member);
+-            http.perform(get("/api/v1/households/{id}", home).header("Authorization", bearer(memberToken)))
+-                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOUSEHOLD_ACCESS_REVOKED"));
+-            http.perform(post("/api/v1/households/join").header("Authorization", bearer(memberToken))
+-                            .header("Idempotency-Key", joinKey).contentType(MediaType.APPLICATION_JSON)
+-                            .content(json.writeValueAsString(Map.of("code", invite))))
+-                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOUSEHOLD_ACCESS_REVOKED"));
+-        } finally {
+-            // Only delete fixtures owned by the three random user IDs created by this test.
+-            for (UUID actor : actors) {
+-                jdbc.update("DELETE FROM idempotency_requests WHERE actor_id=?", actor);
+-                jdbc.update("DELETE FROM invitations WHERE created_by=?", actor);
+-                jdbc.update("DELETE FROM sessions WHERE user_id=?", actor);
+-            }
+-            if (home == null) {
+-                var ids = jdbc.query("SELECT household_id FROM memberships WHERE user_id=?", (rs, n) -> rs.getObject(1, UUID.class), owner);
+-                if (!ids.isEmpty()) home = ids.get(0);
+-            }
+-            boolean owned = home != null && Boolean.TRUE.equals(jdbc.queryForObject(
+-                    "SELECT EXISTS(SELECT 1 FROM memberships WHERE household_id=? AND user_id=? AND role='OWNER')", Boolean.class, home, owner));
+-            for (UUID actor : actors) jdbc.update("DELETE FROM memberships WHERE user_id=?", actor);
+-            if (owned) jdbc.update("DELETE FROM households WHERE id=?", home);
+-            for (UUID actor : actors) jdbc.update("DELETE FROM users WHERE id=?", actor);
+-        }
+-    }
+-
+-    private String login(UUID id) throws Exception {
+-        String body = json.writeValueAsString(Map.of("username", username(id), "password", "long-password"));
+-        var result = http.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
+-                .andExpect(status().isOk()).andReturn();
+-        return json.readTree(result.getResponse().getContentAsString()).path("token").asText();
+-    }
+-    private static String username(UUID id) { return "u_" + id.toString().replace("-", "").substring(0, 20); }
+-    private static String bearer(String token) { return "Bearer " + token; }
+-}
++package edu.xjtlu.civa.server.household;
++
++import com.fasterxml.jackson.databind.ObjectMapper;
++import edu.xjtlu.civa.server.CivaServer;
++import java.security.SecureRandom;
++import java.sql.Timestamp;
++import java.time.Instant;
++import java.util.Locale;
++import java.util.Map;
++import java.util.UUID;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.http.MediaType;
++import org.springframework.jdbc.core.JdbcTemplate;
++import org.springframework.security.crypto.password.PasswordEncoder;
++import org.springframework.test.web.servlet.MockMvc;
++import static org.junit.jupiter.api.Assertions.*;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
++
++@SpringBootTest(classes = CivaServer.class)
++@AutoConfigureMockMvc
++class HouseholdHttpIntegrationTest {
++    @Autowired MockMvc http;
++    @Autowired JdbcTemplate jdbc;
++    @Autowired PasswordEncoder passwords;
++    @Autowired ObjectMapper json;
++
++    @Test void householdWritesReplayAndMembershipReadsEnforceAccess() throws Exception {
++        UUID owner = UUID.randomUUID(), member = UUID.randomUUID(), outsider = UUID.randomUUID();
++        UUID[] actors = {owner, member, outsider};
++        UUID home = null;
++        try {
++            String hash = passwords.encode("long-password");
++            for (UUID actor : actors) jdbc.update("INSERT INTO users(id,username,display_name,password_hash,zone_id) VALUES (?,?,?,?,?)",
++                    actor, username(actor), "Test", hash, "UTC");
++            String ownerToken = login(owner), memberToken = login(member), outsiderToken = login(outsider);
++            UUID key = UUID.randomUUID();
++            var created = http.perform(post("/api/v1/households").header("Authorization", bearer(ownerToken))
++                            .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\" Shared home \"}"))
++                    .andExpect(status().isCreated()).andExpect(jsonPath("$.name").value("Shared home")).andReturn();
++            home = UUID.fromString(json.readTree(created.getResponse().getContentAsString()).path("id").asText());
++            http.perform(post("/api/v1/households").header("Authorization", bearer(ownerToken))
++                            .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Shared home\"}"))
++                    .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(home.toString()));
++            http.perform(post("/api/v1/households").header("Authorization", bearer(ownerToken))
++                            .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Different\"}"))
++                    .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
++            http.perform(post("/api/v1/households").header("Authorization", bearer(ownerToken))
++                            .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"X\"}"))
++                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
++            http.perform(post("/api/v1/households").header("Authorization", bearer(ownerToken))
++                            .header("Idempotency-Key", UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON)
++                            .content("{\"name\":\"X\",\"name\":\"Y\"}"))
++                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
++            http.perform(get("/api/v1/households/{id}", home).header("Authorization", bearer(outsiderToken)))
++                    .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("NOT_FOUND"));
++
++            UUID invitationKey = UUID.randomUUID();
++            var invitation = http.perform(post("/api/v1/households/{id}/invitations", home).header("Authorization", bearer(ownerToken))
++                            .header("Idempotency-Key", invitationKey))
++                    .andExpect(status().isCreated()).andExpect(jsonPath("$.code").isString()).andReturn();
++            String invite = json.readTree(invitation.getResponse().getContentAsString()).path("code").asText();
++            assertEquals(26, invite.length());
++            http.perform(post("/api/v1/households/{id}/invitations", home).header("Authorization", bearer(ownerToken))
++                            .header("Idempotency-Key", invitationKey)).andExpect(status().isCreated()).andExpect(jsonPath("$.code").value(invite));
++            assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM invitations WHERE household_id=?", Integer.class, home));
++            String receipt = jdbc.queryForObject("SELECT response_body::text FROM idempotency_requests WHERE actor_id=? AND key=?", String.class, owner, invitationKey);
++            assertFalse(receipt.contains(invite)); assertTrue(receipt.contains("sealed-v1:"));
++            UUID joinKey = UUID.randomUUID();
++            var joined = http.perform(post("/api/v1/households/join").header("Authorization", bearer(memberToken))
++                            .header("Idempotency-Key", joinKey).contentType(MediaType.APPLICATION_JSON)
++                            .content(json.writeValueAsString(Map.of("code", " " + invite.toLowerCase(Locale.ROOT) + " "))))
++                    .andExpect(status().isCreated()).andExpect(jsonPath("$.householdId").value(home.toString())).andReturn();
++            String membershipId = json.readTree(joined.getResponse().getContentAsString()).path("id").asText();
++            http.perform(post("/api/v1/households/join").header("Authorization", bearer(memberToken))
++                            .header("Idempotency-Key", joinKey).contentType(MediaType.APPLICATION_JSON)
++                            .content(json.writeValueAsString(Map.of("code", invite))))
++                    .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(membershipId));
++            http.perform(get("/api/v1/households/{id}/members", home).header("Authorization", bearer(memberToken)))
++                    .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2));
++            http.perform(post("/api/v1/households/{id}/invitations", home).header("Authorization", bearer(ownerToken))
++                            .header("Idempotency-Key", UUID.randomUUID()))
++                    .andExpect(status().isCreated()).andExpect(jsonPath("$.code").isString());
++            http.perform(post("/api/v1/households/{id}/invitations", home).header("Authorization", bearer(memberToken))
++                            .header("Idempotency-Key", UUID.randomUUID()))
++                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("FORBIDDEN"));
++            http.perform(post("/api/v1/households/join").header("Authorization", bearer(outsiderToken))
++                            .header("Idempotency-Key", UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON)
++                            .content(json.writeValueAsString(Map.of("code", invite))))
++                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_INVITATION"));
++            var expiring = http.perform(post("/api/v1/households/{id}/invitations", home).header("Authorization", bearer(ownerToken))
++                            .header("Idempotency-Key", UUID.randomUUID())).andExpect(status().isCreated()).andReturn();
++            var expiredBody = json.readTree(expiring.getResponse().getContentAsString());
++            jdbc.update("UPDATE invitations SET expires_at=CURRENT_TIMESTAMP-interval '1 second' WHERE id=?", UUID.fromString(expiredBody.path("id").asText()));
++            http.perform(post("/api/v1/households/join").header("Authorization", bearer(outsiderToken))
++                            .header("Idempotency-Key", UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON)
++                            .content(json.writeValueAsString(Map.of("code", expiredBody.path("code").asText()))))
++                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_INVITATION"));
++            jdbc.update("UPDATE memberships SET active=false WHERE household_id=? AND user_id=?", home, member);
++            http.perform(get("/api/v1/households/{id}", home).header("Authorization", bearer(memberToken)))
++                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOUSEHOLD_ACCESS_REVOKED"));
++            http.perform(post("/api/v1/households/join").header("Authorization", bearer(memberToken))
++                            .header("Idempotency-Key", joinKey).contentType(MediaType.APPLICATION_JSON)
++                            .content(json.writeValueAsString(Map.of("code", invite))))
++                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("HOUSEHOLD_ACCESS_REVOKED"));
++        } finally {
++            // Only delete fixtures owned by the three random user IDs created by this test.
++            for (UUID actor : actors) {
++                jdbc.update("DELETE FROM idempotency_requests WHERE actor_id=?", actor);
++                jdbc.update("DELETE FROM invitations WHERE created_by=?", actor);
++                jdbc.update("DELETE FROM sessions WHERE user_id=?", actor);
++            }
++            if (home == null) {
++                var ids = jdbc.query("SELECT household_id FROM memberships WHERE user_id=?", (rs, n) -> rs.getObject(1, UUID.class), owner);
++                if (!ids.isEmpty()) home = ids.get(0);
++            }
++            boolean owned = home != null && Boolean.TRUE.equals(jdbc.queryForObject(
++                    "SELECT EXISTS(SELECT 1 FROM memberships WHERE household_id=? AND user_id=? AND role='OWNER')", Boolean.class, home, owner));
++            for (UUID actor : actors) jdbc.update("DELETE FROM memberships WHERE user_id=?", actor);
++            if (owned) jdbc.update("DELETE FROM households WHERE id=?", home);
++            for (UUID actor : actors) jdbc.update("DELETE FROM users WHERE id=?", actor);
++        }
++    }
++
++    private String login(UUID id) throws Exception {
++        String body = json.writeValueAsString(Map.of("username", username(id), "password", "long-password"));
++        var result = http.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
++                .andExpect(status().isOk()).andReturn();
++        return json.readTree(result.getResponse().getContentAsString()).path("token").asText();
++    }
++    private static String username(UUID id) { return "u_" + id.toString().replace("-", "").substring(0, 20); }
++    private static String bearer(String token) { return "Bearer " + token; }
++}
+--- before/server/src/test/java/edu/xjtlu/civa/server/household/InvitationReceiptCipherTest.java
++++ after/server/src/test/java/edu/xjtlu/civa/server/household/InvitationReceiptCipherTest.java
+@@ -0,0 +1,32 @@
++package edu.xjtlu.civa.server.household;
++
++import java.nio.file.Files;
++import java.nio.file.Path;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.io.TempDir;
++import static org.junit.jupiter.api.Assertions.*;
++
++class InvitationReceiptCipherTest {
++    @TempDir Path root;
++    @Test void protectedReceiptSurvivesRestartWithoutStoringPlainCode() throws Exception {
++        Path key=root.resolve("private/receipt.key");
++        InvitationReceiptCipher first=new InvitationReceiptCipher(key);
++        String code="AAAAAAAAAAAAAAAAAAAAAAAAAA",sealed=first.seal(code);
++        assertFalse(sealed.contains(code));assertEquals(32,Files.readAllBytes(key).length);
++        assertEquals(code,new InvitationReceiptCipher(key).open(sealed));
++        assertNotEquals(sealed,first.seal(code));
++    }
++    @Test void wrongKeyOrDamagedReceiptFailsClosed() throws Exception {
++        InvitationReceiptCipher first=new InvitationReceiptCipher(root.resolve("one.key"));
++        InvitationReceiptCipher second=new InvitationReceiptCipher(root.resolve("two.key"));
++        String sealed=first.seal("AAAAAAAAAAAAAAAAAAAAAAAAAA");
++        assertThrows(IllegalStateException.class,()->second.open(sealed));
++        assertThrows(IllegalStateException.class,()->first.open("plaintext"));
++        assertThrows(IllegalStateException.class,()->first.open("sealed-v1:!"));
++    }
++    @Test void corruptKeyIsNotSilentlyReplaced() throws Exception {
++        Path key=root.resolve("broken.key");Files.write(key,new byte[]{1,2});
++        assertThrows(java.io.IOException.class,()->new InvitationReceiptCipher(key));
++        assertArrayEquals(new byte[]{1,2},Files.readAllBytes(key));
++    }
++}
+--- before/.gitignore
++++ after/.gitignore
+@@ -35,3 +35,6 @@
+ 
+ # Native local database, media and service logs (not build cache)
+ .civa-local/
++
++# Private server key for protected invitation retry receipts
++**/invitation-receipt.key
+--- before/server/src/main/resources/application.yml
++++ after/server/src/main/resources/application.yml
+@@ -15,7 +15,7 @@
+ server:
+   port: ${SERVER_PORT:8080}
+ civa:
+-  media-dir: ${CIVA_MEDIA_DIR}
++  media-dir: ${CIVA_MEDIA_DIR:./build/private-media}
+   nutrition:
+     provider: ${CIVA_NUTRITION_PROVIDER:auto}
+     api-key: ${CIVA_NUTRITION_API_KEY:}

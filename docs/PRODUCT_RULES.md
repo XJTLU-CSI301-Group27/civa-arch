@@ -48,3 +48,13 @@ implementation preferences.
 - Non-members cannot read or modify household data.
 - Removed members cannot continue accessing household data.
 - Personal calorie and meal data must not be exposed to another account.
+
+## Current household membership rule (2026-11-25 user decision)
+
+All active members have equal privileges. The creator may leave just like any joining member; nobody may remove another member. The household exists while at least one active member remains. The last self-leave cancels the household identity and invitation atomically, preserving historical data for existing references. A closed ID cannot be reactivated.
+Each household automatically receives one unique permanent invitation, readable/copyable by every active member. It is reusable and has no time expiry; only household cancellation invalidates it. Preserve single-active-household-per-user and server authorization. This explicitly supersedes prior owner-only/24-hour/one-use rules; see [EF_SHARED_FAMILY_HANDOFF.md](EF_SHARED_FAMILY_HANDOFF.md).
+
+
+## Today personal plans (2026-11-26 user decision)
+
+Today breakfast/lunch/dinner are personal account drafts. Household create/join/leave only changes shared household data (household recipes and inventory), never resets or transfers personal Today plans. Different accounts remain isolated. This supersedes any historical household-dependent Today draft scoping; see [BD_PERSONAL_PLAN_HANDOFF.md](BD_PERSONAL_PLAN_HANDOFF.md).

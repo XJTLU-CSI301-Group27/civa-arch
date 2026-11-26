@@ -19,9 +19,10 @@ public final class HouseholdWriteService {
     private final IdempotencyExecutor idempotency;
     private final JsonbCodec json;
     private final Clock clock;
+    private final java.util.function.BiConsumer<UUID, UUID> provisionInvitation;
 
-    public HouseholdWriteService(JdbcTemplate jdbc, IdempotencyExecutor idempotency, JsonbCodec json, Clock clock) {
-        this.jdbc = jdbc; this.idempotency = idempotency; this.json = json; this.clock = clock;
+    public HouseholdWriteService(JdbcTemplate jdbc, IdempotencyExecutor idempotency, JsonbCodec json, Clock clock, java.util.function.BiConsumer<UUID, UUID> provisionInvitation) {
+        this.jdbc = jdbc; this.idempotency = idempotency; this.json = json; this.clock = clock; this.provisionInvitation = java.util.Objects.requireNonNull(provisionInvitation);
     }
 
     public IdempotencyExecutor.Result createHousehold(UUID actor, UUID key, byte[] digest, String requestedName) {
@@ -32,9 +33,10 @@ public final class HouseholdWriteService {
             List<ObjectNode> homes = jdbc.query("INSERT INTO households(id,name) VALUES (?,?) RETURNING id,name,zone_id,version,created_at,updated_at",
                     (rs, n) -> householdJson(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getLong(4),
                             rs.getTimestamp(5).toInstant(), rs.getTimestamp(6).toInstant()), id, name);
-            int inserted = jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'OWNER',true) ON CONFLICT (user_id) WHERE active DO NOTHING",
+            int inserted = jdbc.update("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'MEMBER',true) ON CONFLICT (user_id) WHERE active DO NOTHING",
                     UUID.randomUUID(), id, actor);
             if (inserted != 1) throw new Failure("ALREADY_IN_HOUSEHOLD");
+            provisionInvitation.accept(id, actor);
             return new IdempotencyExecutor.Result(201, json.write(homes.get(0)));
         }, result -> requireReplayMembership(actor, result));
     }
@@ -44,14 +46,12 @@ public final class HouseholdWriteService {
         try { codeHash = InvitationCodes.hash(invitationCode); }
         catch (IllegalArgumentException ex) { throw new Failure("INVALID_INVITATION"); }
         return idempotency.execute(actor, key, digest, () -> {
-            List<Invitation> lookup = jdbc.query("SELECT id,household_id FROM invitations WHERE code_hash=?",
+            List<Invitation> lookup = jdbc.query("SELECT id,household_id FROM invitations WHERE code_hash=? AND permanent",
                     (rs, n) -> new Invitation(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class)), codeHash);
             if (lookup.isEmpty()) throw new Failure("INVALID_INVITATION");
             Invitation invitation = lookup.get(0);
-            lockHousehold(invitation.householdId);
-            List<Boolean> valid = jdbc.query("SELECT used_at IS NULL AND expires_at > ? FROM invitations WHERE id=? AND code_hash=? FOR UPDATE",
-                    (rs, n) -> rs.getBoolean(1), Timestamp.from(clock.instant()), invitation.id, codeHash);
-            if (valid.isEmpty() || !valid.get(0)) throw new Failure("INVALID_INVITATION");
+            List<UUID> live = jdbc.query("SELECT id FROM households WHERE id=? AND closed_at IS NULL FOR UPDATE", (rs,n)->rs.getObject(1,UUID.class),invitation.householdId);
+            if(live.isEmpty())throw new Failure("INVALID_INVITATION");
             if (hasActiveHousehold(actor)) throw new Failure("ALREADY_IN_HOUSEHOLD");
             UUID id = UUID.randomUUID();
             List<ObjectNode> members = jdbc.query("INSERT INTO memberships(id,household_id,user_id,role,active) VALUES (?,?,?,'MEMBER',true) "
@@ -60,7 +60,6 @@ public final class HouseholdWriteService {
                             rs.getString(4), rs.getBoolean(5), rs.getLong(6), rs.getTimestamp(7).toInstant(), rs.getTimestamp(8).toInstant()),
                     id, invitation.householdId, actor);
             if (members.isEmpty()) throw new Failure("ALREADY_IN_HOUSEHOLD");
-            jdbc.update("UPDATE invitations SET used_at=? WHERE id=?", Timestamp.from(clock.instant()), invitation.id);
             return new IdempotencyExecutor.Result(201, json.write(members.get(0)));
         }, result -> requireReplayMembership(actor, result));
     }
@@ -83,7 +82,7 @@ public final class HouseholdWriteService {
     }
 
     private void lockHousehold(UUID householdId) {
-        List<UUID> rows = jdbc.query("SELECT id FROM households WHERE id=? FOR UPDATE", (rs, n) -> rs.getObject(1, UUID.class), householdId);
+        List<UUID> rows = jdbc.query("SELECT id FROM households WHERE id=? AND closed_at IS NULL FOR UPDATE", (rs, n) -> rs.getObject(1, UUID.class), householdId);
         if (rows.isEmpty()) throw new Failure("NOT_FOUND");
     }
 

@@ -1,0 +1,683 @@
+--- a/app/src/main/java/edu/xjtlu/civa/AppIntroView.java
++++ b/app/src/main/java/edu/xjtlu/civa/AppIntroView.java
+@@ -1,76 +1,188 @@
+ package edu.xjtlu.civa;
+ 
+ import android.content.Context;
++import android.content.res.AssetFileDescriptor;
++import android.graphics.SurfaceTexture;
+ import android.graphics.drawable.GradientDrawable;
++import android.media.MediaPlayer;
+ import android.os.SystemClock;
+ import android.view.Gravity;
++import android.view.Surface;
++import android.view.TextureView;
+ import android.view.View;
+ import android.widget.FrameLayout;
++import android.widget.ImageView;
+ import android.widget.TextView;
+ import androidx.core.content.ContextCompat;
+ import androidx.core.content.res.ResourcesCompat;
+-import edu.xjtlu.civa.core.ui.ChefCatView;
+ import edu.xjtlu.civa.core.ui.MeowSound;
+ 
+-/** One 6.6 second launch scene. Returning from logout only creates LoginFragment. */
+-final class AppIntroView extends FrameLayout {
+-    static final long DURATION = 6600;
+-    private final ChefCatView cat;
++/** Bundled, silent user-supplied CIVA animation; the shared meow is played separately. */
++final class AppIntroView extends FrameLayout implements TextureView.SurfaceTextureListener {
++    static final long DURATION = 7350;
++    private final TextureView video;
+     private final TextView bubble;
+-    private final long started;
+     private final Runnable done;
++    private MediaPlayer player;
++    private Surface surface;
++    private final android.graphics.Bitmap edgeProbe = android.graphics.Bitmap.createBitmap(16,16,android.graphics.Bitmap.Config.ARGB_8888);
++    private int decodedBackground;
+     private MeowSound audio;
+-    private boolean voiced, finished;
++    private int position;
++    private boolean prepared, voiced, finished;
+     private final Runnable frame = this::tick;
++    private final Runnable preparationTimeout = this::showFallback;
++    private final Runnable fallbackDone = this::finish;
+ 
+     AppIntroView(Context context, long started, boolean alreadyVoiced, Runnable done) {
+-        super(context); this.started=started; this.done=done; this.voiced=alreadyVoiced;
++        super(context);
++        this.done = done;
++        position = (int)Math.min(7000, Math.max(0, SystemClock.elapsedRealtime() - started));
++        voiced = alreadyVoiced;
+         setId(R.id.app_intro_scene); setClickable(true); setFocusable(true);
+-        setBackgroundColor(ContextCompat.getColor(context, edu.xjtlu.civa.core.ui.R.color.civa_primary_dark));
++        setBackgroundColor(ContextCompat.getColor(context, edu.xjtlu.civa.core.ui.R.color.civa_welcome_brown));
+         setContentDescription(context.getString(R.string.app_intro_description));
+-        cat=new ChefCatView(context); cat.setId(R.id.app_intro_cat); addView(cat);
+-        bubble=new TextView(context); bubble.setId(R.id.app_intro_meow);
+-        bubble.setText(edu.xjtlu.civa.core.ui.R.string.civa_cat_meow); bubble.setTextSize(24); bubble.setGravity(Gravity.CENTER);
+-        bubble.setTypeface(ResourcesCompat.getFont(context,edu.xjtlu.civa.core.ui.R.font.civa_kuaile));
+-        bubble.setTextColor(ContextCompat.getColor(context,edu.xjtlu.civa.core.ui.R.color.civa_primary_dark));
+-        GradientDrawable shape=new GradientDrawable();shape.setColor(ContextCompat.getColor(context,edu.xjtlu.civa.core.ui.R.color.civa_surface));shape.setCornerRadius(dp(25));bubble.setBackground(shape);
+-        bubble.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE); bubble.setVisibility(INVISIBLE); addView(bubble);
++        video = new TextureView(context); video.setId(R.id.app_intro_cat);
++        video.setOpaque(false); video.setAlpha(0); video.setSurfaceTextureListener(this); addView(video);
++        bubble = new TextView(context); bubble.setId(R.id.app_intro_meow);
++        bubble.setText(edu.xjtlu.civa.core.ui.R.string.civa_cat_meow);
++        bubble.setTextSize(24); bubble.setGravity(Gravity.CENTER);
++        bubble.setTypeface(ResourcesCompat.getFont(context, edu.xjtlu.civa.core.ui.R.font.civa_kuaile));
++        bubble.setTextColor(ContextCompat.getColor(context, edu.xjtlu.civa.core.ui.R.color.civa_primary_dark));
++        GradientDrawable shape = new GradientDrawable();
++        shape.setColor(ContextCompat.getColor(context, edu.xjtlu.civa.core.ui.R.color.civa_surface));
++        shape.setCornerRadius(dp(25)); bubble.setBackground(shape);
++        bubble.setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE);
++        bubble.setVisibility(INVISIBLE); addView(bubble);
+     }
++
+     boolean hasVoiced() { return voiced; }
+-    @Override protected void onAttachedToWindow() { super.onAttachedToWindow();audio=new MeowSound(getContext());postOnAnimation(frame); }
++    int playbackMillis() {
++        if (player != null && prepared) {
++            try { position = player.getCurrentPosition(); } catch (IllegalStateException ignored) { }
++        }
++        return position;
++    }
++    @Override protected void onAttachedToWindow() {
++        super.onAttachedToWindow(); audio = new MeowSound(getContext());
++        postDelayed(preparationTimeout, 6000);
++    }
++    @Override public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height) {
++        if (finished || player != null) return;
++        surface = new Surface(texture);
++        MediaPlayer created = new MediaPlayer(); player = created;
++        try (AssetFileDescriptor asset = getResources().openRawResourceFd(R.raw.app_cat_intro)) {
++            created.setSurface(surface); created.setVolume(0, 0); created.setLooping(false);
++            created.setDataSource(asset.getFileDescriptor(), asset.getStartOffset(), asset.getLength());
++            created.setOnInfoListener((source, what, extra) -> {
++                if (source == player && what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
++                    matchVideoBackground(); video.setAlpha(1); android.util.Log.i("CivaIntro", "video_started");
++                }
++                return false;
++            });
++            created.setOnPreparedListener(source -> {
++                if (source != player || !isAttachedToWindow() || finished) return;
++                prepared = true; removeCallbacks(preparationTimeout);
++                if (position > 0) source.seekTo(position, MediaPlayer.SEEK_CLOSEST);
++                if (getWindowVisibility() == VISIBLE) { source.start(); postOnAnimation(frame); }
++            });
++            created.setOnCompletionListener(source -> { if (source == player) { android.util.Log.i("CivaIntro", "video_completed"); finish(); } });
++            created.setOnErrorListener((source, what, extra) -> { if (source == player) showFallback(); return true; });
++            created.prepareAsync();
++        } catch (Exception unavailable) { showFallback(); }
++    }
++    @Override public boolean onSurfaceTextureDestroyed(SurfaceTexture texture) {
++        releasePlayer(); return true;
++    }
++    @Override public void onSurfaceTextureSizeChanged(SurfaceTexture texture, int width, int height) { }
++    @Override public void onSurfaceTextureUpdated(SurfaceTexture texture) { matchVideoBackground(); }
++    private void matchVideoBackground() {
++        if (!isAttachedToWindow() || !video.isAvailable() || edgeProbe.isRecycled() || finished) return;
++        try {
++            // The source video reserves its top-left corner for plain background.
++            // Sampling a reusable thumbnail handles small device-specific YUV/RGB differences.
++            android.graphics.Bitmap sample = video.getBitmap(edgeProbe);
++            if (sample == null) return;
++            int color = sample.getPixel(0,0);
++            if (android.graphics.Color.alpha(color) < 250 || color == decodedBackground) return;
++            decodedBackground = color;
++            setBackgroundColor(color);
++            View content = getRootView().findViewById(android.R.id.content);
++            if (content != null) content.setBackgroundColor(color);
++        } catch (IllegalStateException disappearingSurface) { /* Surface can leave during app backgrounding. */ }
++    }
++
+     private void tick() {
+-        if (finished || !isAttachedToWindow() || getWindowVisibility()!=VISIBLE) return;
+-        float time=SystemClock.elapsedRealtime()-started;
+-        if(time>=DURATION){ finished=true;done.run();return; }
+-        float run=Math.min(1,time/2000f);float ease=1-(1-run)*(1-run);
+-        float destination=(getWidth()-cat.getWidth())*.5f;
+-        cat.setTranslationX((-cat.getWidth()-dp(18))*(1-ease)+destination*ease);
+-        float settle=Math.max(0,Math.min(1,(time-2000)/850f));
+-        cat.pose(time/100f,settle,0,false);
+-        cat.setScaleY(time<2000?1f:1f-.09f*(float)Math.sin(settle*Math.PI));
+-        cat.setRotation(time<2000?(float)Math.sin(time/105)*3.5f:0);
+-        if(time>=4350 && !voiced){
+-            voiced=true;audio.play(()->{if(!isAttachedToWindow()||getWindowVisibility()!=VISIBLE)return; bubble.setVisibility(VISIBLE);bubble.setScaleX(.6f);bubble.setScaleY(.6f);bubble.setAlpha(0f);
+-                bubble.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(220).setInterpolator(new android.view.animation.OvershootInterpolator(1.2f)).start();});
++        if (finished || !prepared || player == null || !isAttachedToWindow() || getWindowVisibility() != VISIBLE) return;
++        int now = playbackMillis();
++        if (now >= 3000 && !voiced) {
++            voiced = true;
++            audio.play(() -> {
++                if (!isAttachedToWindow() || finished || getWindowVisibility() != VISIBLE) return;
++                bubble.setVisibility(VISIBLE); bubble.setScaleX(.6f); bubble.setScaleY(.6f); bubble.setAlpha(0);
++                bubble.animate().alpha(1).scaleX(1).scaleY(1).setDuration(220)
++                    .setInterpolator(new android.view.animation.OvershootInterpolator(1.2f)).start();
++            });
+         }
+-        if(time>5650)bubble.setAlpha(Math.max(0,1-(time-5650)/400f));
+-        setAlpha(time<6250?1f:Math.max(0,(DURATION-time)/350f));
+-        postOnAnimation(frame);
++        if (now > 3900) bubble.setAlpha(Math.max(0, 1 - (now - 3900) / 350f));
++        postDelayed(frame, 32);
+     }
+-    @Override protected void onMeasure(int ws,int hs){
+-        int w=MeasureSpec.getSize(ws),h=MeasureSpec.getSize(hs);setMeasuredDimension(w,h);
+-        int ch=Math.min(dp(265),Math.round(h*.42f)),cw=Math.round(ch*.8f);
+-        cat.measure(MeasureSpec.makeMeasureSpec(cw,MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(ch,MeasureSpec.EXACTLY));
+-        bubble.measure(MeasureSpec.makeMeasureSpec(dp(68),MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(dp(52),MeasureSpec.EXACTLY));
++    private void finish() {
++        if (finished || !isAttachedToWindow()) return;
++        finished = true; removeCallbacks(frame); removeCallbacks(preparationTimeout);
++        releasePlayer();
++        animate().alpha(0).setDuration(220).withEndAction(done).start();
+     }
+-    @Override protected void onLayout(boolean changed,int l,int t,int r,int b){
+-        int y=(getHeight()-cat.getMeasuredHeight())/2;
+-        cat.layout(0,y,cat.getMeasuredWidth(),y+cat.getMeasuredHeight());
+-        int x=getWidth()/2+cat.getMeasuredWidth()/2-dp(7);
+-        bubble.layout(x,y+dp(12),x+dp(68),y+dp(64));
++    private void showFallback() {
++        if (finished || !isAttachedToWindow()) return;
++        android.util.Log.w("CivaIntro", "video_fallback");
++        removeCallbacks(preparationTimeout); removeCallbacks(frame); releasePlayer(); video.setVisibility(INVISIBLE);
++        ImageView poster = new ImageView(getContext());
++        poster.setImageResource(edu.xjtlu.civa.core.ui.R.drawable.civa_cat_long_hat);
++        poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
++        addView(poster, 0, new LayoutParams(dp(160), dp(230), Gravity.CENTER));
++        removeCallbacks(fallbackDone); postDelayed(fallbackDone, 900);
+     }
+-    @Override protected void onWindowVisibilityChanged(int visibility){super.onWindowVisibilityChanged(visibility);
+-        if(visibility==VISIBLE&&isAttachedToWindow())postOnAnimation(frame);else{removeCallbacks(frame);if(audio!=null)audio.stop();}}
+-    @Override protected void onDetachedFromWindow(){removeCallbacks(frame);bubble.animate().cancel();if(audio!=null){audio.close();audio=null;}super.onDetachedFromWindow();}
+-    private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
++    private void releasePlayer() {
++        playbackMillis(); prepared = false;
++        if (player != null) {
++            player.setOnPreparedListener(null); player.setOnCompletionListener(null); player.setOnErrorListener(null); player.setOnInfoListener(null);
++            player.release(); player = null;
++        }
++        if (surface != null) { surface.release(); surface = null; }
++    }
++    @Override protected void onMeasure(int ws, int hs) {
++        int w = MeasureSpec.getSize(ws), h = MeasureSpec.getSize(hs); setMeasuredDimension(w, h);
++        int width = Math.min(dp(312), Math.round(w * .84f));
++        int height = Math.round(width * 540f / 620f);
++        if (height > h * .65f) { height = Math.round(h * .65f); width = Math.round(height * 620f / 540f); }
++        video.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
++        bubble.measure(MeasureSpec.makeMeasureSpec(dp(68), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(dp(52), MeasureSpec.EXACTLY));
++        for (int i=0;i<getChildCount();i++) if(getChildAt(i)!=video&&getChildAt(i)!=bubble) measureChild(getChildAt(i),ws,hs);
++    }
++    @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
++        int x=(getWidth()-video.getMeasuredWidth())/2, y=(getHeight()-video.getMeasuredHeight())/2;
++        video.layout(x,y,x+video.getMeasuredWidth(),y+video.getMeasuredHeight());
++        int bx=Math.min(getWidth()-dp(72),x+Math.round(video.getMeasuredWidth()*.78f));
++        bubble.layout(bx,y,bx+dp(68),y+dp(52));
++        for(int i=0;i<getChildCount();i++) {
++            View child=getChildAt(i); if(child==video||child==bubble)continue;
++            int left=(getWidth()-child.getMeasuredWidth())/2, top=(getHeight()-child.getMeasuredHeight())/2;
++            child.layout(left,top,left+child.getMeasuredWidth(),top+child.getMeasuredHeight());
++        }
++    }
++    @Override protected void onWindowVisibilityChanged(int visibility) {
++        super.onWindowVisibilityChanged(visibility);
++        if (player != null && prepared) {
++            if (visibility == VISIBLE && !finished) { player.start(); removeCallbacks(frame); postOnAnimation(frame); }
++            else { player.pause(); removeCallbacks(frame); if (audio != null) audio.stop(); }
++        }
++    }
++    @Override protected void onDetachedFromWindow() {
++        removeCallbacks(frame); removeCallbacks(preparationTimeout); removeCallbacks(fallbackDone);
++        animate().cancel(); bubble.animate().cancel(); releasePlayer();
++        if (audio != null) { audio.close(); audio=null; }
++        edgeProbe.recycle(); super.onDetachedFromWindow();
++    }
++    private int dp(float n) { return Math.round(n*getResources().getDisplayMetrics().density); }
+ }
+--- a/app/src/main/java/edu/xjtlu/civa/MainActivity.java
++++ b/app/src/main/java/edu/xjtlu/civa/MainActivity.java
+@@ -79,13 +79,13 @@
+     private void updateChrome(androidx.fragment.app.Fragment fragment) {
+         boolean auth = fragment instanceof LoginFragment || fragment instanceof edu.xjtlu.civa.feature.ef.HouseholdFragment || !container.sessions.isLoggedIn();
+         navigation.setVisibility(auth ? View.GONE : View.VISIBLE);
+-        int dark = androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_primary_dark);
++        int dark = androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_welcome_brown);
+         int paper = androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_welcome_paper);
+         View content=findViewById(android.R.id.content);
+         if(introShowing) content.setBackgroundColor(dark);
+         else if(auth) content.setBackground(new android.graphics.drawable.Drawable() {
+             final android.graphics.Paint paint=new android.graphics.Paint();
+-            @Override public void draw(android.graphics.Canvas canvas){canvas.drawColor(paper);paint.setColor(dark);canvas.drawRect(0,0,getBounds().width(),getBounds().height()*.30f,paint);}
++            @Override public void draw(android.graphics.Canvas canvas){canvas.drawColor(paper);paint.setColor(dark);canvas.drawRect(0,0,getBounds().width(),getBounds().height()*.26f,paint);}
+             @Override public void setAlpha(int alpha) { } @Override public void setColorFilter(android.graphics.ColorFilter filter) { }
+             @Override public int getOpacity(){return android.graphics.PixelFormat.OPAQUE;}
+         });
+@@ -93,7 +93,7 @@
+         var bars=androidx.core.view.WindowCompat.getInsetsController(getWindow(),getWindow().getDecorView());
+         bars.setAppearanceLightStatusBars(!auth && !introShowing); bars.setAppearanceLightNavigationBars(!introShowing);
+     }
+-    @Override protected void onSaveInstanceState(Bundle state) { state.putBoolean("app.intro.finished",!introShowing); state.putLong("app.intro.started",introStarted); state.putBoolean("app.intro.voiced", intro != null && intro.hasVoiced()); super.onSaveInstanceState(state); }
++    @Override protected void onSaveInstanceState(Bundle state) { state.putBoolean("app.intro.finished",!introShowing); state.putLong("app.intro.started", intro == null ? introStarted : android.os.SystemClock.elapsedRealtime() - intro.playbackMillis()); state.putBoolean("app.intro.voiced", intro != null && intro.hasVoiced()); super.onSaveInstanceState(state); }
+ 
+     @Override public Object onRetainCustomNonConfigurationInstance() { return Boolean.TRUE; }
+ 
+--- a/app/src/main/res/values/app_bakery_strings.xml
++++ b/app/src/main/res/values/app_bakery_strings.xml
+@@ -1 +1 @@
+-<resources><string name="app_intro_description">戴厨师帽的小猫跑来和你打招呼</string></resources>+<resources><string name="app_intro_description">CIVA 小猫开场动画</string></resources>--- a/core-ui/src/main/java/edu/xjtlu/civa/core/ui/BakeryWelcomeLayout.java
++++ b/core-ui/src/main/java/edu/xjtlu/civa/core/ui/BakeryWelcomeLayout.java
+@@ -10,6 +10,7 @@
+ import android.view.animation.DecelerateInterpolator;
+ import android.widget.FrameLayout;
+ import android.widget.TextView;
++import android.widget.ImageView;
+ import androidx.core.content.ContextCompat;
+ import androidx.core.content.res.ResourcesCompat;
+ 
+@@ -17,7 +18,8 @@
+ public final class BakeryWelcomeLayout extends FrameLayout {
+     private FrameLayout sheet;
+     private View form;
+-    private ChefCatView cat;
++    private ImageView cat;
++    private FrameLayout catWindow;
+     private TextView greeting;
+     private ValueAnimator entrance;
+     private float progress;
+@@ -26,7 +28,7 @@
+ 
+     public BakeryWelcomeLayout(Context context, AttributeSet attrs) {
+         super(context, attrs);
+-        setBackgroundColor(ContextCompat.getColor(context, R.color.civa_primary_dark));
++        setBackgroundColor(ContextCompat.getColor(context, R.color.civa_welcome_brown));
+         setClipChildren(false); setClipToPadding(false);
+     }
+     @Override protected void onFinishInflate() {
+@@ -35,8 +37,12 @@
+         sheet = new FrameLayout(getContext());
+         GradientDrawable shape = new GradientDrawable(); shape.setColor(ContextCompat.getColor(getContext(), R.color.civa_welcome_paper));
+         shape.setCornerRadii(new float[]{dp(32),dp(32),dp(32),dp(32),0,0,0,0}); sheet.setBackground(shape);
+-        addView(sheet); sheet.addView(form);
+-        cat = new ChefCatView(getContext()); cat.setId(R.id.civa_welcome_cat); addView(cat);
++        sheet.setClipToOutline(true);
++        addView(sheet); sheet.addView(new PaperBackdropView(getContext(), null), new FrameLayout.LayoutParams(-1,-1)); sheet.addView(form);
++        catWindow = new FrameLayout(getContext()); catWindow.setClipChildren(true); addView(catWindow);
++        cat = new ImageView(getContext()); cat.setImageResource(R.drawable.civa_cat_long_hat);
++        cat.setScaleType(ImageView.ScaleType.FIT_CENTER); cat.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
++        cat.setId(R.id.civa_welcome_cat); catWindow.addView(cat);
+         greeting = new TextView(getContext()); greeting.setId(R.id.civa_welcome_greeting);
+         greeting.setTextColor(ContextCompat.getColor(getContext(), R.color.civa_primary_dark));
+         greeting.setTextSize(16); greeting.setGravity(Gravity.CENTER); greeting.setIncludeFontPadding(false);
+@@ -66,21 +72,21 @@
+         if (sheet == null) return;
+         sheet.setTranslationY((getHeight() - boundary) * (1 - Math.min(1, progress / .72f)));
+         float catProgress = Math.max(0, Math.min(1, (progress - .12f) / .72f));
+-        cat.setAlpha(catProgress); cat.setTranslationY(-dp(90) * (1-catProgress));
+-        cat.pose(0, 1, (float)Math.sin(progress * Math.PI * 3) * .55f + .4f, true);
+-        greeting.setAlpha(catProgress); greeting.setTranslationY(-dp(16) * (1-catProgress));
++        cat.setAlpha(catProgress); cat.setTranslationY(dp(100) * (1-catProgress));
++        greeting.setAlpha(catProgress); greeting.setTranslationY(dp(16) * (1-catProgress));
+         float formProgress = Math.max(0, Math.min(1, (progress - .4f) / .6f));
+         form.setAlpha(formProgress); form.setTranslationY(dp(18) * (1-formProgress));
+     }
+     @Override protected void onMeasure(int widthSpec, int heightSpec) {
+         int width = MeasureSpec.getSize(widthSpec), height = MeasureSpec.getSize(heightSpec);
+         setMeasuredDimension(width,height);
+-        boundary = Math.round(height * .30f);
++        boundary = Math.round(height * .26f);
+         sheet.measure(MeasureSpec.makeMeasureSpec(width,MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(height-boundary,MeasureSpec.EXACTLY));
+         int formWidth = Math.min(width, dp(476));
+         form.measure(MeasureSpec.makeMeasureSpec(formWidth,MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(height-boundary,MeasureSpec.EXACTLY));
+-        int catHeight = Math.min(dp(190), Math.max(dp(94),boundary-dp(12)));
+-        cat.measure(MeasureSpec.makeMeasureSpec(Math.round(catHeight*.8f),MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(catHeight,MeasureSpec.EXACTLY));
++        catWindow.measure(MeasureSpec.makeMeasureSpec(width,MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(boundary+dp(8),MeasureSpec.EXACTLY));
++        int catHeight = Math.min(dp(218), Math.max(dp(82),boundary-dp(6)));
++        cat.measure(MeasureSpec.makeMeasureSpec(Math.round(catHeight*(2f/3f)),MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(catHeight,MeasureSpec.EXACTLY));
+         greeting.measure(MeasureSpec.makeMeasureSpec(Math.min(dp(205),Math.round(width*.52f)),MeasureSpec.AT_MOST),MeasureSpec.makeMeasureSpec(dp(80),MeasureSpec.AT_MOST));
+     }
+     @Override protected void onLayout(boolean changed,int l,int t,int r,int b) {
+@@ -88,7 +94,8 @@
+         int width = r-l, height = b-t, fw = form.getMeasuredWidth();
+         sheet.layout(0,boundary,width,height); form.layout((width-fw)/2,0,(width+fw)/2,height-boundary);
+         int cw=cat.getMeasuredWidth(),ch=cat.getMeasuredHeight();
+-        int cx=Math.round(width*.64f-cw*.5f), bottom=boundary+dp(12);
++        catWindow.layout(0,0,width,boundary+dp(8));
++        int cx=Math.round(width*.73f-cw*.5f), bottom=boundary+dp(8);
+         cat.layout(cx,bottom-ch,cx+cw,bottom);
+         int gw=greeting.getMeasuredWidth(),gh=greeting.getMeasuredHeight();
+         int gx=Math.max(dp(20),Math.round(width*.29f-gw*.5f));
+--- a/core-ui/src/main/res/values/civa_colors.xml
++++ b/core-ui/src/main/res/values/civa_colors.xml
+@@ -13,5 +13,7 @@
+     <color name="civa_breakfast">#FFFAEE</color>
+     <color name="civa_lunch">#F3E4CB</color>
+     <color name="civa_dinner">#F6E6DB</color>
+-    <color name="civa_welcome_paper">#EFE0C8</color>
++    <color name="civa_welcome_paper">@color/civa_background</color>
++    <color name="civa_welcome_brown">#97745A</color>
++    <color name="civa_sage">#496455</color>
+ </resources>
+--- a/feature-ac/src/main/res/layout/ac_fragment_catalog.xml
++++ b/feature-ac/src/main/res/layout/ac_fragment_catalog.xml
+@@ -1,104 +1,22 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-    xmlns:app="http://schemas.android.com/apk/res-auto"
+-    android:layout_width="match_parent"
+-    android:layout_height="match_parent"
+-    android:orientation="vertical"
+-    android:paddingHorizontal="16dp"
+-    android:paddingTop="12dp"
+-    android:paddingBottom="4dp">
+-
+-    <TextView
+-        android:id="@+id/ac_catalog_title"
+-        style="@style/CivaText.Title"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:text="@string/ac_catalog_title" />
+-
+-    <TextView
+-        android:id="@+id/ac_catalog_subtitle"
+-        style="@style/CivaText.Subtitle"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:text="@string/ac_catalog_subtitle" />
+-
+-    <LinearLayout
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:layout_marginTop="8dp"
+-        android:gravity="center_vertical"
+-        android:orientation="horizontal">
+-
+-        <com.google.android.material.chip.ChipGroup
+-            android:id="@+id/ac_catalog_sources"
+-            android:layout_width="0dp"
+-            android:layout_height="wrap_content"
+-            android:layout_weight="1"
+-            app:chipSpacingHorizontal="8dp"
+-            app:singleLine="true" />
+-
+-        <com.google.android.material.button.MaterialButton
+-            android:id="@+id/ac_catalog_create"
+-            style="@style/CivaWidget.TextButton"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:text="@string/ac_editor_new_title"
+-            android:visibility="gone" />
+-    </LinearLayout>
+-
+-    <EditText
+-        android:id="@+id/ac_catalog_search"
+-        android:layout_width="match_parent"
+-        android:layout_height="48dp"
+-        android:layout_marginTop="12dp"
+-        android:background="@drawable/ac_catalog_search"
+-        android:hint="@string/ac_catalog_search"
+-        android:inputType="text"
+-        android:maxLines="1"
+-        android:paddingHorizontal="16dp"
+-        android:singleLine="true"
+-        android:textColor="@color/civa_text"
+-        android:textSize="14sp"
+-        android:textColorHint="@color/civa_muted" />
+-
+-    <HorizontalScrollView
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:layout_marginTop="8dp"
+-        android:scrollbars="none">
+-
+-        <com.google.android.material.chip.ChipGroup
+-            android:id="@+id/ac_catalog_chips"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            app:chipSpacingHorizontal="8dp"
+-            app:singleLine="true" />
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingHorizontal="16dp" android:paddingTop="12dp" android:paddingBottom="4dp">
++    <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content">
++        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
++            <TextView android:id="@+id/ac_catalog_title" style="@style/CivaText.Title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ac_catalog_title" android:paddingEnd="88dp" />
++            <TextView android:id="@+id/ac_catalog_subtitle" style="@style/CivaText.Subtitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ac_catalog_subtitle" android:paddingEnd="88dp" />
++            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center_vertical" android:orientation="horizontal" android:layout_marginEnd="86dp">
++                <HorizontalScrollView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:scrollbars="none">
++                    <com.google.android.material.chip.ChipGroup android:id="@+id/ac_catalog_sources" android:layout_width="wrap_content" android:layout_height="wrap_content" app:chipSpacingHorizontal="8dp" app:singleLine="true" />
++                </HorizontalScrollView>
++                <com.google.android.material.button.MaterialButton android:id="@+id/ac_catalog_create" style="@style/CivaWidget.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ac_editor_new_title" android:visibility="gone" />
++            </LinearLayout>
++        </LinearLayout>
++        <ImageView android:id="@+id/ac_catalog_cat" android:layout_width="84dp" android:layout_height="88dp" android:layout_gravity="top|end" android:src="@drawable/civa_cat_pan" android:scaleType="fitEnd" android:importantForAccessibility="no" />
++    </FrameLayout>
++    <EditText android:id="@+id/ac_catalog_search" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="12dp" android:background="@drawable/ac_catalog_search" android:hint="@string/ac_catalog_search" android:inputType="text" android:maxLines="1" android:paddingHorizontal="16dp" android:singleLine="true" android:textColor="@color/civa_text" android:textSize="14sp" android:textColorHint="@color/civa_muted" />
++    <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:scrollbars="none">
++        <com.google.android.material.chip.ChipGroup android:id="@+id/ac_catalog_chips" android:layout_width="wrap_content" android:layout_height="wrap_content" app:chipSpacingHorizontal="8dp" app:singleLine="true" />
+     </HorizontalScrollView>
+-
+-    <androidx.recyclerview.widget.RecyclerView
+-        android:id="@+id/ac_catalog_grid"
+-        android:layout_width="match_parent"
+-        android:layout_height="0dp"
+-        android:layout_weight="1"
+-        android:layout_marginTop="8dp"
+-        android:clipToPadding="false"
+-        android:paddingBottom="8dp"
+-        android:scrollbars="none" />
+-
+-    <TextView
+-        android:id="@+id/ac_catalog_status"
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:paddingTop="4dp"
+-        android:textSize="13sp"
+-        android:textColor="@color/civa_muted" />
+-
+-    <com.google.android.material.button.MaterialButton
+-        android:id="@+id/ac_catalog_more"
+-        style="@style/CivaWidget.TextButton"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:layout_gravity="center_horizontal"
+-        android:text="@string/ac_catalog_more_plain"
+-        android:visibility="gone" />
++    <androidx.recyclerview.widget.RecyclerView android:id="@+id/ac_catalog_grid" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="8dp" android:clipToPadding="false" android:paddingBottom="8dp" android:scrollbars="none" />
++    <TextView android:id="@+id/ac_catalog_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="4dp" android:textSize="13sp" android:textColor="@color/civa_muted" />
++    <com.google.android.material.button.MaterialButton android:id="@+id/ac_catalog_more" style="@style/CivaWidget.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center_horizontal" android:text="@string/ac_catalog_more_plain" android:visibility="gone" />
+ </LinearLayout>
+--- a/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeLayout.java
++++ b/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeLayout.java
+@@ -30,7 +30,6 @@
+                 title.setText(compact ? text.replace(String.valueOf((char) 10), "") : text);
+                 title.setMaxLines(compact ? 1 : 2);
+                 TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(title, 16, compact ? 24 : 34, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
+-                findViewById(R.id.bd_home_hero_caption).setVisibility(compact && heroHeight < 92 ? View.GONE : View.VISIBLE);
+                 compactTitle = compact;
+             }
+             size(R.id.bd_home_header, header);
+--- a/feature-bd/src/main/res/layout/bd_fragment_home.xml
++++ b/feature-bd/src/main/res/layout/bd_fragment_home.xml
+@@ -23,16 +23,12 @@
+             <edu.xjtlu.civa.core.ui.BakeryCatStage android:id="@id/bd_cat_stage"
+                 android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent">
+                 <ImageView android:id="@id/civa_cat_art" android:layout_width="match_parent" android:layout_height="match_parent"
+-                    android:src="@drawable/bd_bakery_cat" android:scaleType="fitCenter" android:contentDescription="@string/civa_cat_greeting" />
++                    android:src="@drawable/civa_cat_bread" android:scaleType="fitCenter" android:contentDescription="@string/civa_cat_greeting" />
+             </edu.xjtlu.civa.core.ui.BakeryCatStage>
+             <LinearLayout android:layout_width="132dp" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:orientation="vertical">
+-                <TextView android:id="@+id/bd_home_hero_eyebrow" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bd_home_hero_eyebrow"
+-                    android:textSize="10sp" android:textColor="@color/civa_secondary" android:letterSpacing="0.08" />
+                 <TextView android:id="@+id/bd_home_hero_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                     android:text="@string/bd_home_hero_title" android:fontFamily="@font/civa_kuaile" android:textSize="34sp" android:includeFontPadding="false"
+                     android:lineSpacingExtra="3dp" android:textColor="@color/civa_primary_dark" />
+-                <TextView android:id="@+id/bd_home_hero_caption" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+-                    android:text="@string/bd_home_hero_caption" android:textSize="10sp" android:textColor="@color/civa_muted" />
+             </LinearLayout>
+           </LinearLayout>
+         </FrameLayout>
+--- a/feature-bd/src/main/res/layout-w600dp/bd_fragment_home.xml
++++ b/feature-bd/src/main/res/layout-w600dp/bd_fragment_home.xml
+@@ -23,16 +23,12 @@
+             <edu.xjtlu.civa.core.ui.BakeryCatStage android:id="@id/bd_cat_stage"
+                 android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent">
+                 <ImageView android:id="@id/civa_cat_art" android:layout_width="match_parent" android:layout_height="match_parent"
+-                    android:src="@drawable/bd_bakery_cat" android:scaleType="fitCenter" android:contentDescription="@string/civa_cat_greeting" />
++                    android:src="@drawable/civa_cat_bread" android:scaleType="fitCenter" android:contentDescription="@string/civa_cat_greeting" />
+             </edu.xjtlu.civa.core.ui.BakeryCatStage>
+             <LinearLayout android:layout_width="132dp" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:orientation="vertical">
+-                <TextView android:id="@+id/bd_home_hero_eyebrow" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bd_home_hero_eyebrow"
+-                    android:textSize="10sp" android:textColor="@color/civa_secondary" android:letterSpacing="0.08" />
+                 <TextView android:id="@+id/bd_home_hero_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                     android:text="@string/bd_home_hero_title" android:fontFamily="@font/civa_kuaile" android:textSize="34sp" android:includeFontPadding="false"
+                     android:lineSpacingExtra="3dp" android:textColor="@color/civa_primary_dark" />
+-                <TextView android:id="@+id/bd_home_hero_caption" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+-                    android:text="@string/bd_home_hero_caption" android:textSize="10sp" android:textColor="@color/civa_muted" />
+             </LinearLayout>
+           </LinearLayout>
+         </FrameLayout>
+--- a/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/ProfileEditDialog.java
++++ b/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/ProfileEditDialog.java
+@@ -98,7 +98,7 @@
+     static void paintAvatar(ImageView view,File file){
+         GradientDrawable oval=new GradientDrawable();oval.setShape(GradientDrawable.OVAL);oval.setColor(ContextCompat.getColor(view.getContext(),edu.xjtlu.civa.core.ui.R.color.civa_background));oval.setStroke(2,ContextCompat.getColor(view.getContext(),edu.xjtlu.civa.core.ui.R.color.civa_outline));view.setBackground(oval);view.setClipToOutline(true);view.setScaleType(ImageView.ScaleType.CENTER_CROP);
+         if(file!=null&&file.isFile()){view.setPadding(0,0,0,0);view.setImageBitmap(BitmapFactory.decodeFile(file.getAbsolutePath()));}
+-        else{int padding=Math.round(12*view.getResources().getDisplayMetrics().density);view.setPadding(padding,padding,padding,padding);view.setImageResource(edu.xjtlu.civa.core.ui.R.drawable.civa_cat_peeking);}
++        else{view.setScaleType(ImageView.ScaleType.FIT_CENTER);int padding=Math.round(6*view.getResources().getDisplayMetrics().density);view.setPadding(padding,padding,padding,padding);view.setImageResource(edu.xjtlu.civa.core.ui.R.drawable.civa_cat_egg);}
+     }
+     private int color(int id){return ContextCompat.getColor(requireContext(),id);}
+     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
+--- a/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/ProfileFragment.java
++++ b/feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/ProfileFragment.java
+@@ -17,7 +17,6 @@
+ import edu.xjtlu.civa.api.model.User;
+ import edu.xjtlu.civa.core.data.ApiCallback;
+ import edu.xjtlu.civa.core.ui.ApiError;
+-import edu.xjtlu.civa.core.ui.ChefCatView;
+ import edu.xjtlu.civa.core.ui.PressBounce;
+ import edu.xjtlu.civa.core.ui.Route;
+ 
+@@ -35,7 +34,6 @@
+         String householdId=host.sessions().currentHouseholdId();boolean joined=householdId!=null&&!householdId.isEmpty();
+         household.setText(joined?getString(R.string.ef_profile_id,householdId):getString(R.string.ef_profile_no_household));
+         note.setText(joined?R.string.ef_profile_household_note:R.string.ef_profile_household_missing);
+-        ((ChefCatView)view.findViewById(R.id.ef_profile_cat)).pose(0,1,.45f,true);
+         MaterialButton settings=view.findViewById(R.id.ef_profile_household_action);settings.setText(joined?R.string.ef_profile_household_settings:R.string.ef_profile_household_join);settings.setOnClickListener(v->host.navigate(Route.HOUSEHOLD,null));
+         view.findViewById(R.id.ef_profile_language).setOnClickListener(v->{if(getChildFragmentManager().findFragmentByTag("language")==null)new LanguageDialog().show(getChildFragmentManager(),"language");});
+         view.findViewById(R.id.ef_profile_edit).setOnClickListener(v->{if(getChildFragmentManager().findFragmentByTag("edit-profile")==null)ProfileEditDialog.create(userId,shownName()).show(getChildFragmentManager(),"edit-profile");});
+@@ -60,8 +58,10 @@
+     public static final class LanguageDialog extends DialogFragment {
+         @NonNull @Override public Dialog onCreateDialog(@Nullable Bundle state){
+             LinearLayout body=new LinearLayout(requireContext());body.setOrientation(LinearLayout.VERTICAL);int pad=dp(22);body.setPadding(pad,dp(10),pad,pad);
+-            MaterialButton close=new MaterialButton(requireContext(),null,com.google.android.material.R.attr.borderlessButtonStyle);close.setId(R.id.ef_language_close);close.setText(R.string.ef_close_symbol);close.setTextSize(20);close.setContentDescription(getString(R.string.ef_close));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(dp(44),dp(48));cp.gravity=Gravity.START;body.addView(close,cp);close.setOnClickListener(v->dismiss());
+-            for(int i=0;i<2;i++){MaterialButton button=new MaterialButton(requireContext());button.setId(i==0?R.id.ef_language_zh:R.id.ef_language_en);button.setText(i==0?R.string.ef_language_chinese:R.string.ef_language_english);button.setTypeface(androidx.core.content.res.ResourcesCompat.getFont(requireContext(),edu.xjtlu.civa.core.ui.R.font.civa_kuaile));button.setCornerRadius(dp(25));LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,dp(56));bp.topMargin=dp(12);body.addView(button,bp);button.setOnClickListener(v->{ });}
++            MaterialButton close=new MaterialButton(requireContext(),null,com.google.android.material.R.attr.borderlessButtonStyle);close.setId(R.id.ef_language_close);close.setText(R.string.ef_close_symbol);close.setTextSize(20);close.setContentDescription(getString(R.string.ef_close));android.widget.FrameLayout header=new android.widget.FrameLayout(requireContext());body.addView(header,new LinearLayout.LayoutParams(-1,dp(52)));
++            TextView title=new TextView(requireContext());title.setId(R.id.ef_language_title);title.setText(R.string.ef_language_title);title.setTextSize(22);title.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(),edu.xjtlu.civa.core.ui.R.color.civa_text));title.setTypeface(androidx.core.content.res.ResourcesCompat.getFont(requireContext(),edu.xjtlu.civa.core.ui.R.font.civa_kuaile));title.setGravity(Gravity.CENTER);header.addView(title,new android.widget.FrameLayout.LayoutParams(-1,-1));
++            header.addView(close,new android.widget.FrameLayout.LayoutParams(dp(44),dp(48),Gravity.START|Gravity.CENTER_VERTICAL));close.setOnClickListener(v->dismiss());
++            for(int i=0;i<2;i++){MaterialButton button=new MaterialButton(requireContext());button.setId(i==0?R.id.ef_language_zh:R.id.ef_language_en);button.setText(i==0?R.string.ef_language_chinese:R.string.ef_language_english);button.setTextSize(22);button.setTypeface(androidx.core.content.res.ResourcesCompat.getFont(requireContext(),edu.xjtlu.civa.core.ui.R.font.civa_kuaile));button.setCornerRadius(dp(25));LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,dp(60));bp.topMargin=dp(12);body.addView(button,bp);button.setOnClickListener(v->{ });}
+             android.graphics.drawable.GradientDrawable surface=new android.graphics.drawable.GradientDrawable();surface.setColor(androidx.core.content.ContextCompat.getColor(requireContext(),edu.xjtlu.civa.core.ui.R.color.civa_surface));surface.setCornerRadius(dp(28));body.setBackground(surface);
+             return new AlertDialog.Builder(requireContext()).setView(body).create();
+         }
+--- a/feature-ef/src/main/res/drawable/ef_ic_language_globe.xml
++++ b/feature-ef/src/main/res/drawable/ef_ic_language_globe.xml
+@@ -0,0 +1,3 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
++ <path android:pathData="M12,2 C6.5,2 2,6.5 2,12 C2,17.5 6.5,22 12,22 C17.5,22 22,17.5 22,12 C22,6.5 17.5,2 12,2 Z M2,12 L22,12 M4,6.5 L20,6.5 M4,17.5 L20,17.5 M12,2 C8,6 8,18 12,22 M12,2 C16,6 16,18 12,22" android:fillColor="@android:color/transparent" android:strokeColor="@color/civa_sage" android:strokeWidth="1.8" android:strokeLineCap="round" android:strokeLineJoin="round"/>
++</vector>
+--- a/feature-ef/src/main/res/drawable/ef_language_button.xml
++++ b/feature-ef/src/main/res/drawable/ef_language_button.xml
+@@ -0,0 +1,4 @@
++<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
++ <solid android:color="@color/civa_surface"/><corners android:radius="17dp"/>
++ <stroke android:width="1dp" android:color="@color/civa_outline"/>
++</shape>
+--- a/feature-ef/src/main/res/layout/ef_fragment_login.xml
++++ b/feature-ef/src/main/res/layout/ef_fragment_login.xml
+@@ -10,11 +10,7 @@
+             android:paddingTop="42dp" android:paddingBottom="34dp">
+             <TextView style="@style/CivaText.Title"
+                 android:layout_width="match_parent" android:layout_height="wrap_content"
+-                android:text="@string/ef_login_title" />
+-            <TextView style="@style/CivaText.Subtitle"
+-                android:layout_width="match_parent" android:layout_height="wrap_content"
+-                android:layout_marginTop="8dp" android:layout_marginBottom="24dp"
+-                android:text="@string/ef_welcome_detail" />
++                android:text="@string/ef_login_title" android:layout_marginBottom="24dp" />
+             <com.google.android.material.textfield.TextInputLayout style="@style/CivaWidget.WelcomeInput" android:layout_width="match_parent"
+                 android:layout_height="wrap_content" android:hint="@string/ef_username">
+                 <com.google.android.material.textfield.TextInputEditText android:fontFamily="@font/civa_kuaile" android:paddingHorizontal="16dp" android:paddingVertical="14dp" android:id="@+id/ef_username"
+--- a/feature-ef/src/main/res/layout/ef_fragment_profile.xml
++++ b/feature-ef/src/main/res/layout/ef_fragment_profile.xml
+@@ -1,26 +1,24 @@
+-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+-    android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+- <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="22dp" android:paddingTop="10dp" android:paddingBottom="28dp">
+-  <com.google.android.material.button.MaterialButton android:id="@+id/ef_profile_language" style="@style/CivaWidget.TextButton"
+-      android:layout_width="68dp" android:layout_height="48dp" android:contentDescription="@string/ef_language" android:text="@string/ef_language_symbol"/>
+-  <FrameLayout android:layout_width="match_parent" android:layout_height="232dp" android:clipChildren="false" android:clipToPadding="false">
+-   <FrameLayout android:layout_width="match_parent" android:layout_height="132dp" android:layout_gravity="bottom" android:background="@drawable/ef_profile_card">
+-    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingStart="132dp" android:paddingEnd="20dp" android:paddingTop="20dp">
+-     <TextView android:id="@+id/ef_profile_account" style="@style/CivaText.Title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="23sp" android:maxLines="2" android:ellipsize="end"/>
+-     <TextView android:id="@+id/ef_profile_id" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:textSize="11sp" android:textColor="@color/civa_muted" android:maxLines="2"/>
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
++    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="22dp" android:paddingTop="10dp" android:paddingBottom="28dp">
++        <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/ef_profile_language" android:layout_width="50dp" android:layout_height="50dp" android:contentDescription="@string/ef_language" android:padding="14dp" android:background="@drawable/ef_language_button" android:elevation="2dp" app:srcCompat="@drawable/ef_ic_language_globe" />
++        <FrameLayout android:layout_width="match_parent" android:layout_height="232dp" android:clipChildren="false" android:clipToPadding="false">
++            <FrameLayout android:layout_width="match_parent" android:layout_height="132dp" android:layout_gravity="bottom" android:background="@drawable/ef_profile_card">
++                <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingStart="132dp" android:paddingEnd="20dp" android:paddingTop="20dp">
++                    <TextView android:id="@+id/ef_profile_account" style="@style/CivaText.Title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="23sp" android:maxLines="2" android:ellipsize="end" />
++                    <TextView android:id="@+id/ef_profile_id" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:textSize="11sp" android:textColor="@color/civa_muted" android:maxLines="2" />
++                </LinearLayout>
++                <com.google.android.material.button.MaterialButton android:id="@+id/ef_profile_edit" style="@style/CivaWidget.TextButton" android:layout_width="48dp" android:layout_height="48dp" android:layout_gravity="end|bottom" android:layout_marginEnd="9dp" android:layout_marginBottom="5dp" android:insetTop="0dp" android:insetBottom="0dp" android:padding="12dp" android:minWidth="0dp" android:contentDescription="@string/ef_edit_profile" app:icon="@drawable/ef_ic_edit" app:iconPadding="0dp" app:iconGravity="textStart" app:iconSize="22dp" />
++            </FrameLayout>
++            <ImageView android:id="@+id/ef_profile_avatar" android:layout_width="100dp" android:layout_height="100dp" android:layout_marginStart="18dp" android:layout_marginTop="65dp" android:contentDescription="@string/ef_profile_avatar" />
++            <ImageView android:id="@+id/ef_profile_cat" android:layout_width="220dp" android:layout_height="108dp" android:layout_gravity="top|end" android:layout_marginEnd="12dp" android:src="@drawable/civa_cat_family" android:scaleType="fitEnd" android:importantForAccessibility="no" />
++        </FrameLayout>
++        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:background="@drawable/ef_profile_card" android:orientation="vertical" android:padding="22dp">
++            <TextView style="@style/CivaText.Title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="22sp" android:text="@string/ef_profile_household" />
++            <TextView android:id="@+id/ef_profile_household" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/civa_text" android:textSize="13sp" />
++            <TextView android:id="@+id/ef_profile_note" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="9dp" android:textColor="@color/civa_muted" android:textSize="13sp" />
++            <com.google.android.material.button.MaterialButton android:id="@+id/ef_profile_household_action" style="@style/CivaWidget.SecondaryButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/ef_profile_household_settings" />
++        </LinearLayout>
++        <com.google.android.material.button.MaterialButton android:id="@+id/ef_profile_logout" style="@style/CivaWidget.TextButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/ef_profile_logout" />
++        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="@string/ef_profile_footer" android:textSize="12sp" android:textColor="@color/civa_muted" android:gravity="center" />
+     </LinearLayout>
+-    <com.google.android.material.button.MaterialButton android:id="@+id/ef_profile_edit" style="@style/CivaWidget.TextButton" android:layout_width="48dp" android:layout_height="48dp" android:layout_gravity="end|bottom" android:layout_marginEnd="9dp" android:layout_marginBottom="5dp" android:insetTop="0dp" android:insetBottom="0dp" android:padding="12dp" android:minWidth="0dp" android:contentDescription="@string/ef_edit_profile" app:icon="@drawable/ef_ic_edit" app:iconPadding="0dp" app:iconGravity="textStart" app:iconSize="22dp"/>
+-   </FrameLayout>
+-   <ImageView android:id="@+id/ef_profile_avatar" android:layout_width="100dp" android:layout_height="100dp" android:layout_marginStart="18dp" android:layout_marginTop="65dp" android:contentDescription="@string/ef_profile_avatar"/>
+-   <edu.xjtlu.civa.core.ui.ChefCatView android:id="@+id/ef_profile_cat" android:layout_width="108dp" android:layout_height="132dp" android:layout_gravity="top|end" android:layout_marginEnd="12dp"/>
+-  </FrameLayout>
+-  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" android:background="@drawable/ef_profile_card" android:orientation="vertical" android:padding="22dp">
+-   <TextView style="@style/CivaText.Title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="22sp" android:text="@string/ef_profile_household"/>
+-   <TextView android:id="@+id/ef_profile_household" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textColor="@color/civa_text" android:textSize="13sp"/>
+-   <TextView android:id="@+id/ef_profile_note" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="9dp" android:textColor="@color/civa_muted" android:textSize="13sp"/>
+-   <com.google.android.material.button.MaterialButton android:id="@+id/ef_profile_household_action" style="@style/CivaWidget.SecondaryButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/ef_profile_household_settings"/>
+-  </LinearLayout>
+-  <com.google.android.material.button.MaterialButton android:id="@+id/ef_profile_logout" style="@style/CivaWidget.TextButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/ef_profile_logout"/>
+-  <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="@string/ef_profile_footer" android:textSize="12sp" android:textColor="@color/civa_muted" android:gravity="center"/>
+- </LinearLayout>
+-</ScrollView>+</ScrollView>
+--- a/feature-ef/src/main/res/values/ef_profile_ids.xml
++++ b/feature-ef/src/main/res/values/ef_profile_ids.xml
+@@ -2,4 +2,5 @@
+ <item type="id" name="ef_profile_edit_avatar"/><item type="id" name="ef_profile_edit_name"/>
+ <item type="id" name="ef_profile_edit_save"/><item type="id" name="ef_profile_edit_close"/>
+ <item type="id" name="ef_language_close"/><item type="id" name="ef_language_zh"/><item type="id" name="ef_language_en"/>
++<item name="ef_language_title" type="id"/>
+ </resources>--- a/feature-ef/src/main/res/values/ef_strings.xml
++++ b/feature-ef/src/main/res/values/ef_strings.xml
+@@ -38,7 +38,7 @@
+     <string name="ef_profile_household_join">创建 / 加入家庭</string>
+     <string name="ef_profile_logout">退出登录</string>
+     <string name="ef_profile_footer">Civa · CSI301 小组项目</string>
+-    <string name="ef_login_title">欢迎回到小猫厨房</string>
++    <string name="ef_login_title">和我一起CIVA</string>
+     <string name="ef_household_greeting">和家人共享菜谱和冰箱吧</string>
+     <string name="ef_close_symbol">×</string><string name="ef_close">关闭</string>
+     <string name="ef_language">语言设置</string><string name="ef_language_symbol">文 / A</string>
+@@ -48,4 +48,5 @@
+     <string name="ef_profile_default_name">小猫饭友</string><string name="ef_profile_id">ID: %1$s</string>
+     <string name="ef_profile_save_error">请输入 1–60 个字的名字，或稍后重试保存。</string>
+     <string name="ef_photo_loading">正在准备照片…</string><string name="ef_photo_error">这张照片没能打开，换一张试试吧。</string>
++    <string name="ef_language_title">语言选择</string>
+ </resources>

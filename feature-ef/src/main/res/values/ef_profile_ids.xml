@@ -1,0 +1,6 @@
+<resources>
+<item type="id" name="ef_profile_edit_avatar"/><item type="id" name="ef_profile_edit_name"/>
+<item type="id" name="ef_profile_edit_save"/><item type="id" name="ef_profile_edit_close"/>
+<item type="id" name="ef_language_close"/><item type="id" name="ef_language_zh"/><item type="id" name="ef_language_en"/>
+<item name="ef_language_title" type="id"/>
+</resources>

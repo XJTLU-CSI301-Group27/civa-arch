@@ -12,7 +12,7 @@ final class HouseholdReadService {
     HouseholdReadService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     Household getHousehold(UUID actorId, UUID householdId) {
-        List<Household> rows = jdbc.query("SELECT h.id,h.name,h.zone_id,h.version,h.created_at,h.updated_at FROM households h JOIN memberships a ON a.household_id=h.id AND a.user_id=? AND a.active WHERE h.id=?",
+        List<Household> rows = jdbc.query("SELECT h.id,h.name,h.zone_id,h.version,h.created_at,h.updated_at FROM households h JOIN memberships a ON a.household_id=h.id AND a.user_id=? AND a.active WHERE h.id=? AND h.closed_at IS NULL",
                 (rs, n) -> new Household(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getLong(4),
                         rs.getTimestamp(5).toInstant(), rs.getTimestamp(6).toInstant()), actorId, householdId);
         if (rows.isEmpty()) throw denied(actorId, householdId);

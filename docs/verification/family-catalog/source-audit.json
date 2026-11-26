@@ -1,0 +1,92 @@
+[
+  {
+    "path": "feature-ac/src/main/res/layout/ac_fragment_catalog.xml",
+    "before": "c4db16cc7e8042edb498eebee2f7b734805656067ef09a541d56c0310218fdd3",
+    "after": "6d393ae048bee98e0221b98838b78119bfe58a034bfd76d6c3e60b6ca9e15bef"
+  },
+  {
+    "path": "feature-ac/src/main/res/values/ac_strings.xml",
+    "before": "6a3c8c1745299111733feebe942eb9c6cd67687870376ae0f5e4e985afafee24",
+    "after": "188b015a6348d07155d215412881f533893d5953010698783b4aa2b6e4ed3bf5"
+  },
+  {
+    "path": "feature-ac/src/main/java/edu/xjtlu/civa/feature/ac/catalog/RecipeCatalogFragment.java",
+    "before": "dabe0d87686e51394aa3c55c35a6f7316d79a0d6df01d3b86bba4a9fdc1b5fed",
+    "after": "b6769b05df2717cb79a3b36982fcbdc8cf83b852f9b2936a06b845d7f6d5b752"
+  },
+  {
+    "path": "feature-ef/src/main/res/layout/ef_fragment_household.xml",
+    "before": "3d07cb076ba26460f3ad71a6a067764a4e736aa1493e202c95b3d8f963c814df",
+    "after": "5ec23d0ee6ba42e53490c761bc7ded17abaccca74677d9b7997d7d8153b48664"
+  },
+  {
+    "path": "feature-ef/src/main/res/values/ef_strings.xml",
+    "before": "ecb91ef726bfc631119a4acccf9a449e9a0a44410c88c7f2ebdb701d1bb849cd",
+    "after": "36633e07d1736d77d20801fb1b77f6bc9d9c4141980168e33006a87406796a28"
+  },
+  {
+    "path": "feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdFragment.java",
+    "before": "23a25b0c145b63922d28d7c47b29d6d6f89f954b9bdb8b3169e9b921b16fc42e",
+    "after": "acb43cc0626d7de1a39fca618ffcfebea127b56e794812739dd7ce139973e213"
+  },
+  {
+    "path": "feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdViewModel.java",
+    "before": "40b01faf99efd78d92501949d68656d8e6f1fa4850d71dbd852415c259520dcd",
+    "after": "dff09f4654758a4dc0896134517989bdc24226a850e58a62b8563165b9ea34f2"
+  },
+  {
+    "path": "feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/ProfileFragment.java",
+    "before": "6019d9ac7dc2676b43edeca4000b6421e4f875b34cda6afb4b7d7acfc3b02eb2",
+    "after": "2119eb1b008b7d37025210ed34cfae066473a2656cfa3faa7b9f513c3c9b99f7"
+  },
+  {
+    "path": "app/src/main/java/edu/xjtlu/civa/MainActivity.java",
+    "before": "4ded50c25c0a911577430efbbd40f55ae54f10d8b856bb5be99529d93b0f7200",
+    "after": "3a196effb1868363b432d851773a5a6b2a1a5d1bb20e49375fd040edc75864ce"
+  },
+  {
+    "path": "core-data/src/main/java/edu/xjtlu/civa/core/data/AuthRepository.java",
+    "before": "ca8c15582dabdb3058ed3941dcb675ffd97876d1dfbca4f84c8b88840b630af3",
+    "after": "bb6d33b7032062035d559f39ffa47eeba2de8212e74e7689ba45beaacc13c5d9"
+  },
+  {
+    "path": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdConfiguration.java",
+    "before": "c05b35f05fdb9da23140cc0f61730d6c6a10467d17b21dc4d4898ec1831e2320",
+    "after": "8c236d9e450e73c065ab83539001fc2fb1e913abc3d18b9aea331b33726cb942"
+  },
+  {
+    "path": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdController.java",
+    "before": "a28b9aa0b036ec50155e434b141b88ca87e9e9ca2f8ed43ebe1916cd684b15c5",
+    "after": "83cd990bc21d4ee1853df730df2b3f04c182d32b0c7fac81e208d740a0f1fb36"
+  },
+  {
+    "path": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdErrors.java",
+    "before": "fc9279c8f7c4359210262f89a04f379fafae4eb5ce0991f1e28fb77b45d12cbb",
+    "after": "600920039bafca6240d18a82911ca22e0279b52cc99df3195f364a970a1a7538"
+  },
+  {
+    "path": "contracts/public-surface.draft.json",
+    "before": "6768bf999da8082fcb0f120945254a2b341c286c2734e8c24cacf9b50cccc19d",
+    "after": "cfa08d36f41ca7ebed8a1dfc45c24119d9872bcc03a9ae43cde7393d8dd10701"
+  },
+  {
+    "path": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdMembershipService.java",
+    "before": null,
+    "after": "95c8174a6e18278812268e4f48f5d8817b331829b332dd12a96916331a9b47a3"
+  },
+  {
+    "path": "core-data/src/test/java/edu/xjtlu/civa/core/data/HouseholdLeaveTest.java",
+    "before": null,
+    "after": "3cebd2066195de630a847e1a1c85afae69ae5428ce9e33b0a08e9134c4e257c0"
+  },
+  {
+    "path": "server/src/test/java/edu/xjtlu/civa/server/household/HouseholdLeaveIntegrationTest.java",
+    "before": null,
+    "after": "007382bfdd85194a80b501f3f060571c8f0993c5f62f2beb4f75b5fca3afb9d6"
+  },
+  {
+    "path": "app/src/main/java/edu/xjtlu/civa/AppNavigator.java",
+    "before": "785882559433af57757d3efef4653c9dcca44e9feee33f33350885d65ff3f1de",
+    "after": "b893cfa1bae0a0177553631f9b41aeccce1d86ed3856025b4530a1db2488a92a"
+  }
+]

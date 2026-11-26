@@ -1,0 +1,27 @@
+[
+  {
+    "path": "feature-ef/src/main/res/layout/ef_fragment_login.xml",
+    "before": "d38e4d4aa5cb56da0fac08a4c9e04d4f6b9b457f79dbf0a951854e267dc47b56",
+    "after": "d8f4c00e6030f8bc7a77cdbd43ab9bd4497930a132c1ab9c25b4aa3d71c84a1f"
+  },
+  {
+    "path": "feature-bd/src/main/res/layout/bd_fragment_home.xml",
+    "before": "5393840bd444e2d2a97adb8eac431a588382ab3d369c09430f63edba20da57df",
+    "after": "5a7a33bcb6b22952a1cf8aa7ebc11db9750022b3d9b44af584e3e7ce1727a343"
+  },
+  {
+    "path": "feature-bd/src/main/res/layout-w600dp/bd_fragment_home.xml",
+    "before": "bcfcc9b0ffd8dfb6fe2f9d274a1208e3480a04d48b12deb0cc302193e5f2ba2e",
+    "after": "d829dae815ac2184d41a7c16816c98dbbbebcfd417c42b7af0fb108787a1a9ec"
+  },
+  {
+    "path": "app/src/main/java/edu/xjtlu/civa/AppIntroView.java",
+    "before": "e8c5cbab0aa1cbdcb22e7419900966113d06a2181e675b85520cc6d279b8ea37",
+    "after": "e5e84c205ca1204ec2531f0a51fcc8ac940d89ad0a1b9898efabff42e0f5b372"
+  },
+  {
+    "path": "app/src/main/res/raw/app_cat_intro.webm",
+    "before": "0ef500ad1f130c0737107ee02c22a4c50ffb01cec64d3b9bf558a974d406dcfa",
+    "after": "6bb2892c33996b27d88ba53436f59a5aa47af469f9bd00e4fe206b25fbe19166"
+  }
+]

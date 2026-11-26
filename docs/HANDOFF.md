@@ -74,3 +74,85 @@ Set-Location -LiteralPath $taskAlias
 ## 安全与交付
 
 不要输出或提交访问令牌、数据库密码、邀请码明文及用户私有数据。不要运行有可能清理用户已有数据库的数据迁移/清库命令；仅使用已验证的隔离测试库及明确的测试数据。新 AI 应先核对工作树、运行中的构建和最新日志，再继续；不要把 501、假数据、未运行测试或未获授权的契约说成完成。
+
+## EF bakery UI update — 2026-11-25
+
+Login/register/household, cold-launch chef cat, profile/avatar editor, recipe close
+and home meow update: read [EF_BAKERY_UI_HANDOFF.md](EF_BAKERY_UI_HANDOFF.md),
+[file changes](EF_BAKERY_UI_CHANGELOG.md) and
+[verification evidence](EF_BAKERY_UI_VERIFICATION.md) before integration.
+The assigned downloaded local project was updated; this does not represent a
+GitHub push or integration with latest main.
+
+
+## Latest visual revision — 2026-11-25, round 2
+
+Current cat artwork, lighter 26/74 welcome scene, globe language button and
+user-supplied video intro supersede the first visual pass. Start with
+[EF_CAT_REFRESH_HANDOFF.md](EF_CAT_REFRESH_HANDOFF.md),
+[CAT_REFRESH_CHANGELOG.md](CAT_REFRESH_CHANGELOG.md) and
+[CAT_REFRESH_VERIFICATION.md](CAT_REFRESH_VERIFICATION.md).
+
+## Latest spacing update — 2026-11-25, round 3
+
+Login greeting/form position, Today title/cat order and size, and Recipes cat
+attachment are updated. Read [EF_LAYOUT_POLISH.md](EF_LAYOUT_POLISH.md) for exact
+scope, five changed files, screenshots and measured spacing before integration.
+
+
+## Latest login / Today / green intro update — 2026-11-25, round 4
+
+Login form is further upward, Today title is 24dp closer to the cat, and the newly supplied green-source animation replaces the old intro. Read [EF_GREEN_INTRO_HANDOFF.md](EF_GREEN_INTRO_HANDOFF.md) before integration; it includes exact source hashes, media processing, validation and retained local data. This is a local update, not a GitHub push or main integration.
+
+
+## Latest recipe header / household flow update — 2026-11-25
+
+Read [EF_FAMILY_CATALOG_HANDOFF.md](EF_FAMILY_CATALOG_HANDOFF.md) before integration. Create Recipe moves to the title row; Favorites clears the cat; household onboarding can be skipped to Profile; ordinary members can actually leave and rejoin while owners retain their existing restriction. Includes the first-login return-stack fix, additive core-data helper, existing removeMember server implementation, full file audit and isolated test evidence. No GitHub push/main integration is implied.
+
+## Latest empty states and invitation follow-up (2026-11-25)
+
+Read [EF_EMPTY_INVITATION_HANDOFF.md](EF_EMPTY_INVITATION_HANDOFF.md) before integration. It supersedes prior center Add Recipe and first-login Skip-to-Profile rules. First setup now returns Today; Profile entry returns Profile for every action. User entered household UUID, not an invitation; add explicit guidance and a tested owner-generation candidate. Encrypted idempotency receipt status: 用户已确认采用；小组整合时仍需按团队流程审阅。
+Local production app/backend updated; existing local files retained; all final checks linked. No GitHub push, branch/main integration or team contract approval is implied by this downloaded working copy. Historical 501 notes above are historical: removeMember was completed in the preceding handoff, createInvitation is locally implemented in this candidate.
+
+## Latest shared-family policy (2026-11-25)
+
+Current handoff: [EF_SHARED_FAMILY_HANDOFF.md](EF_SHARED_FAMILY_HANDOFF.md). User explicitly removed owner privileges and requested permanent reusable household codes. Creator can leave, last member closes identity; everyone may read/copy the fixed code; joined vs unjoined settings differ; Profile shows actual household name/ID. This supersedes owner/one-use statements in historical entries above.
+Bring migration V20261125210000, new GET and nullable Invitation.expiresAt with both generated clients; preserve private key. Local full tests and normal migration passed; official app/backend updated, data preserved. No GitHub push/latest-main integration/team contract freeze claimed. IC is documented for team integration review.
+
+## Latest household name editor (2026-11-25)
+
+Read [EF_FAMILY_NAME_HANDOFF.md](EF_FAMILY_NAME_HANDOFF.md): joined-only content top aligned; 修改家庭名 input + fixed invitation/copy + save + leave, shared name actually saved with version checking. New additive PUT renameHousehold reuses DTO and both generators; no migration/dependency/host signature changes. Prior equal-member/permanent-code policy stays. Full tests/UI and data-preserving install verified locally; no GitHub push/main integration/team acceptance claimed.
+
+## 小米平板USB连接（2026-11-25）
+
+真机调试入口为根目录 start-civa-usb.bat；先保持电脑后端运行，再连接授权的USB设备。使用localhost构建与adb reverse，不修改默认模拟器地址。已在MI_PAD_4_PLUS验证注册/登录服务可达，未代用户登录。记录见 [EF_USB_TABLET_HANDOFF.md](EF_USB_TABLET_HANDOFF.md)。
+
+
+## 最新平板界面适配（2026-11-26）
+
+请先阅读 [EF_TABLET_LAYOUT_HANDOFF.md](EF_TABLET_LAYOUT_HANDOFF.md)。登录顶角恢复；所有主页面固定底部导航；三餐始终竖排。4个实现文件（其中2个宽屏覆盖删除），无接口/后端变更；实测API27平板、宽/窄尺寸、加菜前后边界，124项测试及lint通过。正式App已保留资料覆盖安装。旧ZIP未重打包；无GitHub推送/main整合。
+
+
+## 启动键盘后续修复（2026-11-26）
+
+登录容器接收初始焦点、MainActivity默认隐藏输入法；打开/重开不自动弹键盘，点击用户名/密码仍正常显示。已在原小米平板保留资料覆盖安装并验证；本轮8项登录模块测试及app lint通过。完整2文件审计与结果见 [EF_TABLET_LAYOUT_HANDOFF.md](EF_TABLET_LAYOUT_HANDOFF.md#启动不自动弹键盘2026-11-26后续修复)。
+
+
+## 今天三餐与家庭解耦（2026-11-26）
+
+阅读 [BD_PERSONAL_PLAN_HANDOFF.md](BD_PERSONAL_PLAN_HANDOFF.md)：按用户要求改为个人账号scope；同账号创建/退出/加入家庭不再清空今天三餐。兼容旧数据和照片、一次迁移防复活；平板3份旧文件归属确认后恢复。全套Android测试和隔离家庭切换通过，正式App保留资料更新。旧ZIP未重打包，无GitHub推送/main整合。
+
+
+## 真机登录地址防复发（2026-11-26）
+
+实际安装包曾含模拟器10.0.2.2，单独恢复USB转发不足。已核对并覆盖正确127.0.0.1包，用户确认能登录。新增本机debug地址键civa.debugApiBaseUrl与USB启动器持久化，CLI优先、release显式HTTPS规则不变。2个实现文件/实际配置测试及旧包哈希见 [EF_USB_TABLET_HANDOFF.md](EF_USB_TABLET_HANDOFF.md)。
+
+
+## 今天标题字号稳定（2026-11-26）
+
+仅改BdHomeLayout：关闭wrap_content标题的框架autosize，从父布局预算重新拟合38sp/紧凑25sp目标，避免短暂缩小后不恢复。实测4轮切页、2轮短窗口恢复、窄尺寸和键盘收起，正常标题均为158px；正式App保留资料更新并核对实际包为真机地址。完整审计见 [EF_TABLET_LAYOUT_HANDOFF.md](EF_TABLET_LAYOUT_HANDOFF.md)。
+
+
+## 完整小组源码包（2026-11-26）
+
+本次完整交接入口：[GROUP_HANDOFF_20261126.md](GROUP_HANDOFF_20261126.md)。涵盖当前平板适配、个人排餐解耦、登录连接与家庭规则；私有小组ZIP按用户授权附后端DeepSeek配置及新环境Docker密码。组员先阅读规则和各模块交接，勿提交带Key的.env。包含完整源码和脚本，排除缓存、个人配置、数据库及私钥；ZIP逐文件校验，不代表GitHub推送/main整合。

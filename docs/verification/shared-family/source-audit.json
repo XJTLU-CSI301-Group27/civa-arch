@@ -1,0 +1,122 @@
+[
+  {
+    "file": "server/src/main/resources/db/migration/V20261125210000__equal_members_and_permanent_invitations.sql",
+    "beforeSha256": null,
+    "afterSha256": "054259f419aa8a7443e4df8626457836d003ce9ced388f22504f3a8606e5f483",
+    "new": true
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdInvitationService.java",
+    "beforeSha256": "b0391e88de37edccf1bc30b3368a93d882ef4ac0ed22173fa7f8e7a04e7d9ff1",
+    "afterSha256": "f6f0061037dbd89c598d0a70f39cf8f4f0d0277e1a11e191701d2adb6109e4ec",
+    "new": false
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdConfiguration.java",
+    "beforeSha256": "d1cc2bcafbd31638d07441108e02be7b6f619257c15d3eba22a4fb1d43754b70",
+    "afterSha256": "675682ef4aa9fbf564f321f82f80fc8d5ac10b777edda96aea6de9e59a339fc6",
+    "new": false
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdWriteService.java",
+    "beforeSha256": "a57e10d645422ff56be0edfcb51656b0414bec235e892b855f5f785edfcdfe70",
+    "afterSha256": "0ded0f7389271651b661ef8d4cd0ec45fa1403ac906df5a870ee165e9b2365f1",
+    "new": false
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdMembershipService.java",
+    "beforeSha256": "95c8174a6e18278812268e4f48f5d8817b331829b332dd12a96916331a9b47a3",
+    "afterSha256": "ddf1b47c80426ce1e56cd8f2fab29eace6afc074d2b1d94448d57ec3d8c01002",
+    "new": false
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdReadService.java",
+    "beforeSha256": "088b3311b78f73afe4cc5042d0ce30e501d5f7f634271577ff180d98cfd4fe7c",
+    "afterSha256": "03261f9c4cbf85ee815aac8c2e55bdb44a23134b6e507ba483816314a543d46e",
+    "new": false
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdController.java",
+    "beforeSha256": "99446434408ccfd47df52772ec3f4163135ce10ad78d321362a7f4a6d2824557",
+    "afterSha256": "754604c5d4ea5903fcc0ae99337cf4c6254f6fdbdf58defcdd9b3abf3284a0f9",
+    "new": false
+  },
+  {
+    "file": "contracts/openapi.json",
+    "beforeSha256": "1f59ab3d697f82c7a73417cd04ad0de8bb8aa066db44df876f2fbf30588402a5",
+    "afterSha256": "d21e0e22f62ba13fd7b6264e3ebed0427287d5ca923c6ba94777a60ca7048d6f",
+    "new": false
+  },
+  {
+    "file": "contracts/public-surface.draft.json",
+    "beforeSha256": "cfa08d36f41ca7ebed8a1dfc45c24119d9872bcc03a9ae43cde7393d8dd10701",
+    "afterSha256": "476d0ee28a82fa2e3a7f0eee5afcb508a6521983c1931294231c416b97acad58",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdViewModel.java",
+    "beforeSha256": "69181be66b443f7e45b2b3e4adbbf166ce2b8e0ff1bf68dea0eb5c27cfd49dae",
+    "afterSha256": "297213a765836c3e0087d907a4df22a7b38ff86aa328fda944f8c10cc4bd2dc6",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/res/layout/ef_fragment_household.xml",
+    "beforeSha256": "cec399fe7f8875cf57e078734ee99c3b70b9ad816774428acff1229d682048d0",
+    "afterSha256": "d7a4fca27e0007a9087d343500501a2fdb4693e32520053ab65f0832c5c0083a",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdFragment.java",
+    "beforeSha256": "887fac6659c4f189644a623b4559ec7b88b93ae54b22f8e8f6743a69ae79bec5",
+    "afterSha256": "b49e135005654f5494f9916c97acf9e40caf67ef515a9f472d4df61d899d16e0",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/res/layout/ef_fragment_profile.xml",
+    "beforeSha256": "fc2e00e5d2d26b18d632ccbde2d0f1bb864a19a7373a9f3da0cb47d15c5b72bf",
+    "afterSha256": "282e0e0ef1aa143cb6889567694d2b22241f5a677725a1c71723871bfe3656ca",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/ProfileFragment.java",
+    "beforeSha256": "2119eb1b008b7d37025210ed34cfae066473a2656cfa3faa7b9f513c3c9b99f7",
+    "afterSha256": "63c6b824424693f1c88925fc44c10c0367a05165fb89f252db923d9118f1333a",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/res/values/ef_strings.xml",
+    "beforeSha256": "b5df821260d77d47177511c2717ce3e8716501754353b1ed14746744532681b2",
+    "afterSha256": "0144e326ad139f9520f8811482c04dccb4e33223d1d09b875c1667dd2ab9e4e6",
+    "new": false
+  },
+  {
+    "file": "server/src/test/java/edu/xjtlu/civa/server/household/HouseholdHttpIntegrationTest.java",
+    "beforeSha256": "a1d0436a4b51aeb6e4ca7161336b01ea1ae6ebc794c99d5f78a3324a57b9e88e",
+    "afterSha256": "a3eb0a553f1957d0000f6b6126dd379d9d716053816b89d65edacad64644aca2",
+    "new": false
+  },
+  {
+    "file": "server/src/test/java/edu/xjtlu/civa/server/household/HouseholdLeaveIntegrationTest.java",
+    "beforeSha256": "007382bfdd85194a80b501f3f060571c8f0993c5f62f2beb4f75b5fca3afb9d6",
+    "afterSha256": "1d15922fb9850bfe6bf0c97c892a9d679e4a2c6204775bdf430039443c31c5a8",
+    "new": false
+  },
+  {
+    "file": "server/src/test/java/edu/xjtlu/civa/server/testing/IdempotencyIntegrationTest.java",
+    "beforeSha256": "8c16157e45b7b2caee1fb25deb1717017d156a18eade9f0fae68d982e0a8ed9f",
+    "afterSha256": "8d9765ffb6b52e1d0a78955311ab09ede6d179f4d5ec3fe0f2ef6f3d7545bc13",
+    "new": false
+  },
+  {
+    "file": "contracts/changes/IC-20261125-EF-PERMANENT-FAMILY.md",
+    "beforeSha256": null,
+    "afterSha256": "61df24d5b88922085926be209a3282a4f2bac480e560187dae4280292f5eb926",
+    "new": true
+  },
+  {
+    "file": "server/src/test/java/edu/xjtlu/civa/server/household/HouseholdLifetimeIntegrationTest.java",
+    "beforeSha256": null,
+    "afterSha256": "040d0bc3961c8aaf718907ed59a9fee196bfa5c57da03ff063a0848cb22fcfe8",
+    "new": true
+  }
+]

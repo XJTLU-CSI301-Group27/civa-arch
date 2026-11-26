@@ -22,12 +22,19 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
     private AppContainer container;
     private AppNavigator navigator;
     private NavigationBarView navigation;
+    private boolean introShowing;
+    private long introStarted;
+    private AppIntroView intro;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         container = ((CivaApplication) getApplication()).container();
         boolean restore = container.sessions.isLoggedIn() || getLastCustomNonConfigurationInstance() != null;
         super.onCreate(restore ? savedInstanceState : null);
         setContentView(R.layout.app_activity_main);
+        introShowing = savedInstanceState == null || !savedInstanceState.getBoolean("app.intro.finished", false);
+        introStarted = savedInstanceState == null ? android.os.SystemClock.elapsedRealtime() : savedInstanceState.getLong("app.intro.started", android.os.SystemClock.elapsedRealtime());
+        if (android.os.SystemClock.elapsedRealtime() - introStarted >= AppIntroView.DURATION) introShowing = false;
+        findViewById(android.R.id.content).setTag(edu.xjtlu.civa.core.ui.R.id.civa_intro_blocked, introShowing);
         CivaWindow.apply(this);
         navigator = new AppNavigator(getSupportFragmentManager(), container.sessions);
         navigation = findViewById(R.id.app_navigation);
@@ -47,7 +54,48 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
             navigator.navigate(Route.LOGIN, null);
         }
         container.sessionExpired.observe(this, ignored -> showLoginIfNeeded());
+        getSupportFragmentManager().registerFragmentLifecycleCallbacks(new androidx.fragment.app.FragmentManager.FragmentLifecycleCallbacks() {
+            @Override public void onFragmentViewCreated(androidx.fragment.app.FragmentManager fm, androidx.fragment.app.Fragment fragment, View view, Bundle state) { updateChrome(fragment); }
+        }, false);
+        updateChrome(getSupportFragmentManager().findFragmentById(R.id.app_content));
+        if (introShowing) {
+            intro = new AppIntroView(this, introStarted, savedInstanceState != null && savedInstanceState.getBoolean("app.intro.voiced", false), this::finishIntro);
+            ((android.widget.FrameLayout)findViewById(R.id.app_root)).addView(intro, new android.widget.FrameLayout.LayoutParams(-1,-1));
+        }
     }
+
+    private void finishIntro() {
+        if (!introShowing) return;
+        introShowing = false;
+        if (intro != null) { ((android.view.ViewGroup)intro.getParent()).removeView(intro); intro = null; }
+        View content = findViewById(android.R.id.content);
+        content.setTag(edu.xjtlu.civa.core.ui.R.id.civa_intro_blocked, false);
+        playWelcome(content); updateChrome(getSupportFragmentManager().findFragmentById(R.id.app_content));
+    }
+    private void playWelcome(View view) {
+        if (view instanceof edu.xjtlu.civa.core.ui.BakeryWelcomeLayout welcome) welcome.playEntrance();
+        if (view instanceof android.view.ViewGroup group) for (int i=0;i<group.getChildCount();i++) playWelcome(group.getChildAt(i));
+    }
+    private void updateChrome(androidx.fragment.app.Fragment fragment) {
+        boolean auth = fragment instanceof LoginFragment || fragment instanceof edu.xjtlu.civa.feature.ef.HouseholdFragment || !container.sessions.isLoggedIn();
+        navigation.setVisibility(auth ? View.GONE : View.VISIBLE);
+        if (fragment instanceof edu.xjtlu.civa.feature.ef.ProfileFragment) navigation.getMenu().findItem(R.id.app_profile).setChecked(true);
+        else if (fragment instanceof edu.xjtlu.civa.feature.bd.BdHomeFragment) navigation.getMenu().findItem(R.id.app_today).setChecked(true);
+        int dark = androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_welcome_brown);
+        int paper = androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_welcome_paper);
+        View content=findViewById(android.R.id.content);
+        if(introShowing) content.setBackgroundColor(dark);
+        else if(auth) content.setBackground(new android.graphics.drawable.Drawable() {
+            final android.graphics.Paint paint=new android.graphics.Paint();
+            @Override public void draw(android.graphics.Canvas canvas){canvas.drawColor(paper);paint.setColor(dark);canvas.drawRect(0,0,getBounds().width(),getBounds().height()*.26f,paint);}
+            @Override public void setAlpha(int alpha) { } @Override public void setColorFilter(android.graphics.ColorFilter filter) { }
+            @Override public int getOpacity(){return android.graphics.PixelFormat.OPAQUE;}
+        });
+        else content.setBackgroundColor(androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_background));
+        var bars=androidx.core.view.WindowCompat.getInsetsController(getWindow(),getWindow().getDecorView());
+        bars.setAppearanceLightStatusBars(!auth && !introShowing); bars.setAppearanceLightNavigationBars(!introShowing);
+    }
+    @Override protected void onSaveInstanceState(Bundle state) { state.putBoolean("app.intro.finished",!introShowing); state.putLong("app.intro.started", intro == null ? introStarted : android.os.SystemClock.elapsedRealtime() - intro.playbackMillis()); state.putBoolean("app.intro.voiced", intro != null && intro.hasVoiced()); super.onSaveInstanceState(state); }
 
     @Override public Object onRetainCustomNonConfigurationInstance() { return Boolean.TRUE; }
 
@@ -67,7 +115,7 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
 
     @Override public AuthRepository authRepository() { return container.auth; }
 
-    @Override public void navigate(Route route, String entityId) { navigator.navigate(route, entityId); }
+    @Override public void navigate(Route route, String entityId) { if (route == Route.LOGIN || route == Route.HOUSEHOLD) navigation.setVisibility(View.GONE); navigator.navigate(route, entityId); }
 
     @Override public ApiProvider api() { return container.api; }
 
@@ -77,12 +125,13 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
 
     @Override public void onHouseholdReady() {
         if (!container.sessions.isLoggedIn() || getSupportFragmentManager().isStateSaved()) return;
-        navigator.navigate(Route.TODAY, null);
+        navigate(Route.TODAY, null);
     }
 
     @Override public void onAuthenticated() {
         if (!container.sessions.isLoggedIn() || getSupportFragmentManager().isStateSaved()) return;
-        navigation.setVisibility(View.VISIBLE);
-        navigator.navigate(container.sessions.currentHouseholdId() == null ? Route.HOUSEHOLD : Route.TODAY, null);
+        View focused = getCurrentFocus(); if (focused != null) focused.clearFocus();
+        androidx.core.view.WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView()).hide(androidx.core.view.WindowInsetsCompat.Type.ime());
+        navigate(container.sessions.currentHouseholdId() == null ? Route.HOUSEHOLD : Route.TODAY, null);
     }
 }

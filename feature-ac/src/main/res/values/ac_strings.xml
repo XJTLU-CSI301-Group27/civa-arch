@@ -64,6 +64,11 @@
     <string name="ac_household_recipe_edit">编辑家庭菜谱</string>
     <string name="ac_household_recipe_ingredients_label">食材（每行：名称 数量）</string>
     <string name="ac_household_recipe_ingredients_hint">鸡蛋 3\n番茄 2</string>
+<string name="ac_detail_close_symbol">×</string><string name="ac_detail_close">返回菜谱列表</string>
+    <string name="ac_catalog_create_label">＋ 新建菜谱</string>
+    <string name="ac_catalog_empty_mine">这里还空着，放进你的第一道拿手菜吧</string>
+    <string name="ac_catalog_empty_favorites">这里还空着，快加入你最想吃的菜吧</string>
+    <string name="ac_catalog_join_first">先加入家庭，再和家人分享菜谱吧</string>
 </resources>
 
 

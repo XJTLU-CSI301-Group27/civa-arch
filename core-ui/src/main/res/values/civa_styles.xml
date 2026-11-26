@@ -20,6 +20,7 @@
 
     <!-- Typography tokens -->
     <style name="CivaText.Title" parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="fontFamily">@font/civa_kuaile</item>
         <item name="android:textColor">@color/civa_text</item>
         <item name="android:textSize">30sp</item>
         <item name="android:fontFamily">@font/civa_kuaile</item>
@@ -90,5 +91,17 @@
         <item name="cornerRadius">24dp</item>
         <item name="android:insetTop">4dp</item>
         <item name="android:insetBottom">4dp</item>
+    </style>
+    <style name="CivaText.WelcomeSection" parent="CivaText.Section">
+        <item name="fontFamily">@font/civa_kuaile</item>
+        <item name="android:fontFamily">@font/civa_kuaile</item>
+    </style>
+    <style name="CivaWidget.WelcomeInput" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">@color/civa_surface</item>
+        <item name="boxStrokeColor">@color/civa_outline</item>
+        <item name="boxCornerRadiusTopStart">20dp</item><item name="boxCornerRadiusTopEnd">20dp</item>
+        <item name="boxCornerRadiusBottomStart">20dp</item><item name="boxCornerRadiusBottomEnd">20dp</item>
+        <item name="hintTextColor">@color/civa_primary_dark</item>
+        <item name="android:textColorHint">@color/civa_muted</item>
     </style>
 </resources>

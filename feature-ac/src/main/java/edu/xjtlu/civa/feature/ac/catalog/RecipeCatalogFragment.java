@@ -42,12 +42,16 @@ public final class RecipeCatalogFragment extends Fragment {
     private final CatalogAdapter adapter = new CatalogAdapter(this::open);
     private final Handler debounce = new Handler(Looper.getMainLooper());
 
+    private final RecipeViewCallbacks viewCallbacks = new RecipeViewCallbacks();
+
     private AcHost host;
     private RecyclerView grid;
     private TextView status;
     private MaterialButton more, create;
     private EditText search;
     private ChipGroup chips, sources;
+    private View empty, catClearance;
+    private TextView emptyText;
     private Call<?> call;
     private Source source = Source.PUBLIC;
     private String query = "", category = "";
@@ -61,6 +65,8 @@ public final class RecipeCatalogFragment extends Fragment {
     }
 
     @Override public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        viewCallbacks.startView();
+        loading = false;
         host = (AcHost) requireActivity();
         grid = view.findViewById(R.id.ac_catalog_grid);
         status = view.findViewById(R.id.ac_catalog_status);
@@ -69,12 +75,18 @@ public final class RecipeCatalogFragment extends Fragment {
         search = view.findViewById(R.id.ac_catalog_search);
         chips = view.findViewById(R.id.ac_catalog_chips);
         sources = view.findViewById(R.id.ac_catalog_sources);
+        empty = view.findViewById(R.id.ac_catalog_empty);
+        catClearance = view.findViewById(R.id.ac_catalog_cat_clearance);
+        emptyText = view.findViewById(R.id.ac_catalog_empty_text);
 
         int columns = getResources().getConfiguration().screenWidthDp >= 600 ? 3 : 2;
         grid.setLayoutManager(new GridLayoutManager(requireContext(), columns));
         grid.setAdapter(adapter);
         more.setOnClickListener(ignored -> load(false));
-        create.setOnClickListener(ignored -> host.navigate(Route.RECIPE_EDIT, source == Source.HOUSEHOLD ? "hnew" : "new"));
+        create.setOnClickListener(ignored -> {
+            if (source == Source.HOUSEHOLD && host.sessions().currentHouseholdId() == null) host.navigate(Route.HOUSEHOLD, null);
+            else host.navigate(Route.RECIPE_EDIT, source == Source.HOUSEHOLD ? "hnew" : "new");
+        });
         buildSources();
         buildCategoryChips();
         search.addTextChangedListener(new TextWatcher() {
@@ -110,7 +122,8 @@ public final class RecipeCatalogFragment extends Fragment {
                 source = Source.valueOf(entry[1]);
                 search.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
                 chips.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
-                create.setVisibility(source == Source.PERSONAL || source == Source.HOUSEHOLD ? View.VISIBLE : View.GONE);
+                catClearance.setVisibility(source == Source.FAVORITES ? View.VISIBLE : View.GONE);
+                create.setVisibility(source == Source.PERSONAL || source == Source.HOUSEHOLD ? View.VISIBLE : View.INVISIBLE);
                 load(true);
             });
             sources.addView(chip);
@@ -170,7 +183,14 @@ public final class RecipeCatalogFragment extends Fragment {
     }
 
     private void load(boolean reset) {
+        if (reset) {
+            // A newly selected source/search owns a fresh callback generation.
+            viewCallbacks.startView();
+            if (call != null) { call.cancel(); call = null; }
+            loading = false;
+        }
         if (loading) return;
+        empty.setVisibility(View.GONE);
         if (reset) {
             page = 0;
             total = 0;
@@ -186,7 +206,7 @@ public final class RecipeCatalogFragment extends Fragment {
                     query.isEmpty() ? null : query,
                     category.isEmpty() ? null : category, null, highProtein, requestPage, PAGE_SIZE);
             call = request;
-            host.calls().enqueue(request, new ApiCallback<CatalogRecipePage>() {
+            host.calls().enqueue(request, viewCallbacks.bind(new ApiCallback<CatalogRecipePage>() {
                 @Override public void onSuccess(@Nullable CatalogRecipePage value) {
                     if (!isAdded()) return;
                     loading = false;
@@ -212,18 +232,18 @@ public final class RecipeCatalogFragment extends Fragment {
                     }
                     failed();
                 }
-            });
+            }));
         } else if (source == Source.HOUSEHOLD) {
             java.util.UUID home = host.sessions() == null ? null : uuidOrNull(host.sessions().currentHouseholdId());
             if (home == null) {
                 loading = false;
-                failed();
+                status.setText(R.string.ac_catalog_join_first);
                 return;
             }
             Call<edu.xjtlu.civa.api.model.RecipePage> request = host.api().recipe().listRecipes(
                     home, null, null, null, false, requestPage, PAGE_SIZE);
             call = request;
-            host.calls().enqueue(request, new ApiCallback<edu.xjtlu.civa.api.model.RecipePage>() {
+            host.calls().enqueue(request, viewCallbacks.bind(new ApiCallback<edu.xjtlu.civa.api.model.RecipePage>() {
                 @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.RecipePage value) {
                     if (!isAdded()) return;
                     loading = false;
@@ -238,12 +258,12 @@ public final class RecipeCatalogFragment extends Fragment {
                     loading = false;
                     failed();
                 }
-            });
+            }));
         } else if (source == Source.PERSONAL) {
             Call<PersonalRecipePage> request = host.api().personalRecipes().listPersonalRecipes(
                     query.isEmpty() ? null : query, category.isEmpty() ? null : category, false, requestPage, PAGE_SIZE);
             call = request;
-            host.calls().enqueue(request, new ApiCallback<PersonalRecipePage>() {
+            host.calls().enqueue(request, viewCallbacks.bind(new ApiCallback<PersonalRecipePage>() {
                 @Override public void onSuccess(@Nullable PersonalRecipePage value) {
                     if (!isAdded()) return;
                     loading = false;
@@ -258,11 +278,11 @@ public final class RecipeCatalogFragment extends Fragment {
                     loading = false;
                     failed();
                 }
-            });
+            }));
         } else {
             Call<RecipeFavoritePage> request = host.api().recipeFavorites().listRecipeFavorites(null, requestPage, PAGE_SIZE);
             call = request;
-            host.calls().enqueue(request, new ApiCallback<RecipeFavoritePage>() {
+            host.calls().enqueue(request, viewCallbacks.bind(new ApiCallback<RecipeFavoritePage>() {
                 @Override public void onSuccess(@Nullable RecipeFavoritePage value) {
                     if (!isAdded()) return;
                     loading = false;
@@ -277,12 +297,14 @@ public final class RecipeCatalogFragment extends Fragment {
                     loading = false;
                     failed();
                 }
-            });
+            }));
         }
     }
 
     private void render(int requestPage) {
         adapter.submit(loaded);
+        emptyText.setText(source == Source.FAVORITES ? R.string.ac_catalog_empty_favorites : R.string.ac_catalog_empty_mine);
+        empty.setVisibility(loaded.isEmpty() && source != Source.PUBLIC ? View.VISIBLE : View.GONE);
         page = requestPage + 1;
         status.setText(getString(R.string.ac_catalog_total, (int) total));
         more.setVisibility(loaded.size() < total ? View.VISIBLE : View.GONE);
@@ -300,11 +322,26 @@ public final class RecipeCatalogFragment extends Fragment {
     }
 
     @Override public void onDestroyView() {
+        // Invalidate before cancel(): cancellation can deliver an error callback.
+        viewCallbacks.endView();
         debounce.removeCallbacksAndMessages(null);
         if (call != null) {
             call.cancel();
             call = null;
         }
+        loading = false;
+        grid.setAdapter(null);
+        grid = null;
+        status = null;
+        more = null;
+        create = null;
+        search = null;
+        chips = null;
+        sources = null;
+        empty = null;
+        emptyText = null;
+        catClearance = null;
+        host = null;
         super.onDestroyView();
     }
 }

@@ -1,0 +1,8 @@
+{
+  "package": "edu.xjtlu.civa",
+  "apkSha256": "7c881d78f8b0b5024ad7c651ad2554a277085e8dd6229ada12e933697cc33495",
+  "existingLocalFilesPreserved": 2,
+  "beforeAfterMatch": true,
+  "qaPackageRemoved": true,
+  "screenSizeRestored": "Physical size: 1080x2400"
+}

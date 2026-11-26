@@ -1,0 +1,9 @@
+{
+  "package": "edu.xjtlu.civa",
+  "apkSha256": "19e3c548d8dccca3e86191f921759909c3c4b6920304fb5ac20a4a0df2ce476a",
+  "preservedLocalFiles": 3,
+  "beforeAfterMatch": true,
+  "videoCompleted": true,
+  "qaPackageRemoved": true,
+  "screenSize": "Physical size: 1080x2400"
+}

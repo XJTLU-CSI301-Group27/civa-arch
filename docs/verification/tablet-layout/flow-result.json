@@ -1,0 +1,13 @@
+{
+  "device": "MI_PAD_4_PLUS",
+  "androidApi": 27,
+  "testDatabase": "civa_family_test",
+  "realTabletBothCorners": true,
+  "bottomNavigationAllTabs": true,
+  "threeMealsOneColumn": true,
+  "emptyPopulatedIdenticalBounds": true,
+  "landscapeColumnAndBottomNavigation": true,
+  "phoneSizeRegression": true,
+  "warmLoginCornersAndNoNavigation": true,
+  "originalDisplaySizeRestored": true
+}

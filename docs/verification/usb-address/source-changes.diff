@@ -1,0 +1,43 @@
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -13,6 +13,16 @@
+     throw new GradleException('CIVA_API_BASE_URL must be an HTTP(S) origin ending in /, without credentials, query or fragment.')
+ }
+ 
++
++// Machine-local debug target survives Android Studio Run; never supplies the release origin.
++def localDebugSettings = new Properties()
++def localSettingsFile = rootProject.file('local.properties')
++if (localSettingsFile.isFile()) localSettingsFile.withInputStream { localDebugSettings.load(it) }
++def debugApiUrl = configuredApiUrl ?: localDebugSettings.getProperty('civa.debugApiBaseUrl') ?: 'http://10.0.2.2:8080/'
++if (!validateApiUrl(debugApiUrl, false)) {
++    throw new GradleException('civa.debugApiBaseUrl must be an HTTP(S) origin ending in /, without credentials, query or fragment.')
++}
++
+ android {
+     namespace 'edu.xjtlu.civa'
+     compileSdk 36
+@@ -21,7 +31,7 @@
+     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+     buildFeatures { viewBinding true; buildConfig true }
+     buildTypes {
+-        debug { buildConfigField 'String', 'API_BASE_URL', groovy.json.JsonOutput.toJson(configuredApiUrl ?: 'http://10.0.2.2:8080/') }
++        debug { buildConfigField 'String', 'API_BASE_URL', groovy.json.JsonOutput.toJson(debugApiUrl) }
+         release { buildConfigField 'String', 'API_BASE_URL', groovy.json.JsonOutput.toJson(configuredApiUrl ?: 'https://invalid.invalid/') }
+     }
+     lint { error 'ResourceName' }
+--- a/scripts/start-usb-device.ps1
++++ b/scripts/start-usb-device.ps1
+@@ -25,6 +25,12 @@
+ if($LASTEXITCODE -ne 0){throw 'Could not configure USB backend forwarding.'}
+ Write-Host 'USB connection ready: device localhost:8080 -> computer backend:8080.'
+ if($CheckOnly){exit 0}
++# Keep subsequent Android Studio Run builds on this machine pointed at USB localhost.
++$localSettings=if(Test-Path -LiteralPath $localFile){[IO.File]::ReadAllText($localFile)}else{''}
++$localSettings=[regex]::Replace($localSettings,'(?m)^civa\.debugApiBaseUrl=.*(?:\r?\n|$)','')
++$localSettings=$localSettings.TrimEnd()+"`n"+'civa.debugApiBaseUrl=http://127.0.0.1:8080/'+"`n"
++[IO.File]::WriteAllText($localFile,$localSettings,(New-Object Text.UTF8Encoding($false)))
++
+ $javaChoices=@($env:JAVA_HOME)
+ $javaChoices+=@(Get-ChildItem -Path "$env:USERPROFILE\.jdks\*17*","$env:ProgramFiles\Java\*17*","$env:ProgramFiles\Microsoft\*17*","$env:ProgramFiles\Eclipse Adoptium\*17*" -Directory -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)
+ $jdk=$javaChoices | Where-Object {$_ -and (Test-Path -LiteralPath "$_\release") -and (Test-Path -LiteralPath "$_\bin\java.exe") -and (Select-String -LiteralPath "$_\release" -Pattern '^JAVA_VERSION="17[.\-"]' -Quiet)} | Select-Object -First 1

@@ -1,0 +1,27 @@
+[
+  {
+    "path": "docs/EF_GREEN_INTRO_HANDOFF.md",
+    "before": null,
+    "after": "67093e5f6ae343c07611a3e04788a2b03433edd0bc054a9a02df45e85cfbc7a6"
+  },
+  {
+    "path": "docs/EF_LAYOUT_POLISH.md",
+    "before": "ee0b636efb753cbc209bc5e7d886204c64fa07da7351bc7c195541f84f522c87",
+    "after": "3c00dde53d5855bb80fbe4afdb7ed2ca99902edcd0a2736e9eaf717c84c5a59f"
+  },
+  {
+    "path": "docs/UI_RULES.md",
+    "before": "e71f772d43c1e83ac143aa5b6026572bd4f85957beb17b35618d57cf373ec961",
+    "after": "bda1fd42e91b2990fa4db6148b598d5d18368edc7b509086d2b3954598e90df3"
+  },
+  {
+    "path": "docs/TEST_PLAN.md",
+    "before": "1120125ae4f6cfa6993da6c496b8c8ece2c237002feddc58b90ebcba1538dfca",
+    "after": "f51d8289c5b6d688f4733d3107d783023ab1bf1e53ad2d20ed5f963399d0acce"
+  },
+  {
+    "path": "docs/HANDOFF.md",
+    "before": "4adcbdec09f2506c08ae68c262c763887b3f5e4a8ebbfe9a5e62645e423f7dba",
+    "after": "18ad53d4930c2089e049e65e88c936869f47555149d5546f44a34e632c8ead11"
+  }
+]

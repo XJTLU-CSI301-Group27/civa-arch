@@ -74,7 +74,7 @@ public final class BdHomeViewModel extends AndroidViewModel {
         this.calls = calls;
     }
 
-    void initialize(String nextOwner, Bundle restored) {
+    void initialize(String nextOwner, Bundle restored, String... legacyOwners) {
         if (nextOwner.equals(owner)) return;
         if (owner != null) discardDraftPhoto();
         cancelNutrition();
@@ -89,10 +89,12 @@ public final class BdHomeViewModel extends AndroidViewModel {
         date = LocalDate.now(); data = BdDraft.empty(scope);
         if (restored != null && scope.equals(restored.getString("home.scope"))) restore(restored);
         String loadingScope = scope;
+        List<String> legacyScopes = new ArrayList<>();
+        for (String legacyOwner : legacyOwners) legacyScopes.add(BdDraft.scopeHash(legacyOwner));
         io.execute(() -> {
             try {
                 BdDraftStore loadedStore = new BdDraftStore(getApplication(), loadingScope);
-                BdDraft loaded = loadedStore.load();
+                BdDraft loaded = loadedStore.loadMigrating(legacyScopes);
                 BdRecipeCatalog loadedCatalog;
                 try (InputStreamReader reader = new InputStreamReader(getApplication().getAssets().open("recipes/catalog.json"), StandardCharsets.UTF_8)) {
                     loadedCatalog = new BdRecipeCatalog(reader);

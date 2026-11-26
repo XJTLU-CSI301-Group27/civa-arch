@@ -35,6 +35,8 @@ import retrofit2.Call;
 public final class RecipeCatalogDetailFragment extends Fragment {
     private static final String ARG_ID = "recipeId";
 
+    private final RecipeViewCallbacks viewCallbacks = new RecipeViewCallbacks();
+
     private AcHost host;
     private String entityId, recipeId;
     private boolean personal;
@@ -60,7 +62,9 @@ public final class RecipeCatalogDetailFragment extends Fragment {
     }
 
     @Override public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        viewCallbacks.startView();
         host = (AcHost) requireActivity();
+        view.findViewById(R.id.ac_detail_close).setOnClickListener(ignored -> host.navigate(Route.RECIPES, null));
         entityId = getArguments() == null ? null : getArguments().getString(ARG_ID);
         if (entityId == null) {
             render(view, null);
@@ -90,7 +94,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
 
     private void loadCatalog(View view) {
         call = host.api().recipeCatalog().getCatalogRecipe(UUID.fromString(recipeId));
-        host.calls().enqueue((Call<CatalogRecipe>) call, new ApiCallback<CatalogRecipe>() {
+        host.calls().enqueue((Call<CatalogRecipe>) call, viewCallbacks.bind(new ApiCallback<CatalogRecipe>() {
             @Override public void onSuccess(@Nullable CatalogRecipe value) {
                 if (!isAdded()) return;
                 if (value == null) return;
@@ -100,7 +104,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             }
 
             @Override public void onError(ApiError error) { }
-        });
+        }));
             }
 
     private void loadHousehold(View view) {
@@ -111,7 +115,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         }
         ensureDictionary(() -> { });
         call = host.api().recipe().getRecipe(home, UUID.fromString(recipeId));
-        host.calls().enqueue((Call<Recipe>) call, new ApiCallback<Recipe>() {
+        host.calls().enqueue((Call<Recipe>) call, viewCallbacks.bind(new ApiCallback<Recipe>() {
             @Override public void onSuccess(@Nullable Recipe value) {
                 if (!isAdded()) return;
                 if (value == null) return;
@@ -123,13 +127,13 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                 if (!isAdded()) return;
                 toast(R.string.ac_catalog_error);
             }
-        });
+        }));
     }
 
     private void ensureDictionary(Runnable then) {
         if (dictionary != null) { then.run(); return; }
         host.calls().enqueue(host.api().inventory().listIngredients(null, 0, 100),
-                new ApiCallback<edu.xjtlu.civa.api.model.IngredientPage>() {
+                viewCallbacks.bind(new ApiCallback<edu.xjtlu.civa.api.model.IngredientPage>() {
                     @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.IngredientPage value) {
                         if (!isAdded()) return;
                         dictionary = value == null || value.getItems() == null ? List.of() : value.getItems();
@@ -141,12 +145,12 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                         dictionary = List.of();
                         then.run();
                     }
-                });
+                }));
     }
 
     private void loadPersonal(View view) {
         call = host.api().personalRecipes().getPersonalRecipe(UUID.fromString(recipeId));
-        host.calls().enqueue((Call<PersonalRecipe>) call, new ApiCallback<PersonalRecipe>() {
+        host.calls().enqueue((Call<PersonalRecipe>) call, viewCallbacks.bind(new ApiCallback<PersonalRecipe>() {
             @Override public void onSuccess(@Nullable PersonalRecipe value) {
                 if (!isAdded()) return;
                 if (value == null) return;
@@ -156,7 +160,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             }
 
             @Override public void onError(ApiError error) { }
-        });
+        }));
     }
 
     private void render(View view, Object value) {
@@ -282,7 +286,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         RecipeFavoriteKind kind = household ? RecipeFavoriteKind.HOUSEHOLD
                 : personal ? RecipeFavoriteKind.PERSONAL : RecipeFavoriteKind.CATALOG;
         host.calls().enqueue(host.api().recipeFavorites().getRecipeFavorite(kind, UUID.fromString(recipeId)),
-                new ApiCallback<RecipeFavorite>() {
+                viewCallbacks.bind(new ApiCallback<RecipeFavorite>() {
                     @Override public void onSuccess(@Nullable RecipeFavorite value) {
                         if (!isAdded()) return;
                         favorite = value != null;
@@ -294,7 +298,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                         favorite = false;
                         paintFavorite(view);
                     }
-                });
+                }));
     }
 
     private void paintFavorite(View view) {
@@ -309,7 +313,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         Call<Void> request = favorite ? host.api().recipeFavorites().removeRecipeFavorite(kind, id)
                 : host.api().recipeFavorites().addRecipeFavorite(kind, id);
         boolean target = !favorite;
-        host.calls().enqueue(request, new ApiCallback<Void>() {
+        host.calls().enqueue(request, viewCallbacks.bind(new ApiCallback<Void>() {
             @Override public void onSuccess(@Nullable Void value) {
                 if (!isAdded()) return;
                 favorite = target;
@@ -317,7 +321,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             }
 
             @Override public void onError(ApiError error) { }
-        });
+        }));
     }
 
     private void saveToMine(MaterialButton save) {
@@ -342,7 +346,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                 .fatPer100g(catalogRecipe.getFatPer100g());
         save.setEnabled(false);
         host.calls().enqueue(host.api().personalRecipes().createPersonalRecipe(UUID.randomUUID(), request),
-                new ApiCallback<PersonalRecipe>() {
+                viewCallbacks.bind(new ApiCallback<PersonalRecipe>() {
                     @Override public void onSuccess(@Nullable PersonalRecipe value) {
                         if (!isAdded()) return;
                         save.setText(R.string.ac_catalog_saved);
@@ -354,7 +358,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                         save.setEnabled(true);
                         toast(R.string.ac_catalog_error);
                     }
-                });
+                }));
     }
 
     private List<edu.xjtlu.civa.api.model.PersonalRecipeIngredient> toPersonalIngredients(
@@ -390,7 +394,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                     HouseholdRecipes.byName(dictionary));
             if (request == null) { toast(R.string.ac_catalog_ingredient_unknown); return; }
             host.calls().enqueue(host.api().recipe().createRecipe(home, UUID.randomUUID(), request),
-                    new ApiCallback<Recipe>() {
+                    viewCallbacks.bind(new ApiCallback<Recipe>() {
                         @Override public void onSuccess(@Nullable Recipe value) {
                             if (!isAdded()) return;
                             toast(R.string.ac_catalog_added_to_home);
@@ -400,7 +404,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                             if (!isAdded()) return;
                             toast(R.string.ac_catalog_error);
                         }
-                    });
+                    }));
         });
     }
 
@@ -412,7 +416,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                 new edu.xjtlu.civa.api.model.ArchiveRecipeRequest()
                         .archived(!Boolean.TRUE.equals(householdRecipe.getArchived()))
                         .expectedVersion(householdRecipe.getVersion())),
-                new ApiCallback<Recipe>() {
+                viewCallbacks.bind(new ApiCallback<Recipe>() {
                     @Override public void onSuccess(@Nullable Recipe value) {
                         if (!isAdded()) return;
                         householdRecipe = value;
@@ -424,7 +428,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                         if (!isAdded()) return;
                         toast(R.string.ac_catalog_error);
                     }
-                });
+                }));
     }
 
     private void archivePersonal() {
@@ -433,7 +437,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                 personalRecipe.getId(), new edu.xjtlu.civa.api.model.ArchivePersonalRecipeRequest()
                         .archived(!Boolean.TRUE.equals(personalRecipe.getArchived()))
                         .expectedVersion(personalRecipe.getVersion())),
-                new ApiCallback<PersonalRecipe>() {
+                viewCallbacks.bind(new ApiCallback<PersonalRecipe>() {
                     @Override public void onSuccess(@Nullable PersonalRecipe value) {
                         if (!isAdded()) return;
                         personalRecipe = value;
@@ -446,7 +450,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                         if (!isAdded()) return;
                         toast(R.string.ac_catalog_error);
                     }
-                });
+                }));
     }
 
     private void confirmDelete() {
@@ -459,7 +463,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
 
     private void deletePersonal() {
         host.calls().enqueue(host.api().personalRecipes().deletePersonalRecipe(UUID.fromString(recipeId)),
-                new ApiCallback<Void>() {
+                viewCallbacks.bind(new ApiCallback<Void>() {
                     @Override public void onSuccess(@Nullable Void value) {
                         if (!isAdded()) return;
                         CatalogCache.clearPersonal(requireContext(), recipeId);
@@ -470,7 +474,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                         if (!isAdded()) return;
                         toast(R.string.ac_catalog_error);
                     }
-                });
+                }));
     }
 
     private void toast(int text) {
@@ -519,6 +523,8 @@ public final class RecipeCatalogDetailFragment extends Fragment {
     }
 
     @Override public void onDestroyView() {
+        // Invalidate before cancel(): cancellation can deliver an error callback.
+        viewCallbacks.endView();
         if (call != null) {
             call.cancel();
             call = null;

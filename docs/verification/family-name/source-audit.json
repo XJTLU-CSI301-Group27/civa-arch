@@ -1,0 +1,62 @@
+[
+  {
+    "file": "contracts/openapi.json",
+    "beforeSha256": "d21e0e22f62ba13fd7b6264e3ebed0427287d5ca923c6ba94777a60ca7048d6f",
+    "afterSha256": "8f7ac10487692e0da1d7e739a7d8643f4d0e69282944cf66385118296ddf8abb",
+    "new": false
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdSettingsService.java",
+    "beforeSha256": null,
+    "afterSha256": "774141b4fa54328626823270ec9ba8a105c91b46fbec03cb23a05dd0fe51b0aa",
+    "new": true
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdConfiguration.java",
+    "beforeSha256": "675682ef4aa9fbf564f321f82f80fc8d5ac10b777edda96aea6de9e59a339fc6",
+    "afterSha256": "7ba73e5fbebc5638c92466d31f7333acc3ca8bdd346ea8a384731383b13339e7",
+    "new": false
+  },
+  {
+    "file": "server/src/main/java/edu/xjtlu/civa/server/household/HouseholdController.java",
+    "beforeSha256": "754604c5d4ea5903fcc0ae99337cf4c6254f6fdbdf58defcdd9b3abf3284a0f9",
+    "afterSha256": "fc2289a9c7c6dfd5c6752547140da86ae7d1291d94a25bf5766fed12eaa8f034",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/res/layout/ef_fragment_household.xml",
+    "beforeSha256": "d7a4fca27e0007a9087d343500501a2fdb4693e32520053ab65f0832c5c0083a",
+    "afterSha256": "3296444980c4dd7ce75bac26cb53472a69e9f866452d50c6a9f1e69ebdeb6366",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdViewModel.java",
+    "beforeSha256": "297213a765836c3e0087d907a4df22a7b38ff86aa328fda944f8c10cc4bd2dc6",
+    "afterSha256": "bb966e35456ab6f69367a1de573529cf3a77230c326b95179126c4d876906a3b",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/java/edu/xjtlu/civa/feature/ef/HouseholdFragment.java",
+    "beforeSha256": "b49e135005654f5494f9916c97acf9e40caf67ef515a9f472d4df61d899d16e0",
+    "afterSha256": "73532952a670f16d9e441d0d5f28bc3b468a45db13df9c95310c1beb329830e3",
+    "new": false
+  },
+  {
+    "file": "feature-ef/src/main/res/values/ef_strings.xml",
+    "beforeSha256": "0144e326ad139f9520f8811482c04dccb4e33223d1d09b875c1667dd2ab9e4e6",
+    "afterSha256": "ed0ef635f8c919d00ed2df155b742996092f46c04a11b3131d3664f6d9dd18d8",
+    "new": false
+  },
+  {
+    "file": "contracts/changes/IC-20261125-EF-FAMILY-NAME.md",
+    "beforeSha256": null,
+    "afterSha256": "892c4ac93240af44a8768b086a0e83587f55f9f015b0c88b77109ee8238e9ba4",
+    "new": true
+  },
+  {
+    "file": "server/src/test/java/edu/xjtlu/civa/server/household/HouseholdNameIntegrationTest.java",
+    "beforeSha256": null,
+    "afterSha256": "d2458eb97cf50b9d0738b8e5ef6058cfeb289c10ad6cc5f32036fd285f7e2159",
+    "new": true
+  }
+]

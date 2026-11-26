@@ -32,3 +32,9 @@ __pycache__/
 # Generated coverage and reports
 coverage/
 reports/
+
+# Native local database, media and service logs (not build cache)
+.civa-local/
+
+# Private server key for protected invitation retry receipts
+**/invitation-receipt.key
