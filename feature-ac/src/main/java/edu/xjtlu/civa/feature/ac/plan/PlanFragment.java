@@ -21,6 +21,7 @@ import edu.xjtlu.civa.api.model.RecipePage;
 import edu.xjtlu.civa.api.model.SetPlanLockRequest;
 import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.ui.ApiError;
+import edu.xjtlu.civa.core.ui.Haptics;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.AcText;
 import edu.xjtlu.civa.feature.ac.R;
@@ -316,6 +317,7 @@ public final class PlanFragment extends Fragment {
                 new ApiCallback<PlanSlot>() {
                     @Override public void onSuccess(@Nullable PlanSlot value) {
                         if (!isAdded()) return;
+                        Haptics.tap(requireView());
                         loadSlots();
                     }
 
@@ -358,7 +360,7 @@ public final class PlanFragment extends Fragment {
     }
 
     private void toast(int text) {
-        Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show();
+        edu.xjtlu.civa.core.ui.Feedback.show(requireActivity(), text, false);
     }
 
     private int dp(float value) {

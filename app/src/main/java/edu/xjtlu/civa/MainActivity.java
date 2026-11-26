@@ -39,6 +39,8 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
         super.onCreate(restore ? savedInstanceState : null);
         setContentView(R.layout.app_activity_main);
         introShowing = savedInstanceState == null || !savedInstanceState.getBoolean("app.intro.finished", false);
+        boolean introSeen = getSharedPreferences("civa_intro", MODE_PRIVATE).getBoolean("seen", false);
+        if (!edu.xjtlu.civa.core.ui.Motion.enabled() || introSeen) introShowing = false;
         introStarted = savedInstanceState == null ? android.os.SystemClock.elapsedRealtime() : savedInstanceState.getLong("app.intro.started", android.os.SystemClock.elapsedRealtime());
         if (android.os.SystemClock.elapsedRealtime() - introStarted >= AppIntroView.DURATION) introShowing = false;
         findViewById(android.R.id.content).setTag(edu.xjtlu.civa.core.ui.R.id.civa_intro_blocked, introShowing);
@@ -57,6 +59,8 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
         updateChrome(getSupportFragmentManager().findFragmentById(R.id.app_content));
         if (introShowing) {
             intro = new AppIntroView(this, introStarted, savedInstanceState != null && savedInstanceState.getBoolean("app.intro.voiced", false), this::finishIntro);
+            intro.setClickable(true);
+            intro.setOnClickListener(ignored -> finishIntro());
             ((android.widget.FrameLayout)findViewById(R.id.app_root)).addView(intro, new android.widget.FrameLayout.LayoutParams(-1,-1));
         }
     }
@@ -64,7 +68,19 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
     private void finishIntro() {
         if (!introShowing) return;
         introShowing = false;
-        if (intro != null) { ((android.view.ViewGroup)intro.getParent()).removeView(intro); intro = null; }
+        getSharedPreferences("civa_intro", MODE_PRIVATE).edit().putBoolean("seen", true).apply();
+        if (intro != null) {
+            final android.view.View fading = intro;
+            final android.view.ViewGroup parent = (android.view.ViewGroup) fading.getParent();
+            intro = null;
+            if (parent != null) {
+                if (edu.xjtlu.civa.core.ui.Motion.enabled()) {
+                    fading.animate().alpha(0f).setDuration(180L).withEndAction(() -> parent.removeView(fading)).start();
+                } else {
+                    parent.removeView(fading);
+                }
+            }
+        }
         View content = findViewById(android.R.id.content);
         content.setTag(edu.xjtlu.civa.core.ui.R.id.civa_intro_blocked, false);
         playWelcome(content); updateChrome(getSupportFragmentManager().findFragmentById(R.id.app_content));

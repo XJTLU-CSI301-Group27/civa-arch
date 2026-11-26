@@ -1116,7 +1116,7 @@ public final class DiaryFragment extends Fragment {
     }
 
     private void toast(int text) {
-        Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show();
+        edu.xjtlu.civa.core.ui.Feedback.show(requireActivity(), text, false);
     }
 
     private int dp(float value) {

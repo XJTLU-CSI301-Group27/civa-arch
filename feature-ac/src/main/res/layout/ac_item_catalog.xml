@@ -5,6 +5,7 @@
     android:layout_margin="6dp"
     android:background="@drawable/ac_catalog_card"
     android:clickable="true"
+    android:foreground="?attr/selectableItemBackground"
     android:focusable="true"
     android:orientation="vertical"
     android:padding="12dp">

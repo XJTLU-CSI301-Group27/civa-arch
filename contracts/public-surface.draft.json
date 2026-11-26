@@ -65,6 +65,58 @@
   ],
   "symbols": [
     {
+      "type": "edu.xjtlu.civa.core.ui.Haptics",
+      "kind": "class",
+      "owner": "A",
+      "consumers": [
+        "app",
+        "feature-ac",
+        "feature-bd",
+        "feature-ef"
+      ],
+      "thread": "main",
+      "members": [
+        "static void tap(View view)",
+        "static void confirm(View view)"
+      ]
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.Feedback",
+      "kind": "class",
+      "owner": "A",
+      "consumers": [
+        "app",
+        "feature-ac",
+        "feature-bd",
+        "feature-ef"
+      ],
+      "thread": "main",
+      "members": [
+        "static void show(Activity activity, int text, boolean error)",
+        "static void show(Activity activity, CharSequence message, boolean error)",
+        "static void dismiss()"
+      ]
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.Motion",
+      "kind": "class",
+      "owner": "A",
+      "consumers": [
+        "app",
+        "feature-ac",
+        "feature-bd",
+        "feature-ef"
+      ],
+      "thread": "main",
+      "members": [
+        "long MICRO",
+        "long SHORT",
+        "long MEDIUM",
+        "long LONG",
+        "static boolean enabled()"
+      ]
+    },
+    {
       "type": "edu.xjtlu.civa.core.data.MediaImages",
       "kind": "class",
       "owner": "BD",

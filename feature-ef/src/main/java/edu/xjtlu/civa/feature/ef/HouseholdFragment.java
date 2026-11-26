@@ -131,7 +131,7 @@ public final class HouseholdFragment extends Fragment {
         android.content.ClipData clip=android.content.ClipData.newPlainText(getString(R.string.ef_fixed_invitation_label),code);
         if(android.os.Build.VERSION.SDK_INT>=33){android.os.PersistableBundle extras=new android.os.PersistableBundle();extras.putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE,true);clip.getDescription().setExtras(extras);}
         clipboard.setPrimaryClip(clip);
-        android.widget.Toast.makeText(requireContext(),R.string.ef_invitation_copied,android.widget.Toast.LENGTH_SHORT).show();
+        edu.xjtlu.civa.core.ui.Feedback.show(requireActivity(),R.string.ef_invitation_copied,false);
     }
 
     private static int messageResource(String code) {

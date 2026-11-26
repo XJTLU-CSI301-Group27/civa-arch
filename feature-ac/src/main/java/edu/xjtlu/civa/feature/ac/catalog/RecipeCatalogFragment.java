@@ -13,6 +13,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
@@ -107,6 +108,12 @@ public final class RecipeCatalogFragment extends Fragment {
         chips.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
         catClearance.setVisibility(source == Source.FAVORITES ? View.VISIBLE : View.GONE);
         grid.setLayoutManager(new GridLayoutManager(requireContext(), columns));
+        DefaultItemAnimator itemAnimator = new DefaultItemAnimator();
+        itemAnimator.setAddDuration(180L);
+        itemAnimator.setRemoveDuration(160L);
+        itemAnimator.setMoveDuration(180L);
+        itemAnimator.setChangeDuration(180L);
+        grid.setItemAnimator(itemAnimator);
         grid.setAdapter(adapter);
         more.setOnClickListener(ignored -> load(false));
         create.setOnClickListener(ignored -> {

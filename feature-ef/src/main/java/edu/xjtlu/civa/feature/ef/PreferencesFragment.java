@@ -160,6 +160,6 @@ public final class PreferencesFragment extends Fragment {
     }
 
     private void toast(int text) {
-        Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show();
+        edu.xjtlu.civa.core.ui.Feedback.show(requireActivity(), text, false);
     }
 }

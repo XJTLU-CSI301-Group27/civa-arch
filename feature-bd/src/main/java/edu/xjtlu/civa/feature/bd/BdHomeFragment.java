@@ -91,7 +91,7 @@ public final class BdHomeFragment extends Fragment {
         }
         if (!model.ready && model.message != null && !model.message.equals(shownError)) {
             shownError = model.message;
-            Toast.makeText(requireContext(), model.message, Toast.LENGTH_LONG).show();
+            edu.xjtlu.civa.core.ui.Feedback.show(requireActivity(), model.message, true);
         }
     }
 

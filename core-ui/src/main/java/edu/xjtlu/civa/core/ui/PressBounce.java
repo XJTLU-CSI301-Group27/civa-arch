@@ -91,12 +91,15 @@ public final class PressBounce {
 
         private void down() {
             if (!view.isEnabled()) return;
-            stop(); pressed = true; apply(PRESSED_SCALE);
+            stop(); pressed = true;
+            if (Motion.enabled()) apply(PRESSED_SCALE);
         }
 
         private void up() {
             if (!pressed) return;
-            pressed = false; startScale = view.getScaleX(); releasedAt = 0;
+            pressed = false;
+            if (!Motion.enabled()) { stop(); apply(1); return; }
+            startScale = view.getScaleX(); releasedAt = 0;
             running = true; Choreographer.getInstance().postFrameCallback(this);
         }
 

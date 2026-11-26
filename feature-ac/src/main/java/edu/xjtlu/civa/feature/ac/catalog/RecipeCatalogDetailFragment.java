@@ -28,6 +28,7 @@ import edu.xjtlu.civa.api.model.RecipeFavoriteKind;
 import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.data.MediaImages;
 import edu.xjtlu.civa.core.ui.ApiError;
+import edu.xjtlu.civa.core.ui.Haptics;
 import edu.xjtlu.civa.core.ui.Route;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.R;
@@ -326,6 +327,16 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         button.setText(favorite ? R.string.ac_catalog_favorited : R.string.ac_catalog_favorite);
     }
 
+    private void buttonBounce(View view) {
+        if (!edu.xjtlu.civa.core.ui.Motion.enabled()) return;
+        MaterialButton button = view.findViewById(R.id.ac_detail_favorite);
+        button.animate().cancel();
+        button.setScaleX(0.96f);
+        button.setScaleY(0.96f);
+        button.animate().scaleX(1f).scaleY(1f).setDuration(180L)
+                .setInterpolator(new android.view.animation.OvershootInterpolator(1.2f)).start();
+    }
+
     private void toggleFavorite(View view) {
         RecipeFavoriteKind kind = household ? RecipeFavoriteKind.HOUSEHOLD
                 : personal ? RecipeFavoriteKind.PERSONAL : RecipeFavoriteKind.CATALOG;
@@ -338,6 +349,8 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                 if (!isAdded()) return;
                 favorite = target;
                 paintFavorite(view);
+                Haptics.tap(view);
+                buttonBounce(view);
             }
 
             @Override public void onError(ApiError error) { }
@@ -601,7 +614,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
     }
 
     private void toast(int text) {
-        Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show();
+        edu.xjtlu.civa.core.ui.Feedback.show(requireActivity(), text, false);
     }
 
     private String display(Object item) {

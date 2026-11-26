@@ -1,6 +1,7 @@
 package edu.xjtlu.civa;
 
 import androidx.fragment.app.FragmentManager;
+import edu.xjtlu.civa.core.ui.Motion;
 import edu.xjtlu.civa.core.ui.NavHost;
 import edu.xjtlu.civa.core.ui.Route;
 import edu.xjtlu.civa.core.data.SessionStore;
@@ -67,6 +68,15 @@ final class AppNavigator implements NavHost {
                 : PlaceholderFragment.create(title, entityId);
         var transaction = fragments.beginTransaction().replace(R.id.app_content, fragment);
         if (!primary) transaction.addToBackStack(null);
+        if (Motion.enabled()) {
+            if (primary) {
+                transaction.setCustomAnimations(R.anim.app_civa_fade_through_in, R.anim.app_civa_fade_through_out,
+                        R.anim.app_civa_fade_through_in, R.anim.app_civa_fade_through_out);
+            } else {
+                transaction.setCustomAnimations(R.anim.app_civa_axis_in, R.anim.app_civa_axis_out,
+                        R.anim.app_civa_axis_pop_in, R.anim.app_civa_axis_pop_out);
+            }
+        }
         transaction.commit();
     }
 
