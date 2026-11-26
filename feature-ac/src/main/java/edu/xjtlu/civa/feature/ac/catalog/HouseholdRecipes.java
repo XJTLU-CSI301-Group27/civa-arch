@@ -55,35 +55,77 @@ final class HouseholdRecipes {
         return String.join(", ", parts);
     }
 
-    /** Resolves "name quantity" lines against the dictionary; returns null when a name is unknown. */
+    /** Resolves "name quantity" lines against the dictionary; returns null when a name/quantity is invalid. */
     static CreateRecipeRequest request(String name, List<String> steps, List<String> freeLines,
                                        Map<String, Ingredient> dictionary) {
+        return request(name, steps, freeLines, dictionary, "2", 30);
+    }
+
+    static CreateRecipeRequest request(String name, List<String> steps, List<String> freeLines,
+                                       Map<String, Ingredient> dictionary, String yield, int duration) {
         List<RecipeIngredient> ingredients = new ArrayList<>();
         for (String line : freeLines) {
-            String trimmed = line.trim();
+            String trimmed = line == null ? "" : line.trim();
             if (trimmed.isEmpty()) continue;
             String lower = trimmed.toLowerCase(Locale.ROOT);
             Ingredient match = null;
             for (Map.Entry<String, Ingredient> entry : dictionary.entrySet()) {
-                if (lower.equals(entry.getKey()) || lower.startsWith(entry.getKey() + " ") || lower.contains(entry.getKey())) {
+                if (lower.equals(entry.getKey()) || lower.startsWith(entry.getKey() + " ")) {
                     match = entry.getValue();
                     break;
                 }
             }
             if (match == null) return null;
-            String quantity = "1";
+            String quantity = null;
             int space = trimmed.lastIndexOf(' ');
             if (space > 0) {
                 String tail = trimmed.substring(space + 1).trim();
-                if (tail.matches("^[0-9]+(\\.[0-9]{1,3})?$") && new java.math.BigDecimal(tail).signum() > 0) quantity = tail;
+                java.math.BigDecimal parsed = IngredientImportParser.number(tail);
+                if (parsed != null && parsed.signum() > 0) quantity = IngredientImportParser.text(parsed);
             }
+            if (quantity == null) return null;
             ingredients.add(new RecipeIngredient().ingredientId(match.getId()).quantity(quantity)
                     .unit(Unit.fromValue(match.getUnit().getValue())).trackStock(true));
         }
-        if (ingredients.isEmpty()) return null;
-        CreateRecipeRequest request = new CreateRecipeRequest().name(name).steps(steps).ingredients(ingredients)
-                .yieldServings("2").durationMinutes(30);
-        // i18n: data tag sent to the server; it is an identifier, not display text.
+        return verifiedRequest(name, steps, ingredients, yield, duration,
+                new ArrayList<>(dictionary.values()));
+    }
+
+    /**
+     * Builds an import request only from fully validated rows. Duplicate ids, non-positive/out-of-range
+     * amounts, a unit that disagrees with the dictionary, or an unconfirmed yield/duration return null.
+     * There is deliberately no fallback to 1, 0 or trackStock=false.
+     */
+    static CreateRecipeRequest verifiedRequest(String name, List<String> steps,
+                                               List<RecipeIngredient> ingredients,
+                                               String yield, int duration,
+                                               List<Ingredient> dictionary) {
+        if (name == null || name.trim().isEmpty() || steps == null || steps.isEmpty()
+                || ingredients == null || ingredients.isEmpty() || duration < 1 || duration > 1440) {
+            return null;
+        }
+        java.math.BigDecimal yieldValue = IngredientImportParser.number(yield);
+        if (yieldValue == null || yieldValue.signum() <= 0) return null;
+
+        Map<UUID, Ingredient> byId = new LinkedHashMap<>();
+        if (dictionary != null) for (Ingredient item : dictionary) byId.put(item.getId(), item);
+        java.util.Set<UUID> seen = new java.util.HashSet<>();
+        List<RecipeIngredient> verified = new ArrayList<>();
+        for (RecipeIngredient item : ingredients) {
+            if (item == null || item.getIngredientId() == null || item.getUnit() == null) return null;
+            if (!seen.add(item.getIngredientId())) return null;
+            Ingredient ingredient = byId.get(item.getIngredientId());
+            if (ingredient == null || ingredient.getUnit() == null
+                    || ingredient.getUnit() != item.getUnit()) return null;
+            java.math.BigDecimal quantity = IngredientImportParser.number(item.getQuantity());
+            if (quantity == null || quantity.signum() <= 0) return null;
+            verified.add(new RecipeIngredient().ingredientId(item.getIngredientId())
+                    .quantity(IngredientImportParser.text(quantity))
+                    .unit(item.getUnit()).trackStock(true));
+        }
+        CreateRecipeRequest request = new CreateRecipeRequest().name(name.trim()).steps(steps)
+                .ingredients(verified).yieldServings(IngredientImportParser.text(yieldValue))
+                .durationMinutes(duration);
         request.setTags(new java.util.LinkedHashSet<>(List.of("家庭菜谱")));
         return request;
     }

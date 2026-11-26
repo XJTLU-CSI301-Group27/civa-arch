@@ -98,6 +98,23 @@
             android:textSize="15sp" />
 
         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/ac_household_recipe_unit_hint"
+            android:textColor="@color/civa_muted"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/ac_household_recipe_units"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/civa_muted"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <TextView
             style="@style/CivaText.Section"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

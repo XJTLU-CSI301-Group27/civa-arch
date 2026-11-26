@@ -25,6 +25,7 @@ import edu.xjtlu.civa.api.model.CreateRecipeRequest;
 import edu.xjtlu.civa.api.model.Ingredient;
 import edu.xjtlu.civa.api.model.Recipe;
 import edu.xjtlu.civa.api.model.PersonalRecipe;
+import edu.xjtlu.civa.api.model.PersonalRecipeIngredient;
 import edu.xjtlu.civa.api.model.RecipeFavorite;
 import edu.xjtlu.civa.api.model.RecipeFavoriteKind;
 import edu.xjtlu.civa.core.data.ApiCallback;
@@ -128,30 +129,47 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             toast(R.string.ac_catalog_home_missing);
             return;
         }
-        ensureDictionary(() -> { });
-        call = host.api().recipe().getRecipe(home, UUID.fromString(recipeId));
-        host.calls().enqueue((Call<Recipe>) call, viewCallbacks.bind(new ApiCallback<Recipe>() {
-            @Override public void onSuccess(@Nullable Recipe value) {
-                if (!isAdded()) return;
-                if (value == null) return;
-                householdRecipe = value;
-                render(view, value);
-            }
+        ensureDictionary(() -> {
+            if (!isAdded()) return;
+            call = host.api().recipe().getRecipe(home, UUID.fromString(recipeId));
+            host.calls().enqueue((Call<Recipe>) call, viewCallbacks.bind(new ApiCallback<Recipe>() {
+                @Override public void onSuccess(@Nullable Recipe value) {
+                    if (!isAdded()) return;
+                    if (value == null) return;
+                    householdRecipe = value;
+                    render(view, value);
+                }
 
-            @Override public void onError(ApiError error) {
-                if (!isAdded()) return;
-                toast(R.string.ac_catalog_error);
-            }
-        }));
+                @Override public void onError(ApiError error) {
+                    if (!isAdded()) return;
+                    toast(R.string.ac_catalog_error);
+                }
+            }));
+        });
     }
 
     private void ensureDictionary(Runnable then) {
         if (dictionary != null) { then.run(); return; }
-        host.calls().enqueue(host.api().inventory().listIngredients(null, 0, 100),
+        loadDictionaryPage(0, new ArrayList<>(), then);
+    }
+
+    private void loadDictionaryPage(int page, List<Ingredient> collected, Runnable then) {
+        host.calls().enqueue(host.api().inventory().listIngredients(null, page, 100),
                 viewCallbacks.bind(new ApiCallback<edu.xjtlu.civa.api.model.IngredientPage>() {
                     @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.IngredientPage value) {
                         if (!isAdded()) return;
-                        dictionary = value == null || value.getItems() == null ? List.of() : value.getItems();
+                        if (value == null || value.getItems() == null) {
+                            dictionary = List.of();
+                            then.run();
+                            return;
+                        }
+                        collected.addAll(value.getItems());
+                        long total = value.getTotal() == null ? collected.size() : value.getTotal();
+                        if (collected.size() < total && !value.getItems().isEmpty()) {
+                            loadDictionaryPage(page + 1, collected, then);
+                            return;
+                        }
+                        dictionary = collected.isEmpty() ? List.of() : List.copyOf(collected);
                         then.run();
                     }
 
@@ -603,33 +621,90 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         java.util.UUID home = host.sessions() == null ? null : uuidOrNull(host.sessions().currentHouseholdId());
         if (home == null) { toast(R.string.ac_catalog_home_missing); return; }
         ensureDictionary(() -> {
-            List<String> steps = List.of();
-            List<String> lines = List.of();
             String name = null;
+            List<String> steps = List.of();
+            List<IngredientImportParser.Input> inputs = List.of();
+            String sourceYield = null;
+            Integer sourceDuration = null;
             if (catalogRecipe != null) {
-                name = catalogRecipe.getName(); steps = catalogRecipe.getSteps();
-                lines = HouseholdRecipes.catalogIngredientLines(catalogRecipe.getIngredients());
+                name = catalogRecipe.getName();
+                steps = catalogRecipe.getSteps() == null ? List.of() : catalogRecipe.getSteps();
+                sourceYield = validYield(catalogRecipe.getServings());
+                sourceDuration = validDuration(catalogRecipe.getEstimatedMinutes());
+                List<IngredientImportParser.Input> parsed = new ArrayList<>();
+                for (CatalogRecipeIngredient ingredient : catalogRecipe.getIngredients() == null
+                        ? List.<CatalogRecipeIngredient>of() : catalogRecipe.getIngredients()) {
+                    parsed.add(new IngredientImportParser.Input(ingredient.getName(),
+                            ingredient.getQuantity(), ingredient.getQuantityPrefix(), ingredient.getUnit(),
+                            ingredient.getNote(), ingredient.getSourceText()));
+                }
+                inputs = parsed;
             } else if (personalRecipe != null) {
-                name = personalRecipe.getName(); steps = personalRecipe.getSteps();
-                lines = HouseholdRecipes.personalIngredientLines(personalRecipe.getIngredients());
+                name = personalRecipe.getName();
+                steps = personalRecipe.getSteps() == null ? List.of() : personalRecipe.getSteps();
+                sourceYield = validYield(personalRecipe.getServings());
+                sourceDuration = validDuration(personalRecipe.getEstimatedMinutes());
+                List<IngredientImportParser.Input> parsed = new ArrayList<>();
+                for (PersonalRecipeIngredient ingredient : personalRecipe.getIngredients() == null
+                        ? List.<PersonalRecipeIngredient>of() : personalRecipe.getIngredients()) {
+                    parsed.add(new IngredientImportParser.Input(ingredient.getName(),
+                            ingredient.getQuantity(), ingredient.getQuantityPrefix(), ingredient.getUnit(),
+                            ingredient.getNote(), ingredient.getSourceText()));
+                }
+                inputs = parsed;
             }
             if (name == null) return;
-            CreateRecipeRequest request = HouseholdRecipes.request(name, steps, lines,
-                    HouseholdRecipes.byName(dictionary));
-            if (request == null) { toast(R.string.ac_catalog_ingredient_unknown); return; }
-            host.calls().enqueue(host.api().recipe().createRecipe(home, UUID.randomUUID(), request),
-                    viewCallbacks.bind(new ApiCallback<Recipe>() {
-                        @Override public void onSuccess(@Nullable Recipe value) {
-                            if (!isAdded()) return;
-                            toast(R.string.ac_catalog_added_to_home);
-                        }
-
-                        @Override public void onError(ApiError error) {
-                            if (!isAdded()) return;
-                            toast(R.string.ac_catalog_error);
-                        }
-                    }));
+            List<Ingredient> dictionaryNow = dictionary == null ? List.of() : dictionary;
+            IngredientImportParser.Result result = IngredientImportParser.parse(inputs, dictionaryNow);
+            if (result.lines().isEmpty()) {
+                toast(R.string.ac_import_no_ingredients);
+                return;
+            }
+            String finalName = name;
+            List<String> finalSteps = steps;
+            String finalYield = sourceYield;
+            Integer finalDuration = sourceDuration;
+            ImportReviewDialog.show(requireContext(), result.lines(), dictionaryNow,
+                    finalYield, finalDuration,
+                    (ingredients, yield, duration) -> createImported(home, finalName, finalSteps,
+                            ingredients, yield, duration));
         });
+    }
+
+    private void createImported(java.util.UUID home, String name, List<String> steps,
+                                List<edu.xjtlu.civa.api.model.RecipeIngredient> ingredients,
+                                String yield, int duration) {
+        if (!isAdded()) return;
+        CreateRecipeRequest request = HouseholdRecipes.verifiedRequest(name, steps, ingredients,
+                yield, duration, dictionary == null ? List.of() : dictionary);
+        if (request == null) {
+            toast(R.string.ac_import_invalid);
+            return;
+        }
+        host.calls().enqueue(host.api().recipe().createRecipe(home, UUID.randomUUID(), request),
+                viewCallbacks.bind(new ApiCallback<Recipe>() {
+                    @Override public void onSuccess(@Nullable Recipe value) {
+                        if (!isAdded()) return;
+                        toast(R.string.ac_catalog_added_to_home);
+                        if (value != null && value.getId() != null) {
+                            host.navigate(Route.RECIPE_DETAIL, RecipeCard.householdKey(value.getId().toString()));
+                        }
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        toast(R.string.ac_catalog_error);
+                    }
+                }));
+    }
+
+    private static String validYield(String value) {
+        java.math.BigDecimal parsed = IngredientImportParser.number(value);
+        return parsed != null && parsed.signum() > 0 ? IngredientImportParser.text(parsed) : null;
+    }
+
+    private static Integer validDuration(Integer value) {
+        return value != null && value >= 1 && value <= 1440 ? value : null;
     }
 
     private void archiveHousehold() {

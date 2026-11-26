@@ -28,6 +28,7 @@ import edu.xjtlu.civa.core.data.MediaImages;
 import edu.xjtlu.civa.core.ui.SubmitButton;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.feature.ac.AcHost;
+import edu.xjtlu.civa.feature.ac.AcText;
 import edu.xjtlu.civa.feature.ac.R;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +46,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
     private Recipe existing;
     private List<Ingredient> dictionary = List.of();
     private EditText name, steps, ingredients;
+    private TextView units;
     private MaterialButton save, pickImage, removeImage;
     private ImageView image;
     private UUID imageId;
@@ -73,6 +75,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         name = view.findViewById(R.id.ac_household_recipe_name);
         steps = view.findViewById(R.id.ac_household_recipe_steps);
         ingredients = view.findViewById(R.id.ac_household_recipe_ingredients);
+        units = view.findViewById(R.id.ac_household_recipe_units);
         save = view.findViewById(R.id.ac_household_recipe_save);
         image = view.findViewById(R.id.ac_household_recipe_image);
         pickImage = view.findViewById(R.id.ac_household_recipe_image_pick);
@@ -153,12 +156,23 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                 steps.setText(String.join("\n", value.getSteps()));
                 Map<UUID, String> names = HouseholdRecipes.names(dictionary);
                 List<String> lines = new ArrayList<>();
+                List<String> unitParts = new ArrayList<>();
                 if (value.getIngredients() != null) {
                     for (edu.xjtlu.civa.api.model.RecipeIngredient item : value.getIngredients()) {
-                        lines.add(names.getOrDefault(item.getIngredientId(), "") + " " + item.getQuantity());
+                        String ingredientName = names.getOrDefault(item.getIngredientId(), "");
+                        lines.add(ingredientName + " " + item.getQuantity());
+                        unitParts.add(ingredientName + "：" + AcText.unit(getResources(),
+                                item.getUnit(), ingredientName));
                     }
                 }
                 ingredients.setText(String.join("\n", lines));
+                if (unitParts.isEmpty()) {
+                    units.setVisibility(View.GONE);
+                } else {
+                    units.setText(getString(R.string.ac_household_recipe_units,
+                            AcText.join(getResources(), unitParts)));
+                    units.setVisibility(View.VISIBLE);
+                }
                 imageId = value.getImageId();
                 if (imageId != null) {
                     image.setVisibility(View.VISIBLE);
@@ -202,8 +216,10 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         CreateRecipeRequest request = HouseholdRecipes.request(name.getText().toString().trim(),
                 PersonalRecipeEditorFragment.lines(steps.getText().toString()),
                 ingredientLines,
-                HouseholdRecipes.byName(dictionary));
-        if (request == null) { toast(R.string.ac_catalog_ingredient_unknown); return; }
+                HouseholdRecipes.byName(dictionary),
+                existing == null ? "2" : existing.getYieldServings(),
+                existing == null || existing.getDurationMinutes() == null ? 30 : existing.getDurationMinutes());
+        if (request == null) { toast(R.string.ac_household_recipe_invalid); return; }
         request.setImageId(imageId);
         SubmitButton.start(save);
         if (existing == null) {
