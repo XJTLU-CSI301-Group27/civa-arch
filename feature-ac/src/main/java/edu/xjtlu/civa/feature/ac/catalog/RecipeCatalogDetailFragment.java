@@ -332,6 +332,42 @@ public final class RecipeCatalogDetailFragment extends Fragment {
 
     private void saveToMine(MaterialButton save) {
         if (!(catalogRecipe != null)) return;
+        // The public card may already exist in "my recipes": offer to open it instead of duplicating.
+        host.calls().enqueue(host.api().personalRecipes().listPersonalRecipes(catalogRecipe.getName(),
+                        null, false, 0, 20), new ApiCallback<edu.xjtlu.civa.api.model.PersonalRecipePage>() {
+                    @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.PersonalRecipePage value) {
+                        if (!isAdded()) return;
+                        edu.xjtlu.civa.api.model.PersonalRecipe existing = null;
+                        if (value != null && value.getItems() != null) {
+                            for (edu.xjtlu.civa.api.model.PersonalRecipe row : value.getItems()) {
+                                if (row.getName() != null
+                                        && row.getName().trim().equalsIgnoreCase(catalogRecipe.getName().trim())) {
+                                    existing = row;
+                                    break;
+                                }
+                            }
+                        }
+                        if (existing != null) {
+                            final edu.xjtlu.civa.api.model.PersonalRecipe found = existing;
+                            new MaterialAlertDialogBuilder(requireContext())
+                                    .setMessage(R.string.ac_catalog_already_mine)
+                                    .setNegativeButton(android.R.string.cancel, null)
+                                    .setPositiveButton(R.string.ac_catalog_open_mine, (dialog, which) ->
+                                            host.navigate(Route.RECIPE_EDIT, RecipeCard.personalKey(found.getId().toString())))
+                                    .show();
+                        } else {
+                            createPersonalCopy(save);
+                        }
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        createPersonalCopy(save);
+                    }
+                });
+    }
+
+    private void createPersonalCopy(MaterialButton save) {
         CreatePersonalRecipeRequest request = new CreatePersonalRecipeRequest()
                 .name(catalogRecipe.getName())
                 .category(catalogRecipe.getCategory())

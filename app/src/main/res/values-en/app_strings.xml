@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Civa</string>
+    <string name="app_today">Today</string>
+    <string name="app_recipes">Recipes</string>
+    <string name="app_inventory">Fridge</string>
+    <string name="app_diary">Diary</string>
+    <string name="app_profile">Me</string>
+    <string name="app_not_connected">Coming soon</string>
+    <string name="app_recipe_detail">Recipe details</string>
+    <string name="app_recipe_edit">Edit recipe</string>
+    <string name="app_inventory_edit">Edit inventory</string>
+    <string name="app_plan">Meal plan</string>
+    <string name="app_cooking_confirm">Confirm cooking</string>
+    <string name="app_meal_edit">Edit meal</string>
+    <string name="app_login">Log in</string>
+    <string name="app_household">Household</string>
+    <string name="app_preferences">Preferences</string>
+</resources>

@@ -71,6 +71,34 @@ final class HouseholdRecipes {
         return request;
     }
 
+    /** Unit guessed from free text so a missing dictionary entry can be registered instead of blocking. */
+    static Unit inferUnit(String line) {
+        String text = line == null ? "" : line.toLowerCase(Locale.ROOT);
+        if (text.contains("克") || text.contains("g")) return Unit.G;
+        if (text.contains("毫升") || text.contains("ml") || text.contains("勺") || text.contains("杯")) return Unit.ML;
+        if (text.contains("个") || text.contains("只") || text.contains("颗") || text.contains("片")
+                || text.contains("枚") || text.contains("count")) return Unit.COUNT;
+        return Unit.G;
+    }
+
+    /** Ingredient names that the dictionary cannot resolve yet, in "name" form for registration. */
+    static List<String> unresolvedNames(java.util.List<String> lines, Map<String, Ingredient> dictionary) {
+        List<String> result = new java.util.ArrayList<>();
+        for (String line : lines) {
+            String lower = line == null ? "" : line.trim().toLowerCase(Locale.ROOT);
+            if (lower.isEmpty()) continue;
+            boolean found = false;
+            for (String name : dictionary.keySet()) {
+                if (lower.equals(name) || lower.startsWith(name + " ") || lower.contains(name)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) result.add(lower);
+        }
+        return result;
+    }
+
     /** Free-text names from a catalogue/personal recipe for the same conversion. */
     static List<String> catalogIngredientLines(List<CatalogRecipeIngredient> items) {
         List<String> lines = new ArrayList<>();

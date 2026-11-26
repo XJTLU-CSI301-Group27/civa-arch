@@ -65,6 +65,35 @@
   ],
   "symbols": [
     {
+      "type": "edu.xjtlu.civa.core.ui.LocalePrefs",
+      "kind": "class",
+      "owner": "A",
+      "consumers": [
+        "app",
+        "feature-ef"
+      ],
+      "thread": "main",
+      "members": [
+        "String CHINESE",
+        "String ENGLISH",
+        "static void apply(Context context)",
+        "static void set(Context context, String tag)",
+        "static boolean isEnglish(Context context)"
+      ]
+    },
+    {
+      "type": "edu.xjtlu.civa.feature.ef.PreferencesFragment",
+      "kind": "class",
+      "owner": "EF/F",
+      "consumers": [
+        "app"
+      ],
+      "thread": "main",
+      "members": [
+        "PreferencesFragment()"
+      ]
+    },
+    {
       "type": "edu.xjtlu.civa.feature.ac.plan.PlanFragment",
       "kind": "class",
       "owner": "A",

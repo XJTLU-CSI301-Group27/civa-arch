@@ -37,6 +37,9 @@ public final class PlanFragment extends Fragment {
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("M月d日 EEEE", Locale.CHINA);
     private static final PlanMealType[] MEALS =
             {PlanMealType.BREAKFAST, PlanMealType.LUNCH, PlanMealType.DINNER};
+    private enum Mode { PERSONAL, HOUSEHOLD }
+    private static Mode lastMode = Mode.HOUSEHOLD;
+    private Mode mode = lastMode;
 
     private AcHost host;
     private LinearLayout listView;
@@ -56,11 +59,38 @@ public final class PlanFragment extends Fragment {
         listView = view.findViewById(R.id.ac_plan_list);
         subtitle = view.findViewById(R.id.ac_plan_subtitle);
         view.findViewById(R.id.ac_plan_refresh).setOnClickListener(ignored -> load());
+        view.findViewById(R.id.ac_plan_mode_personal).setOnClickListener(ignored -> switchMode(Mode.PERSONAL));
+        view.findViewById(R.id.ac_plan_mode_household).setOnClickListener(ignored -> switchMode(Mode.HOUSEHOLD));
+        paintModes();
         load();
+    }
+
+    private void switchMode(Mode next) {
+        if (mode == next) return;
+        mode = next;
+        lastMode = next;
+        paintModes();
+        load();
+    }
+
+    private void paintModes() {
+        if (!isAdded()) return;
+        paintModeButton(requireView().findViewById(R.id.ac_plan_mode_personal), mode == Mode.PERSONAL);
+        paintModeButton(requireView().findViewById(R.id.ac_plan_mode_household), mode == Mode.HOUSEHOLD);
+    }
+
+    private void paintModeButton(MaterialButton button, boolean selected) {
+        button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                requireContext().getColor(selected ? R.color.ac_catalog_accent : android.R.color.transparent)));
+        button.setTextColor(requireContext().getColor(selected ? android.R.color.white : R.color.ac_catalog_ink));
     }
 
     private void load() {
         if (!isAdded()) return;
+        if (mode == Mode.PERSONAL) {
+            renderPersonal();
+            return;
+        }
         String homeText = host.sessions() == null ? null : host.sessions().currentHouseholdId();
         if (homeText == null) {
             home = null;
@@ -120,6 +150,42 @@ public final class PlanFragment extends Fragment {
                         subtitle.setText(R.string.ac_plan_error);
                     }
                 });
+    }
+
+    private void renderPersonal() {
+        if (listView == null) return;
+        loading = false;
+        listView.removeAllViews();
+        subtitle.setText(R.string.ac_plan_personal_hint);
+        for (int day = 0; day < 14; day++) {
+            LocalDate date = start.plusDays(day);
+            listView.addView(dayHeader(date));
+            List<edu.xjtlu.civa.core.data.PlannedDish> dishes;
+            try {
+                dishes = host.planFor(date);
+            } catch (RuntimeException unavailable) {
+                dishes = List.of();
+            }
+            for (PlanMealType meal : MEALS) {
+                List<String> parts = new ArrayList<>();
+                for (edu.xjtlu.civa.core.data.PlannedDish dish : dishes) {
+                    if (meal.getValue().equals(dish.meal())) parts.add(dish.name());
+                }
+                LinearLayout row = new LinearLayout(requireContext());
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setPadding(dp(10), dp(8), dp(10), dp(8));
+                row.setBackgroundResource(R.drawable.ac_catalog_card);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                params.bottomMargin = dp(4);
+                row.setLayoutParams(params);
+                row.addView(text(mealLabel(meal) + " · "
+                        + (parts.isEmpty() ? getString(R.string.ac_plan_empty) : String.join("、", parts)),
+                        14, R.color.ac_catalog_ink), new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+                listView.addView(row);
+            }
+        }
     }
 
     private void render() {

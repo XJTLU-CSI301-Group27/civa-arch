@@ -12,6 +12,9 @@ import edu.xjtlu.civa.core.data.ApiProvider;
 import edu.xjtlu.civa.core.data.AuthRepository;
 import edu.xjtlu.civa.core.data.SessionStore;
 import edu.xjtlu.civa.feature.ac.AcHost;
+import edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogFragment;
+import edu.xjtlu.civa.feature.ac.diary.DiaryFragment;
+import edu.xjtlu.civa.feature.ac.inventory.InventoryFragment;
 import edu.xjtlu.civa.feature.ac.inventory.InventoryHost;
 import edu.xjtlu.civa.feature.bd.BdHost;
 import edu.xjtlu.civa.feature.ef.HouseholdHost;
@@ -25,6 +28,7 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
     private NavigationBarView bottomNavigation;
     private NavigationRailView railNavigation;
     private boolean railMode;
+    private int checkedTab = R.id.app_today;
     private boolean introShowing;
     private long introStarted;
     private AppIntroView intro;
@@ -41,6 +45,7 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
         CivaWindow.apply(this);
         navigator = new AppNavigator(getSupportFragmentManager(), container.sessions);
         setupNavigation();
+        if (savedInstanceState != null) checkedTab = savedInstanceState.getInt("app.tab", R.id.app_today);
         if (savedInstanceState == null || !restore) navigator.navigate(container.sessions.isLoggedIn() ? Route.TODAY : Route.LOGIN, null);
         else if (!container.sessions.isLoggedIn() && !(getSupportFragmentManager().findFragmentById(R.id.app_content) instanceof LoginFragment)) {
             navigator.navigate(Route.LOGIN, null);
@@ -69,11 +74,22 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
         if (view instanceof android.view.ViewGroup group) for (int i=0;i<group.getChildCount();i++) playWelcome(group.getChildAt(i));
     }
 
+    /** Which bottom/rail item owns the current primary page; sub-pages keep the previous one. */
+    private int tabFor(androidx.fragment.app.Fragment fragment) {
+        if (fragment instanceof edu.xjtlu.civa.feature.bd.BdHomeFragment) return R.id.app_today;
+        if (fragment instanceof RecipeCatalogFragment) return R.id.app_recipes;
+        if (fragment instanceof InventoryFragment) return R.id.app_inventory;
+        if (fragment instanceof DiaryFragment) return R.id.app_diary;
+        if (fragment instanceof edu.xjtlu.civa.feature.ef.ProfileFragment) return R.id.app_profile;
+        return 0;
+    }
+
     private void setupNavigation() {
         bottomNavigation = findViewById(R.id.app_navigation);
         railNavigation = findViewById(R.id.app_navigation_rail);
         NavigationBarView.OnItemSelectedListener listener = item -> {
             int id = item.getItemId();
+            checkedTab = id;
             if (id == R.id.app_today) navigator.navigate(Route.TODAY, null);
             else if (id == R.id.app_recipes) navigator.navigate(Route.RECIPES, null);
             else if (id == R.id.app_inventory) navigator.navigate(Route.INVENTORY, null);
@@ -104,8 +120,9 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
     private void updateChrome(androidx.fragment.app.Fragment fragment) {
         boolean auth = fragment instanceof LoginFragment || fragment instanceof edu.xjtlu.civa.feature.ef.HouseholdFragment || !container.sessions.isLoggedIn();
         setNavigationVisible(!auth);
-        if (fragment instanceof edu.xjtlu.civa.feature.ef.ProfileFragment) checkNavigationItem(R.id.app_profile);
-        else if (fragment instanceof edu.xjtlu.civa.feature.bd.BdHomeFragment) checkNavigationItem(R.id.app_today);
+        int tab = tabFor(fragment);
+        if (tab != 0) checkedTab = tab;
+        checkNavigationItem(checkedTab);
         int dark = androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_welcome_brown);
         int paper = androidx.core.content.ContextCompat.getColor(this,edu.xjtlu.civa.core.ui.R.color.civa_welcome_paper);
         View content=findViewById(android.R.id.content);
@@ -120,7 +137,7 @@ public class MainActivity extends AppCompatActivity implements LoginHost, Househ
         var bars=androidx.core.view.WindowCompat.getInsetsController(getWindow(),getWindow().getDecorView());
         bars.setAppearanceLightStatusBars(!auth && !introShowing); bars.setAppearanceLightNavigationBars(!introShowing);
     }
-    @Override protected void onSaveInstanceState(Bundle state) { state.putBoolean("app.intro.finished",!introShowing); state.putLong("app.intro.started", intro == null ? introStarted : android.os.SystemClock.elapsedRealtime() - intro.playbackMillis()); state.putBoolean("app.intro.voiced", intro != null && intro.hasVoiced()); super.onSaveInstanceState(state); }
+    @Override protected void onSaveInstanceState(Bundle state) { state.putInt("app.tab", checkedTab); state.putBoolean("app.intro.finished",!introShowing); state.putLong("app.intro.started", intro == null ? introStarted : android.os.SystemClock.elapsedRealtime() - intro.playbackMillis()); state.putBoolean("app.intro.voiced", intro != null && intro.hasVoiced()); super.onSaveInstanceState(state); }
 
     @Override public Object onRetainCustomNonConfigurationInstance() { return Boolean.TRUE; }
 

@@ -17,6 +17,29 @@
             android:layout_height="wrap_content"
             android:text="@string/ac_plan_title" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/ac_plan_mode_personal"
+                style="@style/CivaWidget.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/ac_plan_personal" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/ac_plan_mode_household"
+                style="@style/CivaWidget.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/ac_plan_household" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/ac_plan_subtitle"
             android:layout_width="match_parent"

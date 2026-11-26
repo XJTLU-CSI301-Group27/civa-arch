@@ -58,6 +58,10 @@ public final class RecipeCatalogFragment extends Fragment {
     private boolean highProtein, loading, updatingChips;
     private int page;
     private long total;
+    // Survives view recreation (navigator replaces fragments) and rotation.
+    private static Source lastSource = Source.PUBLIC;
+    private static String lastQuery = "", lastCategory = "";
+    private static boolean lastHighProtein;
 
     @Nullable @Override public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState) {
@@ -80,6 +84,16 @@ public final class RecipeCatalogFragment extends Fragment {
         emptyText = view.findViewById(R.id.ac_catalog_empty_text);
 
         int columns = getResources().getConfiguration().screenWidthDp >= 600 ? 3 : 2;
+        source = lastSource;
+        query = lastQuery;
+        category = lastCategory;
+        highProtein = lastHighProtein;
+        search.setText(query);
+        create.setVisibility(source == Source.PERSONAL || source == Source.HOUSEHOLD
+                ? View.VISIBLE : View.INVISIBLE);
+        search.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
+        chips.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
+        catClearance.setVisibility(source == Source.FAVORITES ? View.VISIBLE : View.GONE);
         grid.setLayoutManager(new GridLayoutManager(requireContext(), columns));
         grid.setAdapter(adapter);
         more.setOnClickListener(ignored -> load(false));
@@ -96,6 +110,7 @@ public final class RecipeCatalogFragment extends Fragment {
                 debounce.removeCallbacksAndMessages(null);
                 debounce.postDelayed(() -> {
                     query = s.toString().trim();
+                    lastQuery = query;
                     load(true);
                 }, 350);
             }
@@ -110,7 +125,7 @@ public final class RecipeCatalogFragment extends Fragment {
             chip.setText(entry[0]);
             chip.setCheckable(true);
             chip.setTag(entry[1]);
-            chip.setChecked("PUBLIC".equals(entry[1]));
+            chip.setChecked(entry[1].equals(source.name()));
             chip.setOnCheckedChangeListener((button, checked) -> {
                 if (updatingChips || !checked) return;
                 updatingChips = true;
@@ -120,6 +135,7 @@ public final class RecipeCatalogFragment extends Fragment {
                 }
                 updatingChips = false;
                 source = Source.valueOf(entry[1]);
+                lastSource = source;
                 search.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
                 chips.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
                 catClearance.setVisibility(source == Source.FAVORITES ? View.VISIBLE : View.GONE);
@@ -131,7 +147,8 @@ public final class RecipeCatalogFragment extends Fragment {
     }
 
     private void buildCategoryChips() {
-        for (String name : CATEGORIES) {
+        for (int index = 0; index < CATEGORIES.length; index++) {
+            String name = CATEGORIES[index];
             Chip chip = new Chip(requireContext());
             chip.setText(name);
             chip.setCheckable(true);
@@ -164,9 +181,11 @@ public final class RecipeCatalogFragment extends Fragment {
         Chip protein = new Chip(requireContext());
         protein.setText("高蛋白");
         protein.setCheckable(true);
+        protein.setChecked(highProtein);
         protein.setOnCheckedChangeListener((button, checked) -> {
             if (updatingChips) return;
             highProtein = checked;
+            lastHighProtein = highProtein;
             load(true);
         });
         chips.addView(protein);

@@ -29,6 +29,10 @@ public class AppWiringTest {
         assertNavigatorDependsOn("edu.xjtlu.civa.feature.ac.diary.DiaryFragment");
     }
 
+    @Test public void preferencesRouteIsWiredToThePreferencesFragment() {
+        assertNavigatorDependsOn("edu.xjtlu.civa.feature.ef.PreferencesFragment");
+    }
+
     @Test public void profileRouteIsWiredToTheProfileFragment() {
         assertNavigatorDependsOn("edu.xjtlu.civa.feature.ef.ProfileFragment");
     }

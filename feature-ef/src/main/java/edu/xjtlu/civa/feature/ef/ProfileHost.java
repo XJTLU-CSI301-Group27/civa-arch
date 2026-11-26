@@ -1,5 +1,7 @@
 package edu.xjtlu.civa.feature.ef;
 
+import edu.xjtlu.civa.core.data.ApiCalls;
+import edu.xjtlu.civa.core.data.ApiProvider;
 import edu.xjtlu.civa.core.data.AuthRepository;
 import edu.xjtlu.civa.core.data.SessionStore;
 import edu.xjtlu.civa.core.ui.NavHost;
@@ -9,4 +11,8 @@ public interface ProfileHost extends NavHost {
     SessionStore sessions();
 
     AuthRepository authRepository();
+
+    ApiProvider api();
+
+    ApiCalls calls();
 }

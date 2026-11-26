@@ -14,6 +14,7 @@ import edu.xjtlu.civa.feature.ac.inventory.InventoryFragment;
 import edu.xjtlu.civa.feature.bd.BdHomeFragment;
 import edu.xjtlu.civa.feature.ef.HouseholdFragment;
 import edu.xjtlu.civa.feature.ef.LoginFragment;
+import edu.xjtlu.civa.feature.ef.PreferencesFragment;
 import edu.xjtlu.civa.feature.ef.ProfileFragment;
 
 final class AppNavigator implements NavHost {
@@ -60,6 +61,7 @@ final class AppNavigator implements NavHost {
                         : PersonalRecipeEditorFragment.create(entityId))
                 : route == Route.PLAN ? new PlanFragment()
                 : route == Route.DIARY ? new DiaryFragment()
+                : route == Route.PREFERENCES ? new PreferencesFragment()
                 : route == Route.PROFILE ? new ProfileFragment()
                 : route == Route.INVENTORY ? new InventoryFragment()
                 : PlaceholderFragment.create(title, entityId);

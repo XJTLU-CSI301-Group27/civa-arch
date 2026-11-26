@@ -11,7 +11,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.button.MaterialButton;
+import edu.xjtlu.civa.api.model.CreateIngredientRequest;
 import edu.xjtlu.civa.api.model.CreateRecipeRequest;
+import edu.xjtlu.civa.api.model.Unit;
 import edu.xjtlu.civa.api.model.Ingredient;
 import edu.xjtlu.civa.api.model.IngredientPage;
 import edu.xjtlu.civa.api.model.Recipe;
@@ -91,6 +93,34 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                 });
     }
 
+    /** Empty fridge or missing dictionary entry must never block creating a family recipe. */
+    private void registerMissingIngredients(List<String> names, int index) {
+        if (index >= names.size()) {
+            loadDictionary(0, new ArrayList<>(), () -> {
+                save.setEnabled(true);
+                submit();
+            });
+            return;
+        }
+        String line = names.get(index);
+        String name = line.replaceAll("\\s+[0-9]+(\\.[0-9]+)?$", "").trim();
+        if (name.isEmpty()) name = line;
+        Unit unit = HouseholdRecipes.inferUnit(line);
+        host.calls().enqueue(host.api().inventory().createIngredient(UUID.randomUUID(),
+                        new CreateIngredientRequest().name(name).unit(unit)),
+                new ApiCallback<edu.xjtlu.civa.api.model.Ingredient>() {
+                    @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.Ingredient value) {
+                        if (!isAdded()) return;
+                        registerMissingIngredients(names, index + 1);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        toast(R.string.ac_catalog_ingredient_unknown);
+                    }
+                });
+    }
+
     private void loadExisting() {
         host.calls().enqueue(host.api().recipe().getRecipe(home, recipeId), new ApiCallback<Recipe>() {
             @Override public void onSuccess(@Nullable Recipe value) {
@@ -119,9 +149,16 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
 
     private void submit() {
         if (home == null) { toast(R.string.ac_catalog_home_missing); return; }
+        List<String> ingredientLines = PersonalRecipeEditorFragment.lines(ingredients.getText().toString());
+        List<String> unresolved = HouseholdRecipes.unresolvedNames(ingredientLines,
+                HouseholdRecipes.byName(dictionary));
+        if (!unresolved.isEmpty()) {
+            registerMissingIngredients(unresolved, 0);
+            return;
+        }
         CreateRecipeRequest request = HouseholdRecipes.request(name.getText().toString().trim(),
                 PersonalRecipeEditorFragment.lines(steps.getText().toString()),
-                PersonalRecipeEditorFragment.lines(ingredients.getText().toString()),
+                ingredientLines,
                 HouseholdRecipes.byName(dictionary));
         if (request == null) { toast(R.string.ac_catalog_ingredient_unknown); return; }
         save.setEnabled(false);

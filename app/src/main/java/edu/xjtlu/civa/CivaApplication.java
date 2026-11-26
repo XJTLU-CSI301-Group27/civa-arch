@@ -7,6 +7,7 @@ public final class CivaApplication extends Application {
 
     @Override public void onCreate() {
         super.onCreate();
+        edu.xjtlu.civa.core.ui.LocalePrefs.apply(this);
         container = new AppContainer(this, BuildConfig.API_BASE_URL);
     }
 
