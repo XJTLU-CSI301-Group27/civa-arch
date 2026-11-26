@@ -56,6 +56,7 @@ final class ImportReviewDialog {
         final TextView error;
         final Listener listener;
         AlertDialog dialog;
+        boolean confirmed;
 
         State(Context context, List<IngredientImportParser.Line> lines, List<Ingredient> dictionary,
               String initialYield, Integer initialDuration, Listener listener) {
@@ -101,6 +102,7 @@ final class ImportReviewDialog {
         }
 
         private void submit() {
+            if (confirmed) return;
             error.setVisibility(View.GONE);
             BigDecimal yieldValue = IngredientImportParser.number(yield.getText().toString());
             if (yieldValue == null || yieldValue.signum() <= 0) {
@@ -121,28 +123,36 @@ final class ImportReviewDialog {
 
             List<RecipeIngredient> ingredients = new ArrayList<>();
             Set<UUID> ids = new HashSet<>();
+            int invalid = 0;
+            Row firstInvalid = null;
             for (Row row : rows) {
                 if (row.removed) continue;
-                int selected = row.spinner.getSelectedItemPosition();
-                if (selected <= 0 || selected > dictionary.size()) {
-                    fail();
-                    return;
+                int reason = row.validate(ids);
+                if (reason != 0) {
+                    row.markInvalid(reason);
+                    invalid++;
+                    if (firstInvalid == null) firstInvalid = row;
+                } else {
+                    Ingredient ingredient = row.selected();
+                    BigDecimal quantity = IngredientImportParser.number(row.quantity.getText().toString());
+                    ingredients.add(new RecipeIngredient().ingredientId(ingredient.getId())
+                            .quantity(IngredientImportParser.text(quantity))
+                            .unit(ingredient.getUnit()).trackStock(true));
                 }
-                Ingredient ingredient = dictionary.get(selected - 1);
-                BigDecimal quantity = IngredientImportParser.number(row.quantity.getText().toString());
-                if (quantity == null || quantity.signum() <= 0 || !ids.add(ingredient.getId())) {
-                    fail();
-                    return;
-                }
-                ingredients.add(new RecipeIngredient().ingredientId(ingredient.getId())
-                        .quantity(IngredientImportParser.text(quantity))
-                        .unit(ingredient.getUnit()).trackStock(true));
+            }
+            if (invalid > 0) {
+                error.setText(context.getString(R.string.ac_import_invalid_rows, invalid));
+                error.setVisibility(View.VISIBLE);
+                if (firstInvalid != null) firstInvalid.root.requestFocus();
+                return;
             }
             if (ingredients.isEmpty() || dictionary.isEmpty()) {
-                fail();
+                error.setText(R.string.ac_import_no_rows);
+                error.setVisibility(View.VISIBLE);
                 return;
             }
             String confirmedYield = IngredientImportParser.text(yieldValue);
+            confirmed = true;
             dialog.dismiss();
             listener.onConfirm(ingredients, confirmedYield, minutes);
         }
@@ -233,6 +243,7 @@ final class ImportReviewDialog {
 
         private void updateReason(Context context) {
             int selected = spinner.getSelectedItemPosition();
+            reason.setTextColor(android.graphics.Color.GRAY);
             if (selected <= 0) {
                 reason.setText(initialReason);
                 return;
@@ -245,6 +256,29 @@ final class ImportReviewDialog {
             BigDecimal number = IngredientImportParser.number(value);
             reason.setText(number == null || number.signum() <= 0
                     ? R.string.ac_import_reason_invalid_quantity : R.string.ac_import_recognized);
+        }
+
+        Ingredient selected() {
+            int selected = spinner.getSelectedItemPosition();
+            return selected > 0 && selected - 1 < dictionary.size() ? dictionary.get(selected - 1) : null;
+        }
+
+        int validate(Set<UUID> ids) {
+            Ingredient ingredient = selected();
+            if (ingredient == null || ingredient.getUnit() == null) {
+                return R.string.ac_import_reason_no_ingredient;
+            }
+            String value = quantity.getText().toString().trim();
+            if (value.isEmpty()) return R.string.ac_import_reason_missing_quantity;
+            BigDecimal number = IngredientImportParser.number(value);
+            if (number == null || number.signum() <= 0) return R.string.ac_import_reason_invalid_quantity;
+            if (!ids.add(ingredient.getId())) return R.string.ac_import_reason_duplicate;
+            return 0;
+        }
+
+        void markInvalid(int reason) {
+            this.reason.setText(reason);
+            this.reason.setTextColor(0xFFB00020);
         }
 
         private void toggleRemoved() {

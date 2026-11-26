@@ -45,7 +45,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
     private UUID recipeId;
     private Recipe existing;
     private List<Ingredient> dictionary = List.of();
-    private EditText name, steps, ingredients;
+    private EditText name, steps, ingredients, yield, duration;
     private TextView units;
     private MaterialButton save, pickImage, removeImage;
     private ImageView image;
@@ -75,7 +75,13 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         name = view.findViewById(R.id.ac_household_recipe_name);
         steps = view.findViewById(R.id.ac_household_recipe_steps);
         ingredients = view.findViewById(R.id.ac_household_recipe_ingredients);
+        yield = view.findViewById(R.id.ac_household_recipe_yield);
+        duration = view.findViewById(R.id.ac_household_recipe_duration);
         units = view.findViewById(R.id.ac_household_recipe_units);
+        if (recipeId == null) {
+            yield.setText("2");
+            duration.setText("30");
+        }
         save = view.findViewById(R.id.ac_household_recipe_save);
         image = view.findViewById(R.id.ac_household_recipe_image);
         pickImage = view.findViewById(R.id.ac_household_recipe_image_pick);
@@ -153,6 +159,8 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                 if (value == null) return;
                 existing = value;
                 name.setText(value.getName());
+                yield.setText(value.getYieldServings());
+                duration.setText(String.valueOf(value.getDurationMinutes()));
                 steps.setText(String.join("\n", value.getSteps()));
                 Map<UUID, String> names = HouseholdRecipes.names(dictionary);
                 List<String> lines = new ArrayList<>();
@@ -206,6 +214,17 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
     private void submit() {
         if (home == null) { toast(R.string.ac_catalog_home_missing); return; }
         if (uploading) { toast(R.string.ac_editor_image_uploading); return; }
+        java.math.BigDecimal yieldValue = IngredientImportParser.number(yield.getText().toString());
+        int minutes;
+        try {
+            minutes = Integer.parseInt(duration.getText().toString().trim());
+        } catch (NumberFormatException invalid) {
+            minutes = 0;
+        }
+        if (yieldValue == null || yieldValue.signum() <= 0 || minutes < 1 || minutes > 1440) {
+            toast(R.string.ac_household_recipe_invalid);
+            return;
+        }
         List<String> ingredientLines = PersonalRecipeEditorFragment.lines(ingredients.getText().toString());
         List<String> unresolved = HouseholdRecipes.unresolvedNames(ingredientLines,
                 HouseholdRecipes.byName(dictionary));
@@ -217,8 +236,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                 PersonalRecipeEditorFragment.lines(steps.getText().toString()),
                 ingredientLines,
                 HouseholdRecipes.byName(dictionary),
-                existing == null ? "2" : existing.getYieldServings(),
-                existing == null || existing.getDurationMinutes() == null ? 30 : existing.getDurationMinutes());
+                IngredientImportParser.text(yieldValue), minutes);
         if (request == null) { toast(R.string.ac_household_recipe_invalid); return; }
         request.setImageId(imageId);
         SubmitButton.start(save);

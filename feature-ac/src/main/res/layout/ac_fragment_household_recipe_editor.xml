@@ -33,6 +33,44 @@
             android:textColorHint="@color/civa_muted"
             android:textSize="15sp" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/ac_household_recipe_yield"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/ac_catalog_search"
+                android:hint="@string/ac_editor_yield"
+                android:inputType="numberDecimal"
+                android:maxLines="1"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp"
+                android:textColor="@color/civa_text"
+                android:textColorHint="@color/civa_muted"
+                android:textSize="15sp" />
+
+            <EditText
+                android:id="@+id/ac_household_recipe_duration"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/ac_catalog_search"
+                android:hint="@string/ac_editor_duration"
+                android:inputType="number"
+                android:maxLines="1"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp"
+                android:textColor="@color/civa_text"
+                android:textColorHint="@color/civa_muted"
+                android:textSize="15sp" />
+        </LinearLayout>
+
 
         <TextView
             style="@style/CivaText.Section"

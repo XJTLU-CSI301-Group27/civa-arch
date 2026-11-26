@@ -67,6 +67,8 @@
     <string name="ac_household_recipe_unit_hint">Enter quantities in the ingredient dictionary unit (g/ml/count).</string>
     <string name="ac_household_recipe_units">Units: %1$s</string>
     <string name="ac_household_recipe_invalid">Enter “name positive quantity” on every line; blank and 0 are not allowed.</string>
+    <string name="ac_editor_yield">Servings</string>
+    <string name="ac_editor_duration">Minutes</string>
     <string name="ac_import_title">Import to household recipes</string>
     <string name="ac_import_hint">Check the ingredients and servings; highlighted items must be corrected before import.</string>
     <string name="ac_import_source">Original: %1$s</string>
@@ -78,6 +80,8 @@
     <string name="ac_import_restore">Restore</string>
     <string name="ac_import_confirm">Import</string>
     <string name="ac_import_invalid">Fix the highlighted ingredients, servings and time.</string>
+    <string name="ac_import_invalid_rows">%1$d ingredient row(s) still need correction.</string>
+    <string name="ac_import_no_rows">Keep at least one ingredient.</string>
     <string name="ac_import_no_ingredients">There are no ingredients to import.</string>
     <string name="ac_import_recognized">Recognized</string>
     <string name="ac_import_converted">Converted to %1$s</string>

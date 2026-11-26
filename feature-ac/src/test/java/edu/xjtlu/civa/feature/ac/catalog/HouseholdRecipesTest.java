@@ -52,6 +52,15 @@ public class HouseholdRecipesTest {
         assertEquals(Integer.valueOf(45), request.getDurationMinutes());
     }
 
+    @Test public void invalidYieldOrDurationIsRejected() {
+        assertNull(HouseholdRecipes.request("番茄炒蛋", List.of("做"), List.of("鸡蛋 3"),
+                dictionary(), "0", 30));
+        assertNull(HouseholdRecipes.request("番茄炒蛋", List.of("做"), List.of("鸡蛋 3"),
+                dictionary(), "2", 0));
+        assertNull(HouseholdRecipes.request("番茄炒蛋", List.of("做"), List.of("鸡蛋 3"),
+                dictionary(), "2", 1441));
+    }
+
     @Test public void verifiedRequestRejectsAUnitThatDoesNotMatchTheDictionary() {
         Ingredient egg = new Ingredient().id(eggId).name("鸡蛋").unit(Unit.COUNT).active(true);
         RecipeIngredient wrong = new RecipeIngredient().ingredientId(eggId).quantity("2")
