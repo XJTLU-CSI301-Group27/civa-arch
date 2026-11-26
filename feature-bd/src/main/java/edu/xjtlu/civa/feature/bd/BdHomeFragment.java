@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.datepicker.MaterialDatePicker;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -32,10 +33,12 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public final class BdHomeFragment extends Fragment {
@@ -51,7 +54,8 @@ public final class BdHomeFragment extends Fragment {
     private String householdLoadedDate, householdLoadedHome, householdSignature = "";
     private final Map<String, List<String>> householdDishes = new LinkedHashMap<>();
     private final Map<String, Boolean> householdLocked = new LinkedHashMap<>();
-    private final Map<UUID, String> recipeNames = new HashMap<>();
+    private final Map<UUID, String> recipeNames = new java.util.LinkedHashMap<>();
+    private final Map<String, edu.xjtlu.civa.api.model.PlanSlot> householdSlots = new LinkedHashMap<>();
     private boolean recipesLoaded;
     private String rendered, shownError;
     private boolean flowOpening;
@@ -309,6 +313,7 @@ public final class BdHomeFragment extends Fragment {
                         householdLoading = false;
                         householdDishes.clear();
                         householdLocked.clear();
+                        householdSlots.clear();
                         if (value != null && value.getItems() != null) {
                             for (edu.xjtlu.civa.api.model.PlanSlot slot : value.getItems()) {
                                 List<String> names = new ArrayList<>();
@@ -321,6 +326,7 @@ public final class BdHomeFragment extends Fragment {
                                 String meal = slot.getMealType().getValue();
                                 householdDishes.put(meal, names);
                                 householdLocked.put(meal, Boolean.TRUE.equals(slot.getLocked()));
+                                householdSlots.put(meal, slot);
                             }
                         }
                         householdLoadedDate = date;
@@ -352,7 +358,10 @@ public final class BdHomeFragment extends Fragment {
             MaterialButton add = view.findViewById(buttonId);
             items.removeAllViews();
             List<String> names = householdDishes.get(meal[0]);
-            add.setVisibility(View.GONE);
+            add.setVisibility(View.VISIBLE);
+            add.setEnabled(true);
+            add.setOnClickListener(ignored -> addHouseholdDish(meal[0]));
+            add.setText(R.string.bd_home_add_dish);
             boolean locked = Boolean.TRUE.equals(householdLocked.get(meal[0]));
             if (names != null) {
                 for (String name : names) {
@@ -387,6 +396,86 @@ public final class BdHomeFragment extends Fragment {
         } else {
             showScopeStatus(0);
         }
+    }
+
+    private void addHouseholdDish(String meal) {
+        if (householdId == null) {
+            Feedback(getString(R.string.bd_home_household_no_home), true);
+            return;
+        }
+        final edu.xjtlu.civa.api.model.PlanSlot slot = householdSlots.get(meal);
+        if (slot != null && Boolean.TRUE.equals(slot.getLocked())) {
+            Feedback(getString(R.string.bd_home_household_locked_hint), true);
+            return;
+        }
+        if (recipeNames.isEmpty()) {
+            Feedback(getString(R.string.bd_home_household_no_recipes), true);
+            return;
+        }
+        Set<UUID> used = new HashSet<>();
+        List<UUID> existing = new ArrayList<>();
+        if (slot != null && slot.getItems() != null) {
+            for (edu.xjtlu.civa.api.model.PlanItem item : slot.getItems()) {
+                used.add(item.getRecipeId());
+                existing.add(item.getRecipeId());
+            }
+        }
+        if (existing.size() >= 10) {
+            Feedback(getString(R.string.bd_home_household_add_full), true);
+            return;
+        }
+        List<UUID> choices = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+        for (Map.Entry<UUID, String> entry : recipeNames.entrySet()) {
+            if (used.contains(entry.getKey())) continue;
+            choices.add(entry.getKey());
+            labels.add(entry.getValue());
+        }
+        if (choices.isEmpty()) {
+            Feedback(getString(R.string.bd_home_household_add_all_used), true);
+            return;
+        }
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.bd_home_household_add_title)
+                .setItems(labels.toArray(new String[0]), (dialog, which) ->
+                        appendHouseholdDish(meal, slot, choices.get(which), labels.get(which)))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void appendHouseholdDish(String meal, @Nullable edu.xjtlu.civa.api.model.PlanSlot slot,
+                                      UUID recipeId, String recipeName) {
+        List<edu.xjtlu.civa.api.model.PlanItem> items = new ArrayList<>();
+        if (slot != null && slot.getItems() != null) items.addAll(slot.getItems());
+        items.add(new edu.xjtlu.civa.api.model.PlanItem().recipeId(recipeId).servings("1"));
+        BdHost host = (BdHost) requireActivity();
+        host.calls().enqueue(host.api().planning().replacePlanSlot(householdId, model.date.toString(),
+                        edu.xjtlu.civa.api.model.PlanMealType.valueOf(meal),
+                        new edu.xjtlu.civa.api.model.ReplacePlanSlotRequest().items(items)
+                                .expectedVersion(slot == null ? 0L : slot.getVersion())),
+                new ApiCallback<edu.xjtlu.civa.api.model.PlanSlot>() {
+                    @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.PlanSlot value) {
+                        if (!isAdded()) return;
+                        householdLoadedDate = null;
+                        householdSignature = "";
+                        loadHouseholdIfNeeded();
+                        render();
+                        Feedback(getString(R.string.bd_home_household_added, recipeName), false);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        householdLoadedDate = null;
+                        householdSignature = "";
+                        loadHouseholdIfNeeded();
+                        render();
+                        Feedback(getString(R.string.bd_home_household_add_failed), true);
+                    }
+                });
+    }
+
+    private void Feedback(String message, boolean error) {
+        edu.xjtlu.civa.core.ui.Feedback.show(requireActivity(), message, error);
     }
 
     private void renderScopeHeader(View view) {

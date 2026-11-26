@@ -33,4 +33,11 @@
     <string name="bd_home_household_locked">Locked</string>
     <string name="bd_home_household_open_plan">Adjust in Plan</string>
     <string name="bd_home_household_unknown_dish">Unknown recipe</string>
+    <string name="bd_home_household_add_title">Add to household plan</string>
+    <string name="bd_home_household_locked_hint">This meal is locked. Unlock it in Plan first.</string>
+    <string name="bd_home_household_no_recipes">No household recipes yet. Create one on the Recipes page first.</string>
+    <string name="bd_home_household_added">Added %1$s to the household plan</string>
+    <string name="bd_home_household_add_failed">Could not add the dish, try again later</string>
+    <string name="bd_home_household_add_full">This meal is already full</string>
+    <string name="bd_home_household_add_all_used">All of these dishes are already planned</string>
 </resources>
