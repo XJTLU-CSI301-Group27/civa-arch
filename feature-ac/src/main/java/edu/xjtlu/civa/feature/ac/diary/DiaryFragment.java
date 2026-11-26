@@ -17,7 +17,14 @@ import edu.xjtlu.civa.api.model.CookingEvent;
 import edu.xjtlu.civa.api.model.CookingEventPage;
 import edu.xjtlu.civa.api.model.CookingPreview;
 import edu.xjtlu.civa.api.model.CookingPreviewRequest;
+import edu.xjtlu.civa.api.model.ChangeReason;
 import edu.xjtlu.civa.api.model.ConfirmCookingRequest;
+import edu.xjtlu.civa.api.model.InventoryBatch;
+import edu.xjtlu.civa.api.model.InventoryBatchPage;
+import edu.xjtlu.civa.api.model.InventoryChangeRequest;
+import edu.xjtlu.civa.api.model.NutritionBasis;
+import edu.xjtlu.civa.api.model.NutritionEstimate;
+import edu.xjtlu.civa.api.model.NutritionEstimateRequest;
 import edu.xjtlu.civa.api.model.CreateMealEntryRequest;
 import edu.xjtlu.civa.api.model.DaySummary;
 import edu.xjtlu.civa.api.model.Ingredient;
@@ -88,7 +95,7 @@ public final class DiaryFragment extends Fragment {
             selected = LocalDate.now();
             loadMonth();
         });
-        view.findViewById(R.id.ac_diary_add).setOnClickListener(ignored -> editEntry(null, null));
+        view.findViewById(R.id.ac_diary_add).setOnClickListener(ignored -> chooseScenario());
         loadMonth();
         loadCooking();
     }
@@ -570,6 +577,231 @@ public final class DiaryFragment extends Fragment {
         row.addView(kcal);
         row.setOnClickListener(ignored -> editEntry(entry, null));
         return row;
+    }
+
+    /** First decision: eating at home (fridge ingredients) or outside (free input). */
+    private void chooseScenario() {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.ac_diary_new)
+                .setItems(new String[]{getString(R.string.ac_diary_at_home),
+                        getString(R.string.ac_diary_outside)}, (dialog, which) -> {
+                    if (which == 0) addHomeMeal();
+                    else editEntry(null, null);
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /** At home: only fridge batches can be picked, and the used quantities are consumed. */
+    private void addHomeMeal() {
+        if (!isAdded()) return;
+        String homeText = host.sessions() == null ? null : host.sessions().currentHouseholdId();
+        if (homeText == null) {
+            toast(R.string.ac_diary_cooking_no_home);
+            return;
+        }
+        UUID home = UUID.fromString(homeText);
+        ensureIngredientNames(() -> host.calls().enqueue(
+                host.api().inventory().listInventoryBatches(home, null, null, 0, 100),
+                new ApiCallback<InventoryBatchPage>() {
+                    @Override public void onSuccess(@Nullable InventoryBatchPage value) {
+                        if (!isAdded()) return;
+                        List<InventoryBatch> batches = value == null || value.getItems() == null
+                                ? List.of() : value.getItems();
+                        if (batches.isEmpty()) {
+                            toast(R.string.ac_diary_home_empty_fridge);
+                            return;
+                        }
+                        showHomeMealDialog(home, batches);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        toast(R.string.ac_diary_load_error);
+                    }
+                }));
+    }
+
+    private void showHomeMealDialog(UUID home, List<InventoryBatch> batches) {
+        EditText name = field(getString(R.string.ac_diary_home_name_hint));
+        Map<UUID, EditText> amounts = new LinkedHashMap<>();
+        Map<UUID, InventoryBatch> byId = new LinkedHashMap<>();
+        LinearLayout list = new LinearLayout(requireContext());
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.addView(line(getString(R.string.ac_diary_home_ingredients_hint), 12, R.color.ac_catalog_muted));
+        for (InventoryBatch batch : batches) {
+            String ingredient = ingredientNames.getOrDefault(batch.getIngredientId(), "食材");
+            String label = ingredient + " · " + batch.getQuantity() + " " + batch.getUnit().getValue()
+                    + (batch.getExpiresOn() == null ? "" : " · 到期 " + batch.getExpiresOn());
+            com.google.android.material.checkbox.MaterialCheckBox check =
+                    new com.google.android.material.checkbox.MaterialCheckBox(requireContext());
+            check.setText(label);
+            check.setTextSize(13);
+            EditText amount = new EditText(requireContext());
+            amount.setHint(R.string.ac_diary_home_amount_hint);
+            amount.setTextSize(13);
+            amount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+            amount.setBackgroundResource(R.drawable.ac_catalog_search);
+            amount.setPadding(dp(10), dp(6), dp(10), dp(6));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            params.topMargin = dp(4);
+            amount.setLayoutParams(params);
+            amount.setVisibility(View.GONE);
+            check.setOnCheckedChangeListener((button, checked) -> {
+                amount.setVisibility(checked ? View.VISIBLE : View.GONE);
+                if (checked && amount.getText().toString().trim().isEmpty()) {
+                    amount.setText(batch.getQuantity());
+                }
+            });
+            list.addView(check);
+            list.addView(amount);
+            amounts.put(batch.getId(), amount);
+            byId.put(batch.getId(), batch);
+        }
+        android.widget.ScrollView scroll = new android.widget.ScrollView(requireContext());
+        scroll.addView(list);
+
+        LinearLayout rootView = new LinearLayout(requireContext());
+        rootView.setOrientation(LinearLayout.VERTICAL);
+        rootView.setPadding(dp(20), dp(6), dp(20), dp(6));
+        rootView.addView(name);
+        rootView.addView(scroll);
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.ac_diary_at_home)
+                .setView(rootView)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.ac_diary_save, (dialog, which) -> {
+                    String dish = name.getText().toString().trim();
+                    if (dish.isEmpty()) {
+                        toast(R.string.ac_diary_invalid);
+                        return;
+                    }
+                    List<InventoryBatch> picked = new ArrayList<>();
+                    List<BigDecimal> used = new ArrayList<>();
+                    List<String> lines = new ArrayList<>();
+                    for (Map.Entry<UUID, InventoryBatch> entry : byId.entrySet()) {
+                        InventoryBatch batch = entry.getValue();
+                        String text = amounts.get(batch.getId()).getText().toString().trim();
+                        if (!amounts.get(batch.getId()).isShown() || text.isEmpty()) continue;
+                        BigDecimal amount = decimal(text);
+                        if (amount == null || amount.signum() <= 0) {
+                            toast(R.string.ac_diary_invalid);
+                            return;
+                        }
+                        BigDecimal available = decimal(batch.getQuantity());
+                        if (available == null || amount.compareTo(available) > 0) {
+                            toast(R.string.ac_diary_home_too_much);
+                            return;
+                        }
+                        picked.add(batch);
+                        used.add(amount);
+                        lines.add(ingredientNames.getOrDefault(batch.getIngredientId(), "食材")
+                                + " " + plain(amount) + " " + batch.getUnit().getValue());
+                    }
+                    if (picked.isEmpty()) {
+                        toast(R.string.ac_diary_home_pick);
+                        return;
+                    }
+                    consumeThenRecord(home, dish, picked, used, lines);
+                })
+                .show();
+    }
+
+    private void consumeThenRecord(UUID home, String dish, List<InventoryBatch> batches,
+                                   List<BigDecimal> used, List<String> lines) {
+        consumeBatch(home, dish, batches, used, lines, 0);
+    }
+
+    private void consumeBatch(UUID home, String dish, List<InventoryBatch> batches,
+                              List<BigDecimal> used, List<String> lines, int index) {
+        if (!isAdded()) return;
+        if (index >= batches.size()) {
+            estimateAndRecord(dish, lines);
+            return;
+        }
+        InventoryBatch batch = batches.get(index);
+        BigDecimal before = decimal(batch.getQuantity());
+        BigDecimal after = (before == null ? BigDecimal.ZERO : before).subtract(used.get(index));
+        InventoryChangeRequest request = new InventoryChangeRequest()
+                .afterQuantity(plain(after.max(BigDecimal.ZERO)))
+                .reason(ChangeReason.CONSUME)
+                .expectedVersion(batch.getVersion());
+        final int next = index + 1;
+        host.calls().enqueue(host.api().inventory().changeInventory(home, batch.getId(),
+                        UUID.randomUUID(), request), new ApiCallback<edu.xjtlu.civa.api.model.InventoryMovement>() {
+                    @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.InventoryMovement value) {
+                        if (!isAdded()) return;
+                        consumeBatch(home, dish, batches, used, lines, next);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        toast(R.string.ac_diary_home_consume_failed);
+                    }
+                });
+    }
+
+    /** Same idea as the today page: ask the server AI for a per-100g estimate, unknown if unavailable. */
+    private void estimateAndRecord(String dish, List<String> lines) {
+        NutritionEstimateRequest request = new NutritionEstimateRequest().name(dish).ingredients(lines);
+        host.calls().enqueue(host.api().nutrition().estimateNutrition(request),
+                new ApiCallback<NutritionEstimate>() {
+                    @Override public void onSuccess(@Nullable NutritionEstimate value) {
+                        if (!isAdded()) return;
+                        BigDecimal kcal = null;
+                        if (value != null && value.getBasis() == NutritionBasis.PER_100_G
+                                && value.getEnergyKcal() != null) {
+                            BigDecimal grams = BigDecimal.ZERO;
+                            for (String line : lines) {
+                                String[] parts = line.split(" ");
+                                if (parts.length >= 2) {
+                                    BigDecimal amount = decimal(parts[1]);
+                                    if (amount != null) grams = grams.add(amount);
+                                }
+                            }
+                            if (grams.signum() > 0) {
+                                kcal = value.getEnergyKcal()
+                                        .multiply(grams)
+                                        .divide(BigDecimal.valueOf(100), 3, RoundingMode.HALF_UP);
+                            }
+                        }
+                        recordHomeMeal(dish, lines, kcal);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        recordHomeMeal(dish, lines, null);
+                    }
+                });
+    }
+
+    private void recordHomeMeal(String dish, List<String> lines, @Nullable BigDecimal kcal) {
+        if (!isAdded()) return;
+        String note = getString(R.string.ac_diary_at_home) + "：" + String.join("、", lines);
+        if (note.length() > 2000) note = note.substring(0, 2000);
+        CreateMealEntryRequest request = new CreateMealEntryRequest()
+                .date(selected.toString())
+                .mealType(EntryMealType.LUNCH)
+                .name(dish)
+                .amount("1")
+                .basis(kcal == null ? KcalBasis.UNKNOWN : KcalBasis.MANUAL)
+                .basisKcal(kcal == null ? null : plain(kcal))
+                .note(note);
+        host.calls().enqueue(host.api().records().createMealEntry(UUID.randomUUID(), request),
+                new ApiCallback<MealEntry>() {
+                    @Override public void onSuccess(@Nullable MealEntry value) {
+                        if (!isAdded()) return;
+                        toast(R.string.ac_diary_saved);
+                        loadMonth();
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        toast(R.string.ac_diary_load_error);
+                    }
+                });
     }
 
     private void editEntry(@Nullable MealEntry entry, @Nullable CookingEvent prefill) {

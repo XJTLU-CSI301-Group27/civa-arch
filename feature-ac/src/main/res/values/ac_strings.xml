@@ -127,6 +127,16 @@
     <string name="ac_diary_plan_failed">操作失败，请重试</string>
     <string name="ac_diary_plan_shortage_title">冰箱缺食材</string>
     <string name="ac_diary_plan_recorded_mark">（已记餐）</string>
+    <!-- Meal scenario: at home (fridge ingredients) or outside -->
+    <string name="ac_diary_at_home">在家吃（用冰箱食材）</string>
+    <string name="ac_diary_outside">在外面吃</string>
+    <string name="ac_diary_home_name_hint">这道菜叫什么</string>
+    <string name="ac_diary_home_ingredients_hint">勾选这次用掉的冰箱食材并填写用量</string>
+    <string name="ac_diary_home_amount_hint">用量</string>
+    <string name="ac_diary_home_empty_fridge">冰箱里还没有食材，先去冰箱添加吧～</string>
+    <string name="ac_diary_home_pick">至少选一样冰箱食材</string>
+    <string name="ac_diary_home_too_much">用量超过了冰箱里现有数量</string>
+    <string name="ac_diary_home_consume_failed">扣减冰箱失败，未记食记</string>
 </resources>
 
 
