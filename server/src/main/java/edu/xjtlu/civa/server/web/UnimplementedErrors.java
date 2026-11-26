@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 class UnimplementedErrors {
-    @ExceptionHandler(UnimplementedController.NotImplemented.class)
+    @ExceptionHandler({UnimplementedController.NotImplemented.class, NotImplementedException.class})
     ResponseEntity<Map<String, Object>> notImplemented(HttpServletRequest request) {
         return ApiExceptionHandler.response(501, "CONTRACT_NOT_IMPLEMENTED", request, new HttpHeaders());
     }
