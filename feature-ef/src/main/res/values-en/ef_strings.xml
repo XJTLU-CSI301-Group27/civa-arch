@@ -104,11 +104,42 @@
 
     <string name="ef_household_close">Close household page</string>
 
-    <string name="ef_household_leave_confirm">Leave the current household? If you are the last member, the household will be closed and its invite code will stop working. Your profile and personal recipes are kept.</string>
+    <string name="ef_household_leave_confirm">Leave this household? Members can leave directly; the owner must transfer ownership first, and a sole owner can dissolve the household. Your profile and personal recipes are kept.</string>
 
     <string name="ef_household_leave_yes">Leave</string>
 
     <string name="ef_household_leave_cancel">Not now</string>
+    <string name="ef_owner_loading">Reading owner…</string>
+    <string name="ef_owner_label">Owner: %1$s</string>
+    <string name="ef_owner_you">Owner: %1$s (you)</string>
+    <string name="ef_owner_pending_claim">Owner: pending confirmation (unclaimed household)</string>
+    <string name="ef_owner_unknown">Owner: unavailable</string>
+    <string name="ef_transfer_hint">You can transfer ownership to another member. It only takes effect after they accept.</string>
+    <string name="ef_transfer_start">Transfer ownership</string>
+    <string name="ef_transfer_waiting">Transfer requested from %1$s. Waiting for them to accept.</string>
+    <string name="ef_transfer_incoming">%1$s invited you to become the new owner.</string>
+    <string name="ef_transfer_accept">Accept</string>
+    <string name="ef_transfer_reject">Reject</string>
+    <string name="ef_transfer_cancel">Cancel request</string>
+    <string name="ef_transfer_pick_title">Choose the new owner</string>
+    <string name="ef_transfer_no_targets">No other active member can take ownership.</string>
+    <string name="ef_transfer_start_confirm">Ownership changes only after the other member accepts. You keep all owner permissions while it is pending.</string>
+    <string name="ef_transfer_accept_confirm">After accepting, you become the household owner and gain household plan management permissions.</string>
+    <string name="ef_transfer_cancel_confirm">After cancelling, the other member will no longer see this request and ownership stays unchanged.</string>
+    <string name="ef_transfer_pending_claim_note">This household has no confirmed owner (PENDING_CLAIM); transfers are unavailable. Contact an administrator.</string>
+    <string name="ef_transfer_completed">Ownership updated.</string>
+    <string name="ef_owner_leave_blocked">Transfer ownership to another member first; then you can leave the household.</string>
+    <string name="ef_owner_leave_pending">A transfer request is waiting for the other member. Wait for them or cancel the request first.</string>
+    <string name="ef_owner_go_transfer">Transfer now</string>
+    <string name="ef_owner_dissolve_confirm">You are the only member. Dissolving closes the household and invalidates its invitation; historical data is kept.</string>
+    <string name="ef_owner_dissolve_yes">Dissolve household</string>
+    <string name="ef_not_owner">Only the household owner can do this.</string>
+    <string name="ef_household_has_members">The household still has other members and cannot be dissolved.</string>
+    <string name="ef_transfer_already_pending">A transfer request is already pending; the page has been refreshed.</string>
+    <string name="ef_transfer_not_pending">This request was already handled or expired; the page has been refreshed.</string>
+    <string name="ef_transfer_missing">The transfer request no longer exists.</string>
+    <string name="ef_transfer_not_target">This request is not addressed to you.</string>
+    <string name="ef_invalid_transfer_target">Choose another active member, not yourself.</string>
 
     <string name="ef_household_version_conflict">Household member info has been updated. Try again.</string>
 

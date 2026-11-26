@@ -3,11 +3,19 @@ package edu.xjtlu.civa.feature.ef;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import edu.xjtlu.civa.api.model.CreateHouseholdRequest;
-import edu.xjtlu.civa.api.model.JoinHouseholdRequest;
+import edu.xjtlu.civa.api.model.CreateOwnershipTransferRequest;
+import edu.xjtlu.civa.api.model.Household;
 import edu.xjtlu.civa.api.model.Invitation;
+import edu.xjtlu.civa.api.model.JoinHouseholdRequest;
+import edu.xjtlu.civa.api.model.Membership;
+import edu.xjtlu.civa.api.model.MembershipPage;
+import edu.xjtlu.civa.api.model.OwnershipTransferRequest;
+import edu.xjtlu.civa.api.model.OwnershipTransferRequestPage;
+import edu.xjtlu.civa.api.model.TransferStatus;
 import edu.xjtlu.civa.api.model.User;
 import edu.xjtlu.civa.core.data.*;
 import edu.xjtlu.civa.core.ui.ApiError;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -23,6 +31,10 @@ final class HouseholdViewModel extends ViewModel {
     final MutableLiveData<String> recovering=new MutableLiveData<>();
     final MutableLiveData<String> householdName=new MutableLiveData<>();
     final MutableLiveData<Invitation> invitation=new MutableLiveData<>();
+    final MutableLiveData<Household> household=new MutableLiveData<>();
+    final MutableLiveData<List<Membership>> members=new MutableLiveData<>(List.of());
+    final MutableLiveData<OwnershipTransferRequest> transfer=new MutableLiveData<>();
+    final MutableLiveData<String> leaveBlocked=new MutableLiveData<>();
     final boolean joined;
     private final ApiProvider api;private final ApiCalls calls;private final AuthRepository auth;private final SessionStore sessions;
     private final String user,home;
@@ -36,16 +48,32 @@ final class HouseholdViewModel extends ViewModel {
         user=sessions.currentUserId();home=sessions.currentHouseholdId();joined=home!=null;
     }
     private boolean current(){return !closed&&Objects.equals(user,sessions.currentUserId())&&Objects.equals(home,sessions.currentHouseholdId());}
+    private UUID homeId(){return UUID.fromString(home);}
+
     void loadDetails() {
-        if(!joined||!current()||detailsLoading)return;
-        detailsLoading=true;
-        calls.enqueue(api.household().getHousehold(UUID.fromString(home)),new ApiCallback<edu.xjtlu.civa.api.model.Household>() {
-            @Override public void onSuccess(edu.xjtlu.civa.api.model.Household value){
-                if(current()&&value!=null){householdVersion=value.getVersion();if(!nameEdited)editedName=value.getName();householdName.setValue(value.getName());}
+        loadHousehold();
+        loadInvitation();
+    }
+
+    private void loadHousehold() {
+        if(!joined||!current())return;
+        calls.enqueue(api.household().getHousehold(homeId()),new ApiCallback<Household>() {
+            @Override public void onSuccess(Household value){
+                if(!current()||value==null)return;
+                householdVersion=value.getVersion();household.setValue(value);
+                if(!nameEdited)editedName=value.getName();
+                householdName.setValue(value.getName());
+                loadMembers();
+                loadTransfer();
             }
             @Override public void onError(ApiError error){if(current())message.setValue(error.code);}
         });
-        calls.enqueue(api.household().getHouseholdInvitation(UUID.fromString(home)),new ApiCallback<Invitation>() {
+    }
+
+    private void loadInvitation() {
+        if(!joined||!current()||detailsLoading)return;
+        detailsLoading=true;
+        calls.enqueue(api.household().getHouseholdInvitation(homeId()),new ApiCallback<Invitation>() {
             @Override public void onSuccess(Invitation value){
                 if(!current())return;detailsLoading=false;
                 if(value==null||value.getCode()==null||!home.equals(value.getHouseholdId().toString())){message.setValue("INVALID_RESPONSE");return;}
@@ -54,6 +82,157 @@ final class HouseholdViewModel extends ViewModel {
             @Override public void onError(ApiError error){if(current()){detailsLoading=false;message.setValue(error.code);}}
         });
     }
+
+    private void loadMembers() {
+        calls.enqueue(api.household().listMembers(homeId(),0,50),new ApiCallback<MembershipPage>() {
+            @Override public void onSuccess(MembershipPage value){
+                if(current()&&value!=null&&value.getItems()!=null)members.setValue(value.getItems());
+            }
+            @Override public void onError(ApiError error){ }
+        });
+    }
+
+    private void loadTransfer() {
+        calls.enqueue(api.household().listOwnershipTransferRequests(homeId(),TransferStatus.PENDING,0,10),
+                new ApiCallback<OwnershipTransferRequestPage>() {
+            @Override public void onSuccess(OwnershipTransferRequestPage value){
+                if(!current())return;
+                transfer.setValue(value==null||value.getItems()==null||value.getItems().isEmpty()?null:value.getItems().get(0));
+            }
+            @Override public void onError(ApiError error){
+                if(current())transfer.setValue(null);
+            }
+        });
+    }
+
+    boolean isOwner() {
+        Household value=household.getValue();
+        String currentUser=sessions.currentUserId();
+        return value!=null&&value.getOwnerUserId()!=null&&currentUser!=null
+                &&value.getOwnerUserId().toString().equals(currentUser);
+    }
+
+    List<Membership> activeMembers() {
+        List<Membership> value=members.getValue();
+        if(value==null)return List.of();
+        List<Membership> result=new ArrayList<>();
+        for(Membership member:value)if(member!=null&&Boolean.TRUE.equals(member.getActive()))result.add(member);
+        return result;
+    }
+
+    List<Membership> transferTargets() {
+        return HouseholdTransferPolicy.targets(activeMembers(), user);
+    }
+
+    void requestTransfer(UUID target) {
+        if(!isOwner()){message.setValue("NOT_HOUSEHOLD_OWNER");return;}
+        if(transfer.getValue()!=null){message.setValue("TRANSFER_ALREADY_PENDING");return;}
+        if(target==null||target.toString().equals(user)||transferTargets().stream().noneMatch(m->target.equals(m.getUserId()))){
+            message.setValue("INVALID_TRANSFER_TARGET");return;
+        }
+        withIntent("requestOwnershipTransfer",target.toString(),()->calls.enqueue(
+                api.household().requestOwnershipTransfer(homeId(),UUID.fromString(pendingKey),
+                        new CreateOwnershipTransferRequest().targetUserId(target)),transferCallback(false)));
+    }
+
+    void acceptTransfer(UUID requestId) {
+        OwnershipTransferRequest value=transfer.getValue();
+        if(value==null||!requestId.equals(value.getId())){message.setValue("TRANSFER_NOT_PENDING");return;}
+        if(value.getTargetUserId()==null||!value.getTargetUserId().toString().equals(user)){message.setValue("NOT_TRANSFER_TARGET");return;}
+        withIntent("acceptOwnershipTransfer",requestId.toString(),()->calls.enqueue(
+                api.household().acceptOwnershipTransfer(homeId(),requestId,UUID.fromString(pendingKey)),
+                transferCallback(false)));
+    }
+
+    void rejectTransfer(UUID requestId) {
+        OwnershipTransferRequest value=transfer.getValue();
+        if(value==null||!requestId.equals(value.getId())){message.setValue("TRANSFER_NOT_PENDING");return;}
+        if(value.getTargetUserId()==null||!value.getTargetUserId().toString().equals(user)){message.setValue("NOT_TRANSFER_TARGET");return;}
+        withIntent("rejectOwnershipTransfer",requestId.toString(),()->calls.enqueue(
+                api.household().rejectOwnershipTransfer(homeId(),requestId,UUID.fromString(pendingKey)),
+                transferCallback(false)));
+    }
+
+    void cancelTransfer(UUID requestId) {
+        OwnershipTransferRequest value=transfer.getValue();
+        if(!isOwner()){message.setValue("NOT_HOUSEHOLD_OWNER");return;}
+        if(value==null||!requestId.equals(value.getId())){message.setValue("TRANSFER_NOT_PENDING");return;}
+        withIntent("cancelOwnershipTransfer",requestId.toString(),()->calls.enqueue(
+                api.household().cancelOwnershipTransfer(homeId(),requestId,UUID.fromString(pendingKey)),
+                transferCallback(false)));
+    }
+
+    void dissolve() {
+        if(!isOwner()){message.setValue("NOT_HOUSEHOLD_OWNER");return;}
+        withIntent("dissolveHousehold","dissolve",()->auth.dissolveHousehold(UUID.fromString(pendingKey),transferCallback(true)));
+    }
+
+    private void withIntent(String operation,String payload,Runnable send) {
+        if(pending||!current())return;
+        if(pendingKey!=null&&!operation.equals(pendingOperation)){message.setValue("RETRY_SAME_OPERATION");return;}
+        pending=true;loading.setValue(true);message.setValue("");
+        if(pendingKey!=null){send.run();return;}
+        pendingKey=UUID.randomUUID().toString();pendingOperation=operation;
+        calls.pendingWrites().record(pendingKey,user,home,operation,payload,null,null,new ApiCallback<Void>() {
+            @Override public void onSuccess(Void ignored){if(current())send.run();}
+            @Override public void onError(ApiError error){if(current()){pendingKey=null;pendingOperation=null;finishError(error.code);}}
+        });
+    }
+
+    private <T> ApiCallback<T> transferCallback(boolean close) {
+        return new ApiCallback<T>() {
+            @Override public void onSuccess(T value){if(close||current())confirmTransfer(close);}
+            @Override public void onError(ApiError error){if(current())transferFailed(error);}
+        };
+    }
+
+    private void confirmTransfer(boolean close) {
+        String key=pendingKey;
+        calls.pendingWrites().confirm(user,key,new ApiCallback<Void>() {
+            @Override public void onSuccess(Void value){finishTransfer(close);}
+            @Override public void onError(ApiError error){finishTransfer(close);}
+        });
+    }
+
+    private void finishTransfer(boolean close) {
+        pendingKey=null;pendingOperation=null;pending=false;loading.setValue(false);recovering.setValue(null);
+        if(close){
+            // Dissolve revokes the session household before this callback, so the page must close
+            // based on the still-signed-in user rather than the now-null household id.
+            if(!closed&&Objects.equals(user,sessions.currentUserId()))left.setValue(true);
+            return;
+        }
+        if(!current())return;
+        message.setValue("TRANSFER_UPDATED");
+        loadHousehold();
+    }
+
+    private void transferFailed(ApiError error) {
+        if(isUncertain(error.code)){pending=false;loading.setValue(false);message.setValue(error.code);return;}
+        String key=pendingKey;
+        calls.pendingWrites().confirm(user,key,new ApiCallback<Void>() {
+            @Override public void onSuccess(Void value){finishTransferError(error.code);}
+            @Override public void onError(ApiError storage){finishTransferError(error.code);}
+        });
+    }
+
+    private void finishTransferError(String code) {
+        if(!current())return;
+        pendingKey=null;pendingOperation=null;pending=false;loading.setValue(false);
+        message.setValue(code);
+        loadHousehold();
+    }
+
+    private static boolean isUncertain(String code) {
+        return "NETWORK_ERROR".equals(code)||"TIMEOUT".equals(code)||"TEMPORARILY_UNAVAILABLE".equals(code);
+    }
+
+    private static boolean isTransferOperation(String operation) {
+        return "requestOwnershipTransfer".equals(operation)||"acceptOwnershipTransfer".equals(operation)
+                ||"rejectOwnershipTransfer".equals(operation)||"cancelOwnershipTransfer".equals(operation)
+                ||"dissolveHousehold".equals(operation);
+    }
+
     void editName(String value) { editedName=value;nameEdited=true; }
     boolean canSaveName() { return joined&&householdVersion!=null&&!pending&&current(); }
     void saveName() {
@@ -61,23 +240,24 @@ final class HouseholdViewModel extends ViewModel {
         String desired=editedName==null?"":editedName.trim();
         if(desired.isEmpty()||desired.codePointCount(0,desired.length())>120){message.setValue("VALIDATION_ERROR");return;}
         long version=householdVersion;pending=true;loading.setValue(true);message.setValue("");
-        calls.enqueue(api.household().renameHousehold(UUID.fromString(home),version,new CreateHouseholdRequest().name(desired)),new ApiCallback<edu.xjtlu.civa.api.model.Household>() {
-            @Override public void onSuccess(edu.xjtlu.civa.api.model.Household value){if(current())renamed(value);}
+        calls.enqueue(api.household().renameHousehold(homeId(),version,new CreateHouseholdRequest().name(desired)),new ApiCallback<Household>() {
+            @Override public void onSuccess(Household value){if(current())renamed(value);}
             @Override public void onError(ApiError error){
                 if(!current())return;
-                if("VERSION_CONFLICT".equals(error.code)||"NETWORK_ERROR".equals(error.code)||"TIMEOUT".equals(error.code)||"TEMPORARILY_UNAVAILABLE".equals(error.code))reconcileName(desired,error.code);
+                if("VERSION_CONFLICT".equals(error.code)||isUncertain(error.code))reconcileName(desired,error.code);
                 else finishError(error.code);
             }
         });
     }
-    private void renamed(edu.xjtlu.civa.api.model.Household value) {
+    private void renamed(Household value) {
         if(value==null||value.getName()==null||value.getVersion()==null){finishError("INVALID_RESPONSE");return;}
         householdVersion=value.getVersion();editedName=value.getName();nameEdited=false;pending=false;
+        household.setValue(value);
         householdName.setValue(value.getName());loading.setValue(false);message.setValue("HOUSEHOLD_NAME_SAVED");
     }
     private void reconcileName(String desired,String originalError) {
-        calls.enqueue(api.household().getHousehold(UUID.fromString(home)),new ApiCallback<edu.xjtlu.civa.api.model.Household>() {
-            @Override public void onSuccess(edu.xjtlu.civa.api.model.Household value){
+        calls.enqueue(api.household().getHousehold(homeId()),new ApiCallback<Household>() {
+            @Override public void onSuccess(Household value){
                 if(!current())return;
                 if(value!=null&&desired.equals(value.getName())){renamed(value);return;}
                 if(value!=null&&value.getVersion()!=null)householdVersion=value.getVersion();
@@ -92,6 +272,13 @@ final class HouseholdViewModel extends ViewModel {
             @Override public void onSuccess(List<PendingWrite> writes) {
                 if(!current()||pending)return;
                 for(PendingWrite write:writes) {
+                    if(isTransferOperation(write.operationId)) {
+                        if(!joined||!Objects.equals(home,write.householdId)){forget(write.key);continue;}
+                        pendingKey=write.key;pendingOperation=write.operationId;
+                        recovering.setValue(write.operationId);
+                        retry(write);
+                        return;
+                    }
                     boolean setup="createHousehold".equals(write.operationId)||"joinHousehold".equals(write.operationId);
                     if("createInvitation".equals(write.operationId)||(joined&&setup)) {forget(write.key);continue;}
                     if(!joined&&setup) {
@@ -104,6 +291,25 @@ final class HouseholdViewModel extends ViewModel {
             @Override public void onError(ApiError error){if(current())message.setValue(error.code);}
         });
     }
+
+    private void retry(PendingWrite write) {
+        pending=true;loading.setValue(true);
+        String payload=write.canonicalPayload;
+        switch(write.operationId) {
+            case "requestOwnershipTransfer" -> calls.enqueue(api.household().requestOwnershipTransfer(homeId(),
+                    UUID.fromString(pendingKey),new CreateOwnershipTransferRequest().targetUserId(UUID.fromString(payload))),
+                    transferCallback(false));
+            case "acceptOwnershipTransfer" -> calls.enqueue(api.household().acceptOwnershipTransfer(homeId(),
+                    UUID.fromString(payload),UUID.fromString(pendingKey)),transferCallback(false));
+            case "rejectOwnershipTransfer" -> calls.enqueue(api.household().rejectOwnershipTransfer(homeId(),
+                    UUID.fromString(payload),UUID.fromString(pendingKey)),transferCallback(false));
+            case "cancelOwnershipTransfer" -> calls.enqueue(api.household().cancelOwnershipTransfer(homeId(),
+                    UUID.fromString(payload),UUID.fromString(pendingKey)),transferCallback(false));
+            case "dissolveHousehold" -> auth.dissolveHousehold(UUID.fromString(pendingKey),transferCallback(true));
+            default -> { pending=false;loading.setValue(false); }
+        }
+    }
+
     void create() {
         if(joined)return;
         String value=name==null?"":name.trim();if(value.isEmpty()){message.setValue("VALIDATION_ERROR");return;}
@@ -146,7 +352,7 @@ final class HouseholdViewModel extends ViewModel {
         });
     }
     private void failed(ApiError error) {
-        if("NETWORK_ERROR".equals(error.code)||"TIMEOUT".equals(error.code)||"TEMPORARILY_UNAVAILABLE".equals(error.code)) {
+        if(isUncertain(error.code)) {
             recovering.setValue(pendingOperation);finishError(error.code);return;
         }
         String key=pendingKey;
@@ -170,7 +376,12 @@ final class HouseholdViewModel extends ViewModel {
         if(pending||!joined||!current())return;pending=true;loading.setValue(true);message.setValue("");
         auth.leaveHousehold(new ApiCallback<Void>() {
             @Override public void onSuccess(Void value){if(!closed&&Objects.equals(user,sessions.currentUserId())){pending=false;loading.setValue(false);left.setValue(true);}}
-            @Override public void onError(ApiError error){if(!closed)finishError(error.code);}
+            @Override public void onError(ApiError error){
+                if(closed||!Objects.equals(user,sessions.currentUserId()))return;
+                pending=false;loading.setValue(false);
+                if("OWNER_MUST_TRANSFER".equals(error.code)||"OWNER_MUST_DISSOLVE".equals(error.code))leaveBlocked.setValue(error.code);
+                else message.setValue(error.code);
+            }
         });
     }
     private void finishError(String error){pending=false;loading.setValue(false);message.setValue(error);}

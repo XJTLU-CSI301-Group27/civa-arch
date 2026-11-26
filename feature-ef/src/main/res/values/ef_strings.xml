@@ -104,11 +104,42 @@
 
     <string name="ef_household_close">关闭家庭页面</string>
 
-    <string name="ef_household_leave_confirm">退出当前家庭？如果你是最后一位成员，这个家庭将注销，邀请码随之失效。个人资料和个人菜谱会保留。</string>
+    <string name="ef_household_leave_confirm">退出当前家庭？普通成员可以直接退出；房主需要先转移房主身份，唯一房主可以解散家庭。个人资料和个人菜谱会保留。</string>
 
     <string name="ef_household_leave_yes">确认退出</string>
 
     <string name="ef_household_leave_cancel">再想想</string>
+    <string name="ef_owner_loading">正在读取房主…</string>
+    <string name="ef_owner_label">房主：%1$s</string>
+    <string name="ef_owner_you">房主：%1$s（你）</string>
+    <string name="ef_owner_pending_claim">房主：待确认（该家庭尚未认领）</string>
+    <string name="ef_owner_unknown">房主：暂时无法读取</string>
+    <string name="ef_transfer_hint">你可以把房主身份转移给其他成员；只有对方接受后才会生效。</string>
+    <string name="ef_transfer_start">发起房主转移</string>
+    <string name="ef_transfer_waiting">已向 %1$s 发起转移，等待对方接受。</string>
+    <string name="ef_transfer_incoming">%1$s 邀请你成为新房主。</string>
+    <string name="ef_transfer_accept">接受</string>
+    <string name="ef_transfer_reject">拒绝</string>
+    <string name="ef_transfer_cancel">取消请求</string>
+    <string name="ef_transfer_pick_title">选择新的房主</string>
+    <string name="ef_transfer_no_targets">没有其他有效成员可以接手房主。</string>
+    <string name="ef_transfer_start_confirm">只有对方接受后，房主身份才会转移。等待期间你仍保留全部房主权限。</string>
+    <string name="ef_transfer_accept_confirm">接受后，你将成为该家庭的新房主，并获得家庭计划管理权限。</string>
+    <string name="ef_transfer_cancel_confirm">取消后，对方将不再看到这条请求，房主身份保持不变。</string>
+    <string name="ef_transfer_pending_claim_note">该家庭尚未确认房主（PENDING_CLAIM），暂不支持转移；请联系管理员处理。</string>
+    <string name="ef_transfer_completed">房主身份已更新。</string>
+    <string name="ef_owner_leave_blocked">请先将房主身份转移给其他家庭成员，完成后才能退出家庭。</string>
+    <string name="ef_owner_leave_pending">已有待接受的转移请求，请等待对方处理，或先取消请求。</string>
+    <string name="ef_owner_go_transfer">去转移</string>
+    <string name="ef_owner_dissolve_confirm">你是该家庭唯一成员。解散后家庭将关闭、邀请码失效，历史数据保留。</string>
+    <string name="ef_owner_dissolve_yes">解散家庭</string>
+    <string name="ef_not_owner">仅房主可以执行此操作。</string>
+    <string name="ef_household_has_members">家庭还有其他成员，暂时无法解散。</string>
+    <string name="ef_transfer_already_pending">已存在待处理的转移请求，已为你刷新。</string>
+    <string name="ef_transfer_not_pending">该请求已处理或失效，已为你刷新。</string>
+    <string name="ef_transfer_missing">转移请求不存在或已被取消。</string>
+    <string name="ef_transfer_not_target">这条请求不是发给你的，无法操作。</string>
+    <string name="ef_invalid_transfer_target">不能选择自己或无效成员。</string>
 
     <string name="ef_household_version_conflict">家庭成员信息已更新，请重试。</string>
 

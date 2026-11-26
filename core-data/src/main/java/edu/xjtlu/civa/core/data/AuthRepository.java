@@ -111,6 +111,24 @@ public final class AuthRepository {
         }
     }
 
+    /** Close a single-member owned household; revoke household-scoped work after server confirmation. */
+    public void dissolveHousehold(java.util.UUID key, ApiCallback<Void> callback) {
+        synchronized (sessions) {
+            SessionStore.Snapshot owner = sessions.snapshot();
+            if (owner.token == null || owner.userId == null || owner.householdId == null) {
+                callback.onError(ApiCalls.localError("NOT_FOUND")); return;
+            }
+            calls.enqueue(provider.household().dissolveHousehold(java.util.UUID.fromString(owner.householdId), key), new ApiCallback<Void>() {
+                @Override public void onSuccess(Void value) {
+                    synchronized (sessions) {
+                        if (sessions.revokeHouseholdIfCurrent(owner.generation, owner.householdId)) callback.onSuccess(null);
+                    }
+                }
+                @Override public void onError(ApiError error) { leaveFailed(owner, error, callback); }
+            });
+        }
+    }
+
     private void findMembership(SessionStore.Snapshot owner, int page, ApiCallback<Void> callback) {
         calls.enqueue(provider.household().listMembers(java.util.UUID.fromString(owner.householdId), page, 100), new ApiCallback<edu.xjtlu.civa.api.model.MembershipPage>() {
             @Override public void onSuccess(edu.xjtlu.civa.api.model.MembershipPage result) {
