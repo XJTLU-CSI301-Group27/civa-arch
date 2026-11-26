@@ -169,6 +169,18 @@
     <string name="ac_detail_image_label">菜谱图片</string>
     <string name="ac_plan_edited_by"> · 由 %1$s 添加</string>
     <string name="ac_plan_no_author"> </string>
+    <string name="ac_plan_add">添加</string>
+    <string name="ac_plan_manage">管理</string>
+    <string name="ac_plan_manage_title">%1$s 菜品管理</string>
+    <string name="ac_plan_owner_only">仅家庭房主可以执行此操作</string>
+    <string name="ac_plan_clear_confirm_title">清空这个餐次？</string>
+    <string name="ac_plan_clear_confirm_message">这会删除该餐次的全部菜品，只有房主可以操作。</string>
+    <string name="ac_plan_clear_confirm">清空</string>
+    <string name="ac_plan_delete">删除</string>
+    <string name="ac_plan_replace">替换</string>
+    <string name="ac_plan_replace_title">替换「%1$s」</string>
+    <string name="ac_plan_increase">增加份数</string>
+    <string name="ac_plan_decrease">减少份数</string>
     <!-- Added by the ac hard-coded string migration. -->
     <string name="ac_l10n_ack">知道了</string>
     <string name="ac_l10n_unknown">未知</string>

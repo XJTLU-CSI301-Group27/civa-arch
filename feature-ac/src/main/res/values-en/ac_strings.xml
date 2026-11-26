@@ -169,6 +169,18 @@
     <string name="ac_detail_image_label">Recipe photo</string>
     <string name="ac_plan_edited_by"> · edited by %1$s</string>
     <string name="ac_plan_no_author"> </string>
+    <string name="ac_plan_add">Add dish</string>
+    <string name="ac_plan_manage">Manage</string>
+    <string name="ac_plan_manage_title">%1$s: manage dishes</string>
+    <string name="ac_plan_owner_only">Only the household owner can do this.</string>
+    <string name="ac_plan_clear_confirm_title">Clear this meal?</string>
+    <string name="ac_plan_clear_confirm_message">This removes every dish in the meal. Only the owner can do this.</string>
+    <string name="ac_plan_clear_confirm">Clear</string>
+    <string name="ac_plan_delete">Delete</string>
+    <string name="ac_plan_replace">Replace</string>
+    <string name="ac_plan_replace_title">Replace “%1$s”</string>
+    <string name="ac_plan_increase">Increase servings</string>
+    <string name="ac_plan_decrease">Decrease servings</string>
     <!-- Added by the ac hard-coded string migration. -->
     <string name="ac_l10n_ack">Got it</string>
     <string name="ac_l10n_unknown">Unknown</string>

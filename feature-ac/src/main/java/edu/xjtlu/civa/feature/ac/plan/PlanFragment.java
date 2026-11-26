@@ -4,13 +4,15 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import edu.xjtlu.civa.api.model.Household;
 import edu.xjtlu.civa.api.model.PlanItem;
 import edu.xjtlu.civa.api.model.PlanMealType;
 import edu.xjtlu.civa.api.model.PlanSlot;
@@ -26,15 +28,23 @@ import edu.xjtlu.civa.core.ui.Motion;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.AcText;
 import edu.xjtlu.civa.feature.ac.R;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
-/** Household meal plan: 14 days, three meals, per-slot choose/clear/lock. */
+/**
+ * Household meal plan. Members may only append dishes and increase servings; the owner also manages
+ * servings, replacement, removal, clearing and locking. The server remains the final authority.
+ */
 public final class PlanFragment extends Fragment {
     private static final PlanMealType[] MEALS =
             {PlanMealType.BREAKFAST, PlanMealType.LUNCH, PlanMealType.DINNER};
@@ -50,11 +60,13 @@ public final class PlanFragment extends Fragment {
     private final List<Recipe> recipes = new ArrayList<>();
     private LocalDate start = LocalDate.now();
     private UUID home;
+    private UUID ownerUserId;
     private boolean loading;
+    private boolean sending;
+    private boolean resumedOnce;
 
     public PlanFragment() { super(R.layout.ac_fragment_plan); }
 
-    /** Date formats follow the app language instead of a fixed Chinese locale. */
     private DateTimeFormatter dateFormat(int pattern) {
         return DateTimeFormatter.ofPattern(getString(pattern), AcText.locale(getResources()));
     }
@@ -69,6 +81,13 @@ public final class PlanFragment extends Fragment {
         view.findViewById(R.id.ac_plan_mode_household).setOnClickListener(ignored -> switchMode(Mode.HOUSEHOLD));
         paintModes();
         load();
+    }
+
+    /** Re-reads ownership when the user returns to the plan, e.g. after a transfer elsewhere. */
+    @Override public void onResume() {
+        super.onResume();
+        if (resumedOnce && isAdded() && listView != null && !loading && !sending) load();
+        resumedOnce = true;
     }
 
     private void switchMode(Mode next) {
@@ -111,12 +130,33 @@ public final class PlanFragment extends Fragment {
         String homeText = host.sessions() == null ? null : host.sessions().currentHouseholdId();
         if (homeText == null) {
             home = null;
+            ownerUserId = null;
             render();
             return;
         }
         home = UUID.fromString(homeText);
         loading = true;
+        sending = false;
+        ownerUserId = null;
         subtitle.setText(R.string.ac_plan_loading);
+        host.calls().enqueue(host.api().household().getHousehold(home), new ApiCallback<Household>() {
+            @Override public void onSuccess(@Nullable Household value) {
+                if (!isAdded()) return;
+                ownerUserId = value == null ? null : value.getOwnerUserId();
+                loadRecipes();
+            }
+
+            @Override public void onError(ApiError error) {
+                if (!isAdded()) return;
+                loading = false;
+                ownerUserId = null;
+                subtitle.setText(R.string.ac_plan_error);
+                render();
+            }
+        });
+    }
+
+    private void loadRecipes() {
         host.calls().enqueue(host.api().recipe().listRecipes(home, null, null, null, false, 0, 100),
                 new ApiCallback<RecipePage>() {
                     @Override public void onSuccess(@Nullable RecipePage value) {
@@ -167,6 +207,11 @@ public final class PlanFragment extends Fragment {
                         subtitle.setText(R.string.ac_plan_error);
                     }
                 });
+    }
+
+    private boolean isOwner() {
+        String user = host == null || host.sessions() == null ? null : host.sessions().currentUserId();
+        return ownerUserId != null && user != null && ownerUserId.toString().equals(user);
     }
 
     private void renderPersonal() {
@@ -231,6 +276,7 @@ public final class PlanFragment extends Fragment {
     private void renderMeal(LocalDate date, PlanMealType meal) {
         String dateText = date.toString();
         PlanSlot slot = slots.get(dateText + "/" + meal.getValue());
+        boolean locked = slot != null && Boolean.TRUE.equals(slot.getLocked());
         LinearLayout row = new LinearLayout(requireContext());
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
@@ -245,20 +291,28 @@ public final class PlanFragment extends Fragment {
         if (slot != null && slot.getLastEditorName() != null && !slot.getLastEditorName().isBlank()) {
             label += getString(R.string.ac_plan_edited_by, slot.getLastEditorName());
         }
-        if (slot != null && Boolean.TRUE.equals(slot.getLocked())) label = "🔒 " + label;
+        if (locked) label = "🔒 " + label;
         TextView text = text(label, 14, R.color.ac_catalog_ink);
         text.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         row.addView(text);
 
-        MaterialButton choose = smallButton(R.string.ac_plan_choose);
-        choose.setEnabled(!loading);
-        choose.setOnClickListener(ignored -> chooseRecipe(date, meal, slot));
-        row.addView(choose);
+        MaterialButton add = smallButton(R.string.ac_plan_add);
+        add.setEnabled(!loading && !sending && !locked);
+        add.setOnClickListener(ignored -> chooseRecipe(date, meal, slot));
+        row.addView(add);
 
-        MaterialButton lock = smallButton(Boolean.TRUE.equals(slot != null && slot.getLocked())
-                ? R.string.ac_plan_unlock : R.string.ac_plan_lock);
-        lock.setOnClickListener(ignored -> toggleLock(date, meal, slot));
-        row.addView(lock);
+        if (isOwner()) {
+            MaterialButton manage = smallButton(R.string.ac_plan_manage);
+            manage.setEnabled(!loading && !sending && !locked
+                    && slot != null && slot.getItems() != null && !slot.getItems().isEmpty());
+            manage.setOnClickListener(ignored -> manageSlot(date, meal, slot));
+            row.addView(manage);
+
+            MaterialButton lock = smallButton(locked ? R.string.ac_plan_unlock : R.string.ac_plan_lock);
+            lock.setEnabled(!loading && !sending);
+            lock.setOnClickListener(ignored -> toggleLock(date, meal, slot));
+            row.addView(lock);
+        }
         listView.addView(row);
     }
 
@@ -283,61 +337,210 @@ public final class PlanFragment extends Fragment {
             toast(R.string.ac_plan_no_recipes);
             return;
         }
-        String[] names = new String[recipes.size()];
-        for (int i = 0; i < recipes.size(); i++) {
-            Recipe recipe = recipes.get(i);
-            names[i] = recipe.getYieldServings() == null ? recipe.getName()
+        pickRecipe(R.string.ac_plan_choose_title, mealLabel(meal), recipes,
+                recipe -> addDish(date, meal, slot, recipe));
+    }
+
+    /** Member-safe append: keeps every existing dish and only adds or increases one. */
+    private void addDish(LocalDate date, PlanMealType meal, @Nullable PlanSlot slot, Recipe recipe) {
+        List<PlanItem> items = PlanItemEditor.append(slot == null ? null : slot.getItems(), recipe.getId());
+        sendSlot(date, meal, items, slot == null ? 0L : slot.getVersion());
+    }
+
+    private void pickRecipe(int title, String titleArg, List<Recipe> options, Consumer<Recipe> onPick) {
+        if (options.isEmpty()) {
+            toast(R.string.ac_plan_no_recipes);
+            return;
+        }
+        String[] names = new String[options.size()];
+        for (int index = 0; index < options.size(); index++) {
+            Recipe recipe = options.get(index);
+            names[index] = recipe.getYieldServings() == null ? recipe.getName()
                     : getString(R.string.ac_l10n_plan_recipe_option, recipe.getName(),
                             recipe.getYieldServings());
         }
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(getString(R.string.ac_plan_choose_title, mealLabel(meal)))
-                .setItems(names, (dialog, which) -> replaceSlot(date, meal,
-                        recipes.get(which).getId(), "1",
-                        slot == null ? 0 : slot.getVersion()))
+                .setTitle(getString(title, titleArg))
+                .setItems(names, (dialog, which) -> onPick.accept(options.get(which)))
                 .setNegativeButton(android.R.string.cancel, null)
-                .setNeutralButton(R.string.ac_plan_clear, (dialog, which) -> replaceSlot(date, meal,
-                        null, null, slot == null ? 0 : slot.getVersion()))
                 .show();
     }
 
-    private void replaceSlot(LocalDate date, PlanMealType meal, @Nullable UUID recipeId, @Nullable String servings,
-                             long expectedVersion) {
-        List<PlanItem> items = new ArrayList<>();
-        if (recipeId != null) items.add(new PlanItem().recipeId(recipeId).servings(servings == null ? "1" : servings));
-        ReplacePlanSlotRequest request = new ReplacePlanSlotRequest().items(items).expectedVersion(expectedVersion);
+    private void manageSlot(LocalDate date, PlanMealType meal, @Nullable PlanSlot slot) {
+        if (!isOwner()) {
+            toast(R.string.ac_plan_owner_only);
+            return;
+        }
+        if (slot == null || slot.getItems() == null || slot.getItems().isEmpty()) {
+            toast(R.string.ac_plan_empty);
+            return;
+        }
+        if (Boolean.TRUE.equals(slot.getLocked())) {
+            toast(R.string.ac_plan_locked);
+            return;
+        }
+        LinearLayout content = new LinearLayout(requireContext());
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(16), dp(4), dp(16), dp(4));
+        final AlertDialog[] holder = new AlertDialog[1];
+        for (PlanItem item : PlanItemEditor.copy(slot.getItems())) {
+            content.addView(manageRow(date, meal, slot, item, holder));
+        }
+        ScrollView scroll = new ScrollView(requireContext());
+        scroll.addView(content);
+        holder[0] = new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(getString(R.string.ac_plan_manage_title, mealLabel(meal)))
+                .setView(scroll)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setNeutralButton(R.string.ac_plan_clear, (dialog, which) -> confirmClear(date, meal, slot))
+                .create();
+        holder[0].show();
+    }
+
+    private View manageRow(LocalDate date, PlanMealType meal, PlanSlot slot, PlanItem item,
+                           AlertDialog[] holder) {
+        LinearLayout block = new LinearLayout(requireContext());
+        block.setOrientation(LinearLayout.VERTICAL);
+        block.setPadding(0, dp(6), 0, dp(6));
+
+        String name = recipeNames.getOrDefault(item.getRecipeId(), getString(R.string.ac_plan_unknown_dish));
+        block.addView(text(name + " ×" + item.getServings(), 14, R.color.ac_catalog_ink));
+
+        LinearLayout actions = new LinearLayout(requireContext());
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        boolean canDecrease = new BigDecimal(item.getServings()).compareTo(BigDecimal.ONE) > 0;
+
+        MaterialButton minus = smallButtonText("−");
+        minus.setContentDescription(getString(R.string.ac_plan_decrease));
+        minus.setEnabled(canDecrease);
+        minus.setOnClickListener(ignored -> applyOwnerEdit(date, meal, slot,
+                items -> PlanItemEditor.adjust(items, item.getRecipeId(), -1), holder[0]));
+        actions.addView(minus);
+
+        MaterialButton plus = smallButtonText("+");
+        plus.setContentDescription(getString(R.string.ac_plan_increase));
+        plus.setOnClickListener(ignored -> applyOwnerEdit(date, meal, slot,
+                items -> PlanItemEditor.adjust(items, item.getRecipeId(), 1), holder[0]));
+        actions.addView(plus);
+
+        MaterialButton replace = smallButton(R.string.ac_plan_replace);
+        replace.setOnClickListener(ignored -> replaceDish(date, meal, slot, item, holder[0]));
+        actions.addView(replace);
+
+        MaterialButton delete = smallButton(R.string.ac_plan_delete);
+        delete.setOnClickListener(ignored -> applyOwnerEdit(date, meal, slot,
+                items -> PlanItemEditor.remove(items, item.getRecipeId()), holder[0]));
+        actions.addView(delete);
+
+        block.addView(actions);
+        return block;
+    }
+
+    private void replaceDish(LocalDate date, PlanMealType meal, PlanSlot slot, PlanItem item,
+                             @Nullable AlertDialog dialog) {
+        Set<UUID> used = new HashSet<>();
+        for (PlanItem current : slot.getItems()) used.add(current.getRecipeId());
+        List<Recipe> options = new ArrayList<>();
+        for (Recipe recipe : recipes) {
+            if (!used.contains(recipe.getId())) options.add(recipe);
+        }
+        String currentName = recipeNames.getOrDefault(item.getRecipeId(), getString(R.string.ac_plan_unknown_dish));
+        pickRecipe(R.string.ac_plan_replace_title, currentName, options, replacement -> {
+            if (dialog != null) dialog.dismiss();
+            sendSlot(date, meal,
+                    PlanItemEditor.replace(slot.getItems(), item.getRecipeId(), replacement.getId()),
+                    slot.getVersion());
+        });
+    }
+
+    private void applyOwnerEdit(LocalDate date, PlanMealType meal, PlanSlot slot,
+                                Function<List<PlanItem>, List<PlanItem>> edit, @Nullable AlertDialog dialog) {
+        if (sending) return;
+        List<PlanItem> items = edit.apply(PlanItemEditor.copy(slot.getItems()));
+        if (dialog != null) dialog.dismiss();
+        sendSlot(date, meal, items, slot.getVersion());
+    }
+
+    private void confirmClear(LocalDate date, PlanMealType meal, PlanSlot slot) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.ac_plan_clear_confirm_title)
+                .setMessage(R.string.ac_plan_clear_confirm_message)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.ac_plan_clear_confirm, (dialog, which) ->
+                        sendSlot(date, meal, List.of(), slot.getVersion()))
+                .show();
+    }
+
+    private void sendSlot(LocalDate date, PlanMealType meal, List<PlanItem> items, long expectedVersion) {
+        if (sending || !isAdded()) return;
+        sending = true;
+        ReplacePlanSlotRequest request = new ReplacePlanSlotRequest()
+                .items(items).expectedVersion(expectedVersion);
         host.calls().enqueue(host.api().planning().replacePlanSlot(home, date.toString(), meal, request),
                 new ApiCallback<PlanSlot>() {
                     @Override public void onSuccess(@Nullable PlanSlot value) {
                         if (!isAdded()) return;
+                        sending = false;
                         toast(R.string.ac_plan_saved);
                         loadSlots();
                     }
 
                     @Override public void onError(ApiError error) {
                         if (!isAdded()) return;
-                        toast(R.string.ac_plan_conflict);
+                        sending = false;
+                        handlePlanError(error);
                     }
                 });
     }
 
     private void toggleLock(LocalDate date, PlanMealType meal, @Nullable PlanSlot slot) {
+        if (!isOwner()) {
+            toast(R.string.ac_plan_owner_only);
+            return;
+        }
+        if (sending) return;
         boolean locked = slot == null || !Boolean.TRUE.equals(slot.getLocked());
         long version = slot == null ? 0 : slot.getVersion();
+        sending = true;
         host.calls().enqueue(host.api().planning().setPlanSlotLock(home, date.toString(), meal,
                         new SetPlanLockRequest().locked(locked).expectedVersion(version)),
                 new ApiCallback<PlanSlot>() {
                     @Override public void onSuccess(@Nullable PlanSlot value) {
                         if (!isAdded()) return;
+                        sending = false;
                         Haptics.tap(requireView());
                         loadSlots();
                     }
 
                     @Override public void onError(ApiError error) {
                         if (!isAdded()) return;
-                        toast(R.string.ac_plan_conflict);
+                        sending = false;
+                        handlePlanError(error);
                     }
                 });
+    }
+
+    private void handlePlanError(@Nullable ApiError error) {
+        String code = error == null || error.code == null ? "" : error.code;
+        switch (code) {
+            case "PLAN_PERMISSION_DENIED", "NOT_HOUSEHOLD_OWNER" -> {
+                toast(R.string.ac_plan_owner_only);
+                load();
+            }
+            case "VERSION_CONFLICT" -> {
+                toast(R.string.ac_plan_conflict);
+                load();
+            }
+            case "PLAN_SLOT_LOCKED", "PLAN_LOCKED" -> {
+                toast(R.string.ac_plan_locked);
+                loadSlots();
+            }
+            case "NOT_FOUND" -> {
+                toast(R.string.ac_plan_error);
+                load();
+            }
+            default -> toast(R.string.ac_plan_error);
+        }
     }
 
     private MaterialButton smallButton(int text) {
@@ -345,6 +548,20 @@ public final class PlanFragment extends Fragment {
                 com.google.android.material.R.attr.materialButtonOutlinedStyle);
         button.setText(text);
         button.setTextSize(11);
+        button.setInsetTop(0);
+        button.setInsetBottom(0);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMarginStart(dp(4));
+        button.setLayoutParams(params);
+        return button;
+    }
+
+    private MaterialButton smallButtonText(String value) {
+        MaterialButton button = new MaterialButton(requireContext(), null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        button.setText(value);
+        button.setTextSize(13);
         button.setInsetTop(0);
         button.setInsetBottom(0);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
