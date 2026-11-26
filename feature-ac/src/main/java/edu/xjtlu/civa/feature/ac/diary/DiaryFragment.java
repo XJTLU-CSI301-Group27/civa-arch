@@ -662,9 +662,30 @@ public final class DiaryFragment extends Fragment {
         android.widget.ScrollView scroll = new android.widget.ScrollView(requireContext());
         scroll.addView(list);
 
+        EntryMealType[] meals = EntryMealType.values();
+        Map<EntryMealType, MaterialButton> mealButtons = new LinkedHashMap<>();
+        LinearLayout mealRow = new LinearLayout(requireContext());
+        mealRow.setOrientation(LinearLayout.HORIZONTAL);
+        for (EntryMealType meal : meals) {
+            MaterialButton button = new MaterialButton(requireContext(), null,
+                    com.google.android.material.R.attr.materialButtonOutlinedStyle);
+            button.setText(mealLabel(meal));
+            button.setTextSize(12);
+            button.setInsetTop(0);
+            button.setInsetBottom(0);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            params.setMarginEnd(dp(4));
+            mealRow.addView(button, params);
+            mealButtons.put(meal, button);
+            button.setOnClickListener(ignored -> select(mealButtons, meal));
+        }
+        select(mealButtons, EntryMealType.LUNCH);
+
         LinearLayout rootView = new LinearLayout(requireContext());
         rootView.setOrientation(LinearLayout.VERTICAL);
         rootView.setPadding(dp(20), dp(6), dp(20), dp(6));
+        rootView.addView(mealRow);
         rootView.addView(name);
         rootView.addView(scroll);
 
@@ -704,21 +725,21 @@ public final class DiaryFragment extends Fragment {
                         toast(R.string.ac_diary_home_pick);
                         return;
                     }
-                    consumeThenRecord(home, dish, picked, used, lines);
+                    consumeThenRecord(home, selected(mealButtons, meals), dish, picked, used, lines);
                 })
                 .show();
     }
 
-    private void consumeThenRecord(UUID home, String dish, List<InventoryBatch> batches,
+    private void consumeThenRecord(UUID home, EntryMealType meal, String dish, List<InventoryBatch> batches,
                                    List<BigDecimal> used, List<String> lines) {
-        consumeBatch(home, dish, batches, used, lines, 0);
+        consumeBatch(home, meal, dish, batches, used, lines, 0);
     }
 
-    private void consumeBatch(UUID home, String dish, List<InventoryBatch> batches,
+    private void consumeBatch(UUID home, EntryMealType meal, String dish, List<InventoryBatch> batches,
                               List<BigDecimal> used, List<String> lines, int index) {
         if (!isAdded()) return;
         if (index >= batches.size()) {
-            estimateAndRecord(dish, lines);
+            estimateAndRecord(meal, dish, lines);
             return;
         }
         InventoryBatch batch = batches.get(index);
@@ -733,7 +754,7 @@ public final class DiaryFragment extends Fragment {
                         UUID.randomUUID(), request), new ApiCallback<edu.xjtlu.civa.api.model.InventoryMovement>() {
                     @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.InventoryMovement value) {
                         if (!isAdded()) return;
-                        consumeBatch(home, dish, batches, used, lines, next);
+                        consumeBatch(home, meal, dish, batches, used, lines, next);
                     }
 
                     @Override public void onError(ApiError error) {
@@ -744,7 +765,7 @@ public final class DiaryFragment extends Fragment {
     }
 
     /** Same idea as the today page: ask the server AI for a per-100g estimate, unknown if unavailable. */
-    private void estimateAndRecord(String dish, List<String> lines) {
+    private void estimateAndRecord(EntryMealType meal, String dish, List<String> lines) {
         NutritionEstimateRequest request = new NutritionEstimateRequest().name(dish).ingredients(lines);
         host.calls().enqueue(host.api().nutrition().estimateNutrition(request),
                 new ApiCallback<NutritionEstimate>() {
@@ -767,23 +788,24 @@ public final class DiaryFragment extends Fragment {
                                         .divide(BigDecimal.valueOf(100), 3, RoundingMode.HALF_UP);
                             }
                         }
-                        recordHomeMeal(dish, lines, kcal);
+                        recordHomeMeal(meal, dish, lines, kcal);
                     }
 
                     @Override public void onError(ApiError error) {
                         if (!isAdded()) return;
-                        recordHomeMeal(dish, lines, null);
+                        recordHomeMeal(meal, dish, lines, null);
                     }
                 });
     }
 
-    private void recordHomeMeal(String dish, List<String> lines, @Nullable BigDecimal kcal) {
+    private void recordHomeMeal(EntryMealType meal, String dish, List<String> lines,
+                                @Nullable BigDecimal kcal) {
         if (!isAdded()) return;
         String note = getString(R.string.ac_diary_at_home) + "：" + String.join("、", lines);
         if (note.length() > 2000) note = note.substring(0, 2000);
         CreateMealEntryRequest request = new CreateMealEntryRequest()
                 .date(selected.toString())
-                .mealType(EntryMealType.LUNCH)
+                .mealType(meal)
                 .name(dish)
                 .amount("1")
                 .basis(kcal == null ? KcalBasis.UNKNOWN : KcalBasis.MANUAL)
