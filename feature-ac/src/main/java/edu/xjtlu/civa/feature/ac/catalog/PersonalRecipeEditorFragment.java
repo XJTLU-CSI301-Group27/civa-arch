@@ -22,6 +22,7 @@ import edu.xjtlu.civa.api.model.MediaScope;
 import edu.xjtlu.civa.api.model.UpdatePersonalRecipeRequest;
 import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.data.MediaImages;
+import edu.xjtlu.civa.core.ui.SubmitButton;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.R;
@@ -141,7 +142,7 @@ public final class PersonalRecipeEditorFragment extends Fragment {
             toast(R.string.ac_editor_incomplete);
             return;
         }
-        save.setEnabled(false);
+        SubmitButton.start(save);
         if (recipeId == null) {
             CreatePersonalRecipeRequest request = new CreatePersonalRecipeRequest()
                     .name(title)
@@ -160,7 +161,7 @@ public final class PersonalRecipeEditorFragment extends Fragment {
 
                         @Override public void onError(ApiError error) {
                             if (!isAdded()) return;
-                            save.setEnabled(true);
+                            SubmitButton.stop(save);
                             toast(R.string.ac_catalog_error);
                         }
                     });
@@ -184,7 +185,7 @@ public final class PersonalRecipeEditorFragment extends Fragment {
 
                         @Override public void onError(ApiError error) {
                             if (!isAdded()) return;
-                            save.setEnabled(true);
+                            SubmitButton.stop(save);
                             toast(R.string.ac_catalog_error);
                         }
                     });

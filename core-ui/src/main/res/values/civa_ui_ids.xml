@@ -11,4 +11,6 @@
     <item type="id" name="civa_intro_blocked" />
     <item type="id" name="civa_welcome_cat" />
     <item type="id" name="civa_welcome_greeting" />
+    <item name="civa_submit_busy" type="id" />
+    <item name="civa_submit_label" type="id" />
 </resources>

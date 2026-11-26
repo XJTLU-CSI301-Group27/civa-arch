@@ -65,6 +65,20 @@
   ],
   "symbols": [
     {
+      "type": "edu.xjtlu.civa.core.ui.SubmitButton",
+      "kind": "class",
+      "owner": "A",
+      "consumers": [
+        "feature-ac",
+        "feature-ef"
+      ],
+      "thread": "main",
+      "members": [
+        "static void start(MaterialButton button)",
+        "static void stop(MaterialButton button)"
+      ]
+    },
+    {
       "type": "edu.xjtlu.civa.core.ui.Haptics",
       "kind": "class",
       "owner": "A",

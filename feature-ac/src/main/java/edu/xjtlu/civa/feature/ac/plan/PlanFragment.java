@@ -22,6 +22,7 @@ import edu.xjtlu.civa.api.model.SetPlanLockRequest;
 import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.core.ui.Haptics;
+import edu.xjtlu.civa.core.ui.Motion;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.AcText;
 import edu.xjtlu.civa.feature.ac.R;
@@ -85,9 +86,20 @@ public final class PlanFragment extends Fragment {
     }
 
     private void paintModeButton(MaterialButton button, boolean selected) {
-        button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
-                requireContext().getColor(selected ? R.color.ac_catalog_accent : android.R.color.transparent)));
+        int target = requireContext().getColor(selected ? R.color.ac_catalog_accent : android.R.color.transparent);
+        android.content.res.ColorStateList current = button.getBackgroundTintList();
+        int from = current == null ? android.graphics.Color.TRANSPARENT : current.getDefaultColor();
         button.setTextColor(requireContext().getColor(selected ? android.R.color.white : R.color.ac_catalog_ink));
+        if (from == target || !Motion.enabled()) {
+            button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(target));
+            return;
+        }
+        android.animation.ValueAnimator animator = android.animation.ValueAnimator.ofArgb(from, target);
+        animator.setDuration(160L);
+        animator.setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f));
+        animator.addUpdateListener(animation -> button.setBackgroundTintList(
+                android.content.res.ColorStateList.valueOf((int) animation.getAnimatedValue())));
+        animator.start();
     }
 
     private void load() {

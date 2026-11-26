@@ -31,6 +31,7 @@ import edu.xjtlu.civa.api.model.UpdateProfileRequest;
 import edu.xjtlu.civa.api.model.User;
 import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.ui.ApiError;
+import edu.xjtlu.civa.core.ui.SubmitButton;
 import edu.xjtlu.civa.core.ui.PressBounce;
 import java.io.File;
 import java.util.concurrent.ExecutorService;
@@ -50,13 +51,13 @@ public final class ProfileEditDialog extends DialogFragment {
     private ExecutorService worker;
     private final ActivityResultLauncher<String[]> picker = registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
         if(uri==null||store==null||worker==null||worker.isShutdown())return;
-        LocalProfileStore target=store; importing=true;save.setEnabled(false);error.setText(R.string.ef_photo_loading);
+        LocalProfileStore target=store; importing=true;SubmitButton.start(save);error.setText(R.string.ef_photo_loading);
         worker.execute(()->{
             File photo=null;try{photo=target.importPhoto(uri);}catch(Exception ignored){ }
             File imported=photo;
             main.post(()->{
                 if(!isAdded()||getDialog()==null||avatar==null){if(imported!=null)imported.delete();return;}
-                importing=false;save.setEnabled(true);
+                importing=false;SubmitButton.stop(save);
                 if(imported==null){error.setText(R.string.ef_photo_error);return;}
                 pending=imported;error.setText("");paintAvatar(avatar,pending);
             });
@@ -70,7 +71,7 @@ public final class ProfileEditDialog extends DialogFragment {
         LinearLayout body=new LinearLayout(requireContext());body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(22),dp(14),dp(22),dp(24));
         GradientDrawable surface=new GradientDrawable();surface.setColor(color(edu.xjtlu.civa.core.ui.R.color.civa_surface));surface.setCornerRadius(dp(28));surface.setStroke(dp(1),color(edu.xjtlu.civa.core.ui.R.color.civa_outline));body.setBackground(surface);
         FrameLayout header=new FrameLayout(requireContext());body.addView(header,new LinearLayout.LayoutParams(-1,dp(52)));
-        TextView title=new TextView(requireContext());title.setText(R.string.ef_edit_profile);title.setTextSize(22);title.setTypeface(ResourcesCompat.getFont(requireContext(),edu.xjtlu.civa.core.ui.R.font.civa_kuaile));title.setTextColor(color(edu.xjtlu.civa.core.ui.R.color.civa_text));title.setGravity(Gravity.CENTER);
+        TextView title=new TextView(requireContext());title.setText(R.string.ef_edit_profile);title.setTextAppearance(edu.xjtlu.civa.core.ui.R.style.CivaText_DialogTitle);title.setTypeface(ResourcesCompat.getFont(requireContext(),edu.xjtlu.civa.core.ui.R.font.civa_kuaile));title.setTextColor(color(edu.xjtlu.civa.core.ui.R.color.civa_text));title.setGravity(Gravity.CENTER);
         header.addView(title,new FrameLayout.LayoutParams(-1,-1));
         MaterialButton close=new MaterialButton(requireContext(),null,com.google.android.material.R.attr.borderlessButtonStyle);close.setId(R.id.ef_profile_edit_close);close.setText(R.string.ef_close_symbol);close.setTextSize(20);close.setMinWidth(0);close.setMinimumWidth(0);close.setPadding(0,0,0,0);close.setContentDescription(getString(R.string.ef_close));
         header.addView(close,new FrameLayout.LayoutParams(dp(40),dp(48),Gravity.START|Gravity.CENTER_VERTICAL));close.setOnClickListener(v->dismiss());
@@ -94,17 +95,17 @@ public final class ProfileEditDialog extends DialogFragment {
             ProfileHost host=(ProfileHost)requireActivity();
             String entered=name.getText().toString().trim();
             if(entered.isEmpty()){error.setText(R.string.ef_profile_save_error);return;}
-            save.setEnabled(false);error.setText("");
+            SubmitButton.start(save);error.setText("");
             host.calls().enqueue(host.api().profile().updateProfile(new UpdateProfileRequest().displayName(entered)),
                     new ApiCallback<User>(){
                         @Override public void onSuccess(@Nullable User value){
                             if(!isAdded())return;
-                            if(!store.save(entered,pending)){error.setText(R.string.ef_profile_save_error);save.setEnabled(true);return;}
+                            if(!store.save(entered,pending)){error.setText(R.string.ef_profile_save_error);SubmitButton.stop(save);return;}
                             getParentFragmentManager().setFragmentResult("ef_profile_changed",new Bundle());dismiss();
                         }
                         @Override public void onError(ApiError apiError){
                             if(!isAdded())return;
-                            save.setEnabled(true);error.setText(R.string.ef_profile_save_error);
+                            SubmitButton.stop(save);error.setText(R.string.ef_profile_save_error);
                         }
                     });
         });

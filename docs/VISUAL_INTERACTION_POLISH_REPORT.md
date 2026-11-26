@@ -202,3 +202,14 @@
 - R1/R2 计划/食记/冰箱刷新与空态 crossfade；R3 个人/家庭 indicator 滑动；R4 ChipGroup 单选收口；
 - R6/R7/R8/R9 视觉 token（对话框、字体、间距、圆角、图标）统一；
 - R5 首启策略如需“演示模式强制完整播放”可加开关；O2 月历 morph 等 optional。
+
+
+## 7. Implementation status — round 2（2026-11-26，已实施并验证）
+
+- **E5/E9 提交 loading + 防重复**：新增 SubmitButton（保存时禁用、alpha 0.7、文案切到「处理中…」，恢复原文案），已接入个人菜谱、家庭菜谱、偏好保存、个人资料保存。
+- **R4 ChipGroup 单选收口**：菜谱来源 / 分类 chip 改为 ChipGroup singleSelection + selectionRequired，删除手写取消选中循环，选中状态由 Material 管理（默认带状态动画），分类恢复逻辑同时修正。
+- **R3 计划模式切换**：个人/家庭按钮的背景色改为 160ms ValueAnimator 过渡（reduced-motion 时直接切），替代瞬间换色。
+- **决策 5 视觉 token（第一批）**：新增 civa_dimens.xml（spacing 4/8/12/16/20/24、radius 12/20/24/28、button height、touch target）；按钮样式改用 token；新增 CivaText.DialogTitle（22sp 手写体、居中），自绘资料/语言弹窗标题统一使用。
+- 全量验证：135 项 Android 单测 + lint + checkContracts + assembleDebug 全绿；小米平板安装并启动正常，无 FATAL/Inconsistency 日志。
+
+**仍待下一批**：E7 全入口状态动效、E8 侧栏/底栏 indicator 过渡、R1/R2 刷新/空态 crossfade、R6 全部对话框统一、R7/R8/R9 全局字体/间距/圆角/图标收口（本轮只建 token 与新组件），以及 Optional（月历 morph、数字滚动）。

@@ -2,4 +2,5 @@
     <string name="civa_cat_meow">Meow</string>
     <string name="civa_cat_greeting">Tap to say hi to the baking kitten</string>
     <string name="civa_dish_no_photo">No photo for this dish yet</string>
+    <string name="civa_ui_working">Working…</string>
 </resources>

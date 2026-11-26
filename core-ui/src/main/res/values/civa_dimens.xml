@@ -1,0 +1,16 @@
+<resources>
+    <!-- Spacing scale: use these instead of ad-hoc dp values in new/changed UI. -->
+    <dimen name="civa_space_4">4dp</dimen>
+    <dimen name="civa_space_8">8dp</dimen>
+    <dimen name="civa_space_12">12dp</dimen>
+    <dimen name="civa_space_16">16dp</dimen>
+    <dimen name="civa_space_20">20dp</dimen>
+    <dimen name="civa_space_24">24dp</dimen>
+    <!-- Shape scale: small fields, medium cards/buttons, large sheets/dialogs. -->
+    <dimen name="civa_radius_small">12dp</dimen>
+    <dimen name="civa_radius_medium">20dp</dimen>
+    <dimen name="civa_radius_button">24dp</dimen>
+    <dimen name="civa_radius_large">28dp</dimen>
+    <dimen name="civa_button_height">54dp</dimen>
+    <dimen name="civa_touch_target">48dp</dimen>
+</resources>

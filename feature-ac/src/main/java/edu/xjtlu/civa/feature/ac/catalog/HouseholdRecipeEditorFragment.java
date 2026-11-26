@@ -25,6 +25,7 @@ import edu.xjtlu.civa.api.model.Recipe;
 import edu.xjtlu.civa.api.model.UpdateRecipeRequest;
 import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.data.MediaImages;
+import edu.xjtlu.civa.core.ui.SubmitButton;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.R;
@@ -204,7 +205,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                 HouseholdRecipes.byName(dictionary));
         if (request == null) { toast(R.string.ac_catalog_ingredient_unknown); return; }
         request.setImageId(imageId);
-        save.setEnabled(false);
+        SubmitButton.start(save);
         if (existing == null) {
             host.calls().enqueue(host.api().recipe().createRecipe(home, UUID.randomUUID(), request),
                     new ApiCallback<Recipe>() {
@@ -216,7 +217,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
 
                         @Override public void onError(ApiError error) {
                             if (!isAdded()) return;
-                            save.setEnabled(true);
+                            SubmitButton.stop(save);
                             toast(R.string.ac_catalog_error);
                         }
                     });
@@ -240,7 +241,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
 
                         @Override public void onError(ApiError error) {
                             if (!isAdded()) return;
-                            save.setEnabled(true);
+                            SubmitButton.stop(save);
                             toast(R.string.ac_catalog_error);
                         }
                     });

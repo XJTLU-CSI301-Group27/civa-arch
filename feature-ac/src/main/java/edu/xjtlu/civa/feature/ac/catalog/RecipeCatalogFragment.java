@@ -120,6 +120,10 @@ public final class RecipeCatalogFragment extends Fragment {
             if (source == Source.HOUSEHOLD && host.sessions().currentHouseholdId() == null) host.navigate(Route.HOUSEHOLD, null);
             else host.navigate(Route.RECIPE_EDIT, source == Source.HOUSEHOLD ? "hnew" : "new");
         });
+        sources.setSingleSelection(true);
+        sources.setSelectionRequired(true);
+        chips.setSingleSelection(true);
+        chips.setSelectionRequired(true);
         buildSources();
         buildCategoryChips();
         search.addTextChangedListener(new TextWatcher() {
@@ -155,12 +159,6 @@ public final class RecipeCatalogFragment extends Fragment {
             chip.setChecked(value.equals(source.name()));
             chip.setOnCheckedChangeListener((button, checked) -> {
                 if (updatingChips || !checked) return;
-                updatingChips = true;
-                for (int i = 0; i < sources.getChildCount(); i++) {
-                    View child = sources.getChildAt(i);
-                    if (child instanceof Chip other && other != button) other.setChecked(false);
-                }
-                updatingChips = false;
                 source = Source.valueOf(value);
                 lastSource = source;
                 search.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
@@ -183,25 +181,9 @@ public final class RecipeCatalogFragment extends Fragment {
             chip.setChecked(index == 0);
             final int categoryIndex = index;
             chip.setOnCheckedChangeListener((button, checked) -> {
-                if (updatingChips) return;
-                boolean any = false;
-                for (int i = 0; i < chips.getChildCount(); i++) {
-                    View child = chips.getChildAt(i);
-                    if (child instanceof Chip chipChild && chipChild.getTag() != null && chipChild.isChecked()) any = true;
-                }
-                updatingChips = true;
-                if (checked) {
-                    for (int i = 0; i < chips.getChildCount(); i++) {
-                        View child = chips.getChildAt(i);
-                        if (child instanceof Chip other && other != button && other.getTag() != null) other.setChecked(false);
-                    }
-                } else if (!any) {
-                    updatingChips = false;
-                    chip.setChecked(true);
-                    return;
-                }
-                updatingChips = false;
+                if (updatingChips || !checked) return;
                 category = categoryIndex == 0 ? "" : name;
+                lastCategory = category;
                 load(true);
             });
             chips.addView(chip);

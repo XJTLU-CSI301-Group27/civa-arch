@@ -8,6 +8,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import edu.xjtlu.civa.api.model.Ingredient;
 import edu.xjtlu.civa.api.model.IngredientPage;
@@ -28,6 +29,7 @@ import java.util.UUID;
 public final class PreferencesFragment extends Fragment {
     private ProfileHost host;
     private EditText tags;
+    private MaterialButton saveButton;
     private TextView excludedSummary, status;
     private final Set<UUID> excluded = new LinkedHashSet<>();
     private final Map<UUID, String> ingredientNames = new LinkedHashMap<>();
@@ -40,10 +42,11 @@ public final class PreferencesFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         host = (ProfileHost) requireActivity();
         tags = view.findViewById(R.id.ef_preferences_tags);
+        saveButton = view.findViewById(R.id.ef_preferences_save);
         excludedSummary = view.findViewById(R.id.ef_preferences_excluded_summary);
         status = view.findViewById(R.id.ef_preferences_status);
         view.findViewById(R.id.ef_preferences_excluded_pick).setOnClickListener(ignored -> pickExcluded());
-        view.findViewById(R.id.ef_preferences_save).setOnClickListener(ignored -> save());
+        saveButton.setOnClickListener(ignored -> save());
         load();
     }
 
@@ -86,10 +89,12 @@ public final class PreferencesFragment extends Fragment {
                 .excludedIngredientIds(new LinkedHashSet<>(excluded))
                 .expectedVersion(version);
         loading = true;
+        edu.xjtlu.civa.core.ui.SubmitButton.start(saveButton);
         host.calls().enqueue(host.api().profile().updatePreferences(request), new ApiCallback<Preference>() {
             @Override public void onSuccess(@Nullable Preference value) {
                 if (!isAdded()) return;
                 loading = false;
+                edu.xjtlu.civa.core.ui.SubmitButton.stop(saveButton);
                 version = value == null || value.getVersion() == null ? version + 1 : value.getVersion();
                 toast(R.string.ef_preferences_saved);
                 status.setText(getString(R.string.ef_preferences_loaded, (int) version));
@@ -98,6 +103,7 @@ public final class PreferencesFragment extends Fragment {
             @Override public void onError(ApiError error) {
                 if (!isAdded()) return;
                 loading = false;
+                edu.xjtlu.civa.core.ui.SubmitButton.stop(saveButton);
                 // A stale version means another device changed preferences: reload it.
                 if ("VERSION_CONFLICT".equals(error == null ? null : error.code)) {
                     toast(R.string.ef_preferences_conflict);
