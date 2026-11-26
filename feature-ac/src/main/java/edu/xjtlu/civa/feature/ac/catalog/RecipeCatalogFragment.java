@@ -479,24 +479,7 @@ public final class RecipeCatalogFragment extends Fragment {
     }
 
     private String stockText(RecipeStockPresenter.StockView view) {
-        if (view == null) return getString(R.string.ac_stock_unknown);
-        if (view.state() == RecipeStockPresenter.State.UNKNOWN) return getString(R.string.ac_stock_unknown);
-        if (view.state() == RecipeStockPresenter.State.ENOUGH) {
-            return view.tracked() ? getString(R.string.ac_stock_enough, view.servings())
-                    : getString(R.string.ac_stock_no_tracking);
-        }
-        List<String> parts = new ArrayList<>();
-        int shown = Math.min(2, view.missing().size());
-        for (int index = 0; index < shown; index++) {
-            RecipeStockPresenter.Missing missing = view.missing().get(index);
-            parts.add(missing.name() + " " + missing.quantity() + " "
-                    + AcText.unit(getResources(), missing.unit(), missing.name()));
-        }
-        String summary = AcText.join(getResources(), parts);
-        if (view.missing().size() > shown) {
-            summary += " " + getString(R.string.ac_stock_more, view.missing().size() - shown);
-        }
-        return getString(R.string.ac_stock_missing, summary, view.servings());
+        return RecipeStockText.format(getResources(), view);
     }
 
     private void applyStockResult() {

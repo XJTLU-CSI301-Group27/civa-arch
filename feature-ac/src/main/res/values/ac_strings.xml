@@ -159,6 +159,7 @@
     <string name="ac_plan_saved">计划已保存</string>
     <string name="ac_plan_conflict">计划已被家人修改，已为你刷新</string>
     <string name="ac_plan_choose_title">%1$s 选一道菜</string>
+    <string name="ac_plan_stock_note">库存估算按本次 1 份计算。</string>
     <string name="ac_plan_empty">未安排</string>
     <string name="ac_plan_unknown_dish">未知菜谱</string>
     <string name="ac_catalog_already_mine">这道菜已经在我的菜谱里了，要直接打开编辑吗？</string>

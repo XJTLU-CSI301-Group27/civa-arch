@@ -159,6 +159,7 @@
     <string name="ac_plan_saved">Plan saved</string>
     <string name="ac_plan_conflict">Family updated the plan; it has been refreshed for you.</string>
     <string name="ac_plan_choose_title">%1$s: choose a dish</string>
+    <string name="ac_plan_stock_note">Stock is estimated for the 1 serving in this action.</string>
     <string name="ac_plan_empty">Not planned</string>
     <string name="ac_plan_unknown_dish">Unknown recipe</string>
     <string name="ac_catalog_already_mine">This dish is already in my recipes. Open it for editing?</string>

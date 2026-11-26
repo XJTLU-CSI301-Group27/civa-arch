@@ -3,7 +3,9 @@ package edu.xjtlu.civa.feature.ac.plan;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -13,12 +15,17 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import edu.xjtlu.civa.api.model.Household;
+import edu.xjtlu.civa.api.model.Ingredient;
+import edu.xjtlu.civa.api.model.IngredientPage;
+import edu.xjtlu.civa.api.model.MatchEntry;
+import edu.xjtlu.civa.api.model.MatchRequest;
 import edu.xjtlu.civa.api.model.PlanItem;
 import edu.xjtlu.civa.api.model.PlanMealType;
 import edu.xjtlu.civa.api.model.PlanSlot;
 import edu.xjtlu.civa.api.model.PlanSlotPage;
 import edu.xjtlu.civa.api.model.ReplacePlanSlotRequest;
 import edu.xjtlu.civa.api.model.Recipe;
+import edu.xjtlu.civa.api.model.RecipeMatch;
 import edu.xjtlu.civa.api.model.RecipePage;
 import edu.xjtlu.civa.api.model.SetPlanLockRequest;
 import edu.xjtlu.civa.core.data.ApiCallback;
@@ -28,6 +35,8 @@ import edu.xjtlu.civa.core.ui.Motion;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.AcText;
 import edu.xjtlu.civa.feature.ac.R;
+import edu.xjtlu.civa.feature.ac.catalog.RecipeStockPresenter;
+import edu.xjtlu.civa.feature.ac.catalog.RecipeStockText;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -65,6 +74,13 @@ public final class PlanFragment extends Fragment {
     private boolean sending;
     private boolean resumedOnce;
     private int loadGeneration;
+    private final Map<UUID, RecipeStockPresenter.StockView> stockViews = new LinkedHashMap<>();
+    private Map<UUID, Ingredient> ingredientDictionary = Map.of();
+    private long stockToken;
+    private boolean stockLoading;
+    private AlertDialog pickerDialog;
+    private ArrayAdapter<String> pickerAdapter;
+    private List<Recipe> pickerRecipes = List.of();
 
     public PlanFragment() { super(R.layout.ac_fragment_plan); }
 
@@ -126,10 +142,16 @@ public final class PlanFragment extends Fragment {
         if (!isAdded()) return;
         if (mode == Mode.PERSONAL) {
             loadGeneration++;
+            stockToken++;
+            stockViews.clear();
+            stockLoading = false;
             renderPersonal();
             return;
         }
         int generation = ++loadGeneration;
+        stockToken++;
+        stockViews.clear();
+        stockLoading = false;
         String homeText = host.sessions() == null ? null : host.sessions().currentHouseholdId();
         if (homeText == null) {
             home = null;
@@ -173,12 +195,14 @@ public final class PlanFragment extends Fragment {
                                 recipeNames.put(recipe.getId(), recipe.getName());
                             }
                         }
+                        startStock(generation);
                         loadSlots(generation);
                     }
 
                     @Override public void onError(ApiError error) {
                         if (generation != loadGeneration || !isAdded()) return;
                         loading = false;
+                        stockLoading = false;
                         subtitle.setText(R.string.ac_plan_error);
                     }
                 });
@@ -359,18 +383,184 @@ public final class PlanFragment extends Fragment {
             toast(R.string.ac_plan_no_recipes);
             return;
         }
-        String[] names = new String[options.size()];
-        for (int index = 0; index < options.size(); index++) {
-            Recipe recipe = options.get(index);
-            names[index] = recipe.getYieldServings() == null ? recipe.getName()
-                    : getString(R.string.ac_l10n_plan_recipe_option, recipe.getName(),
-                            recipe.getYieldServings());
-        }
-        new MaterialAlertDialogBuilder(requireContext())
+        if (pickerDialog != null) pickerDialog.dismiss();
+        pickerRecipes = new ArrayList<>(options);
+        pickerAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, labels());
+        ListView list = new ListView(requireContext());
+        list.setAdapter(pickerAdapter);
+        list.setDivider(null);
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            if (position < 0 || position >= pickerRecipes.size()) return;
+            Recipe selected = pickerRecipes.get(position);
+            if (pickerDialog != null) pickerDialog.dismiss();
+            onPick.accept(selected);
+        });
+
+        LinearLayout content = new LinearLayout(requireContext());
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(16), dp(4), dp(16), dp(4));
+        TextView note = text(getString(R.string.ac_plan_stock_note), 12, R.color.ac_catalog_muted);
+        note.setPadding(0, 0, 0, dp(6));
+        content.addView(note);
+        content.addView(list, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(300)));
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(getString(title, titleArg))
-                .setItems(names, (dialog, which) -> onPick.accept(options.get(which)))
+                .setView(content)
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create();
+        pickerDialog = dialog;
+        dialog.setOnDismissListener(dismissed -> {
+            if (pickerDialog == dismissed) {
+                pickerDialog = null;
+                pickerAdapter = null;
+                pickerRecipes = List.of();
+            }
+        });
+        dialog.show();
+    }
+
+    private List<String> labels() {
+        List<String> result = new ArrayList<>();
+        for (Recipe recipe : pickerRecipes) result.add(label(recipe));
+        return result;
+    }
+
+    private String label(Recipe recipe) {
+        RecipeStockPresenter.StockView view = stockViews.get(recipe.getId());
+        String status = view != null ? RecipeStockText.format(getResources(), view)
+                : stockLoading ? getString(R.string.ac_stock_checking)
+                : getString(R.string.ac_stock_unknown);
+        return recipe.getName() + " · " + status;
+    }
+
+    private void refreshPickerLabels() {
+        if (pickerDialog == null || !pickerDialog.isShowing() || pickerAdapter == null) return;
+        pickerAdapter.clear();
+        pickerAdapter.addAll(labels());
+        pickerAdapter.notifyDataSetChanged();
+    }
+
+    /** One match call per at most 100 recipes, always for the one serving added by this action. */
+    private void startStock(int generation) {
+        if (home == null || recipes.isEmpty()) {
+            stockLoading = false;
+            return;
+        }
+        UUID selectedHome = home;
+        long token = ++stockToken;
+        stockLoading = true;
+        if (ingredientDictionary.isEmpty()) {
+            loadDictionary(selectedHome, 0, new ArrayList<>(), token, generation);
+        } else {
+            matchStock(selectedHome, token, generation);
+        }
+    }
+
+    private void loadDictionary(UUID selectedHome, int page, List<Ingredient> collected,
+                                long token, int generation) {
+        if (!stockValid(selectedHome, token, generation)) return;
+        host.calls().enqueue(host.api().inventory().listIngredients(null, page, 100),
+                new ApiCallback<IngredientPage>() {
+                    @Override public void onSuccess(@Nullable IngredientPage value) {
+                        if (!stockValid(selectedHome, token, generation)) return;
+                        if (value == null || value.getItems() == null) { stockUnavailable(selectedHome, token, generation); return; }
+                        collected.addAll(value.getItems());
+                        long total = value.getTotal() == null ? collected.size() : value.getTotal();
+                        if (collected.size() < total) {
+                            if (!value.getItems().isEmpty()) {
+                                loadDictionary(selectedHome, page + 1, collected, token, generation);
+                            } else {
+                                stockUnavailable(selectedHome, token, generation);
+                            }
+                            return;
+                        }
+                        Map<UUID, Ingredient> dictionary = new LinkedHashMap<>();
+                        for (Ingredient ingredient : collected) {
+                            if (ingredient != null && ingredient.getId() != null) dictionary.put(ingredient.getId(), ingredient);
+                        }
+                        ingredientDictionary = dictionary;
+                        matchStock(selectedHome, token, generation);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (stockValid(selectedHome, token, generation)) stockUnavailable(selectedHome, token, generation);
+                    }
+                });
+    }
+
+    private void matchStock(UUID selectedHome, long token, int generation) {
+        List<Recipe> snapshot = new ArrayList<>(recipes);
+        if (snapshot.isEmpty()) {
+            stockLoading = false;
+            refreshPickerLabels();
+            return;
+        }
+        int chunkCount = (snapshot.size() + 99) / 100;
+        int[] remaining = {chunkCount};
+        for (int start = 0; start < snapshot.size(); start += 100) {
+            List<Recipe> chunk = new ArrayList<>(snapshot.subList(start, Math.min(start + 100, snapshot.size())));
+            List<MatchEntry> entries = new ArrayList<>();
+            for (Recipe recipe : chunk) entries.add(new MatchEntry().recipeId(recipe.getId()).servings("1"));
+            host.calls().enqueue(host.api().inventory().matchRecipes(selectedHome, new MatchRequest().entries(entries)),
+                    new ApiCallback<List<RecipeMatch>>() {
+                        @Override public void onSuccess(@Nullable List<RecipeMatch> value) {
+                            if (!stockValid(selectedHome, token, generation)) return;
+                            Map<UUID, RecipeMatch> byRecipe = new LinkedHashMap<>();
+                            if (value != null) {
+                                for (RecipeMatch match : value) {
+                                    if (match != null && match.getRecipeId() != null) byRecipe.put(match.getRecipeId(), match);
+                                }
+                            }
+                            for (Recipe recipe : chunk) {
+                                RecipeStockPresenter.StockView view = RecipeStockPresenter.present(
+                                        recipe, byRecipe.get(recipe.getId()), ingredientDictionary, "1");
+                                stockViews.put(recipe.getId(), view);
+                            }
+                            finishChunk(remaining, generation);
+                        }
+
+                        @Override public void onError(ApiError error) {
+                            if (!stockValid(selectedHome, token, generation)) return;
+                            for (Recipe recipe : chunk) {
+                                stockViews.put(recipe.getId(), RecipeStockPresenter.StockView.unknown("1"));
+                            }
+                            finishChunk(remaining, generation);
+                        }
+                    });
+        }
+    }
+
+    private void finishChunk(int[] remaining, int generation) {
+        remaining[0]--;
+        if (remaining[0] > 0) return;
+        stockLoading = false;
+        if (generation == loadGeneration) refreshPickerLabels();
+    }
+
+    private void stockUnavailable(UUID selectedHome, long token, int generation) {
+        if (!stockValid(selectedHome, token, generation)) return;
+        for (Recipe recipe : recipes) {
+            stockViews.put(recipe.getId(), RecipeStockPresenter.StockView.unknown("1"));
+        }
+        stockLoading = false;
+        refreshPickerLabels();
+    }
+
+    private boolean stockValid(UUID selectedHome, long token, int generation) {
+        return isAdded() && listView != null && generation == loadGeneration && token == stockToken
+                && selectedHome != null && selectedHome.equals(currentHome());
+    }
+
+    private UUID currentHome() {
+        return host == null || host.sessions() == null ? null
+                : uuidOrNull(host.sessions().currentHouseholdId());
+    }
+
+    private static UUID uuidOrNull(String value) {
+        if (value == null || value.isEmpty()) return null;
+        try { return UUID.fromString(value); } catch (IllegalArgumentException invalid) { return null; }
     }
 
     private void manageSlot(LocalDate date, PlanMealType meal, @Nullable PlanSlot slot) {
@@ -599,6 +789,18 @@ public final class PlanFragment extends Fragment {
 
     private void toast(int text) {
         edu.xjtlu.civa.core.ui.Feedback.show(requireActivity(), text, false);
+    }
+
+    @Override public void onDestroyView() {
+        stockToken++;
+        stockLoading = false;
+        if (pickerDialog != null) pickerDialog.dismiss();
+        pickerDialog = null;
+        pickerAdapter = null;
+        pickerRecipes = List.of();
+        stockViews.clear();
+        listView = null;
+        super.onDestroyView();
     }
 
     private int dp(float value) {

@@ -22,22 +22,22 @@ import java.util.UUID;
  * be compared safely (unknown ingredient, unit mismatch, null values, inconsistent duplicate rows)
  * becomes UNKNOWN rather than a fabricated shortage.
  */
-final class RecipeStockPresenter {
-    enum State { ENOUGH, MISSING, UNKNOWN }
+public final class RecipeStockPresenter {
+    public enum State { ENOUGH, MISSING, UNKNOWN }
 
-    record Missing(UUID ingredientId, String name, String quantity, Unit unit) { }
+    public record Missing(UUID ingredientId, String name, String quantity, Unit unit) { }
 
-    record StockView(State state, String servings, boolean tracked, List<Missing> missing) {
+    public record StockView(State state, String servings, boolean tracked, List<Missing> missing) {
         boolean noStockRequired() { return state == State.ENOUGH && !tracked; }
 
-        static StockView unknown(String servings) {
+        public static StockView unknown(String servings) {
             return new StockView(State.UNKNOWN, servings, false, List.of());
         }
     }
 
     private RecipeStockPresenter() { }
 
-    static StockView present(Recipe recipe, RecipeMatch match, Map<UUID, Ingredient> dictionary,
+    public static StockView present(Recipe recipe, RecipeMatch match, Map<UUID, Ingredient> dictionary,
                              String servings) {
         if (recipe == null || recipe.getId() == null || match == null || dictionary == null) {
             return StockView.unknown(servings);
@@ -107,7 +107,7 @@ final class RecipeStockPresenter {
     }
 
     /** Valid positive yield or 1 serving; the returned value is what the status is based on. */
-    static String servingsFor(Recipe recipe) {
+    public static String servingsFor(Recipe recipe) {
         if (recipe == null || recipe.getYieldServings() == null) return "1";
         try {
             BigDecimal value = new BigDecimal(recipe.getYieldServings());
@@ -119,7 +119,7 @@ final class RecipeStockPresenter {
     }
 
     /** Stable page ordering: enough first, then missing, then unknown. */
-    static int rank(StockView view) {
+    public static int rank(StockView view) {
         if (view == null) return 2;
         return switch (view.state()) {
             case ENOUGH -> 0;

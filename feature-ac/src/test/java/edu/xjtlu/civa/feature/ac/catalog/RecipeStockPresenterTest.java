@@ -157,6 +157,14 @@ public class RecipeStockPresenterTest {
         assertEquals("1", RecipeStockPresenter.servingsFor(recipe("abc")));
     }
 
+    @Test public void requestedServingsAreKeptForTheBasisLabel() {
+        RecipeStockPresenter.StockView view = RecipeStockPresenter.present(
+                recipe("2"), match(RECIPE, List.of(line(EGG, "2", "3", Unit.G, MatchStatus.ENOUGH))),
+                Map.of(EGG, ingredient(EGG, "Egg", Unit.G)), "1");
+
+        assertEquals("1", view.servings());
+    }
+
     @Test public void stateRankSortsStablyAndKeepsEveryState() {
         RecipeStockPresenter.StockView enoughOne = new RecipeStockPresenter.StockView(
                 RecipeStockPresenter.State.ENOUGH, "1", true, List.of());
