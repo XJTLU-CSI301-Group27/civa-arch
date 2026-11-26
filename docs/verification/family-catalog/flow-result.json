@@ -1,0 +1,12 @@
+{
+  "skipToProfile": true,
+  "profileCloseReturnsProfile": true,
+  "memberLeft": true,
+  "memberJoinedAnotherHousehold": true,
+  "ownerRestricted": true,
+  "catalogPhoneWide": true,
+  "wideFormScrollable": true,
+  "serverStateConfirmed": true,
+  "testBackendPort": 8081,
+  "testDatabase": "civa_family_test"
+}

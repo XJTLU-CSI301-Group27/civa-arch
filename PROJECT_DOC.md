@@ -1,5 +1,7 @@
 # Civa 架构骨架生成规格与团队接口治理
 
+> 2026-11-25 用户明确更新家庭规则：全员平等、固定永久邀请码、最后一人退出注销；当前本地实现与迁移详见 [EF_SHARED_FAMILY_HANDOFF](docs/EF_SHARED_FAMILY_HANDOFF.md)，正式团队整合仍需审阅IC。
+
 版本：1.1　更新：2026-10-29　维护：EF
 
 本文供 AI Coding Agent 在空仓库中生成统一工程骨架、接口、数据模型、公共组件和检查文件，再供 AC、BD、EF 分工开发。它取代上一版方向性草案。本文定义的是实现规格；当前尚未生成或验证 Android 工程、后端和 CI，不能把文中的验收标准称为已经通过。
@@ -175,7 +177,7 @@ Unit只有G/ML/COUNT；KG/L仅输入层转换。COUNT可小数；不同计量维
 
 spring.jackson.deserialization.fail-on-unknown-properties=true，配置在application.yml；测试未知字段返回400。响应客户端忽略未知字段。fieldErrors永远为数组，无错误字段时[]。版本非负int64；PUT完整请求加expectedVersion。列表page默认0，size默认20最大100，空列表[]；稳定排序见第9节。note和location允许空串，最长分别2000/120；其他名称字段trim后1–120。密码不trim。
 
-成功读取/修改200，新建201，删除204。错误体固定`{code,message,traceId,fieldErrors:[{field,message}]}`，不暴露SQL/凭证/堆栈。错误映射：VALIDATION_ERROR400、UNAUTHENTICATED401、INVALID_CREDENTIALS401、FORBIDDEN403、HOUSEHOLD_ACCESS_REVOKED403、NOT_FOUND404、VERSION_CONFLICT409、INSUFFICIENT_STOCK409、IDEMPOTENCY_KEY_REUSED409、PLAN_LOCKED409、USERNAME_TAKEN409、ALREADY_IN_HOUSEHOLD409、INVALID_INVITATION400（无效/过期/用过统一）、OWNER_CANNOT_LEAVE400、EXPIRED_BATCH409、PAYLOAD_TOO_LARGE413、UNSUPPORTED_MEDIA_TYPE415、RATE_LIMITED429、CONTRACT_NOT_IMPLEMENTED501、TEMPORARILY_UNAVAILABLE503、INTERNAL_ERROR500。429带Retry-After秒数。每个operation列出适用状态及code枚举，不能只给一个无说明default响应。
+成功读取/修改200，新建201，删除204。错误体固定`{code,message,traceId,fieldErrors:[{field,message}]}`，不暴露SQL/凭证/堆栈。错误映射：VALIDATION_ERROR400、UNAUTHENTICATED401、INVALID_CREDENTIALS401、FORBIDDEN403、HOUSEHOLD_ACCESS_REVOKED403、NOT_FOUND404、VERSION_CONFLICT409、INSUFFICIENT_STOCK409、IDEMPOTENCY_KEY_REUSED409、PLAN_LOCKED409、USERNAME_TAKEN409、ALREADY_IN_HOUSEHOLD409、INVALID_INVITATION400（无效或家庭已注销）、EXPIRED_BATCH409、PAYLOAD_TOO_LARGE413、UNSUPPORTED_MEDIA_TYPE415、RATE_LIMITED429、CONTRACT_NOT_IMPLEMENTED501、TEMPORARILY_UNAVAILABLE503、INTERNAL_ERROR500。429带Retry-After秒数。每个operation列出适用状态及code枚举，不能只给一个无说明default响应。
 
 login失败固定INVALID_CREDENTIALS，不区分用户不存在/密码错误；全局401清理跳过/auth/*，保留登录页输入。非成员家庭路径和非本人私有对象查询返回404；如果服务端能查到本人被移除的inactive membership，家庭路径返回403 HOUSEHOLD_ACCESS_REVOKED，客户端只清该家庭缓存和家庭状态，不撤销个人登录；已有成员无管理权限返回FORBIDDEN。此区分不向从未加入的用户泄露家庭存在性。
 
@@ -192,7 +194,7 @@ GET允许显式重试。PUT/DELETE使用expectedVersion，结果不确定先刷�
 | User | username:String、displayName:String、zoneId:String、householdId:String?；不输出密码及哈希 |
 | Preference | userId:String、likedTags:String[]、excludedIngredientIds:String[]；version |
 | Household | name:String、zoneId:String；version |
-| Membership | householdId:String、userId:String、role:OWNER/MEMBER、active:boolean；version |
+| Membership | householdId:String、userId:String、role:MEMBER（OWNER仅历史兼容）、active:boolean；version |
 | Invitation | householdId:String、code:String、expiresAt:String；code 仅创建时返回 |
 | Ingredient | name:String、aliases:String[]、unit:G/ML/COUNT、active:boolean；全局标准只读给普通用户 |
 | RecipeIngredient | ingredientId:String、quantity:String、unit:Unit、trackStock:boolean |
@@ -263,9 +265,11 @@ idempotency_requests列：actor_id、key、operation_digest、http_status（事�
 | Household / E | POST /households | createHousehold | CreateHouseholdRequest → Household |
 | Household / E | GET H | getHousehold | → Household |
 | Household / E | GET H/members | listMembers | → MembershipPage |
-| Household / E | POST H/invitations | createInvitation | → Invitation，OWNER |
+| Household / E | PUT H | renameHousehold | expectedVersion query + CreateHouseholdRequest → Household，任意活动成员改名 |
+| Household / E | GET H/invitations | getHouseholdInvitation | → Invitation，任意活动成员读取固定码 |
+| Household / E | POST H/invitations | createInvitation | → Invitation，兼容入口返回同一固定码，不轮换 |
 | Household / E | POST /households/join | joinHousehold | JoinHouseholdRequest → Membership |
-| Household / E | DELETE H/members/{userId} | removeMember | expectedVersion query → 204，OWNER |
+| Household / E | DELETE H/members/{userId} | removeMember | expectedVersion query → 204，仅本人退出；最后退出注销 |
 | Inventory / C | GET /ingredients | listIngredients | q? query → IngredientPage |
 | Recipe / A | GET H/recipes | listRecipes | q?,tag?,ingredientId?,archived=false query → RecipePage |
 | Recipe / A | POST H/recipes | createRecipe | CreateRecipeRequest → Recipe |
@@ -294,7 +298,7 @@ idempotency_requests列：actor_id、key、operation_digest、http_status（事�
 
 API 中初始版本规则：不存在的计划 slot 视为 version=0，首次写入 expectedVersion=0，创建后 version=1；已存在 slot 从 1 递增。其他实体创建 version=1；getPreferences 在注册时已初始化 version=1。不存在 slot 不必在 GET 中返回占位对象，客户端补空位时标明 version=0。
 
-Register、Login 不要求已有登录；/ingredients 要求登录；家庭接口都核验成员；/me 从会话取用户；移除不能删除 OWNER 自己。普通成员可维护家庭菜谱、库存和计划。所有路径、请求、成功/失败响应、示例和参数上限都写入 OpenAPI，不允许留下 additionalProperties 的无类型业务模型。
+Register、Login 不要求已有登录；/ingredients 要求登录；家庭接口都核验成员；/me 从会话取用户；所有活动成员平等，创建者也可退出；仅允许退出本人，最后一人退出注销家庭。普通成员可维护家庭菜谱、库存和计划。所有路径、请求、成功/失败响应、示例和参数上限都写入 OpenAPI，不允许留下 additionalProperties 的无类型业务模型。
 
 列表排序覆盖第7节通则：listPlanSlots按date升序、BREAKFAST/LUNCH/DINNER顺序、id升序；listMealEntries按date降序、餐次顺序、createdAt降序、id升序；inventory按expiresOn升序null最后、createdAt/id升序；ingredients按name/id升序；其余按createdAt降序、id升序。21天读取仅为14天规划加前7天去重参考；生成和commit仍最多14个连续日期、42个slot，服务器校验实际跨度。
 
@@ -334,7 +338,7 @@ SERVING：amount 是份数，basisKcal 是每份热量，total=amount×basisKcal
 
 使用 Spring Security 处理认证上下文，密码用 BCrypt（请求长度至少10字符且UTF-8不超过72字节），不手写哈希算法。登录生成安全随机256位 opaque token，数据库仅保存 token SHA-256、用户和24小时过期时间；登出撤销服务端会话。令牌首版仅存客户端内存，进程退出后重新登录。登录失败统一提示，不泄露用户名是否存在，添加可配置的失败尝试限速并测试。
 
-邀请仅 OWNER 创建，随机128位一次性 code，24小时失效，数据库存哈希。加入家庭时锁定邀请并原子消费；用户已属于家庭则拒绝。移除成员撤销其家庭访问，客户端收到权限失效清掉家庭缓存；不能声称远程抹除已导出资料。
+每个家庭创建时自动生成随机128位固定邀请码，所有活动成员均可查看、复制并邀请他人；永久可重复使用，直到最后一人退出使家庭注销才失效。数据库保存查找哈希及独立私有密钥加密的code；不存明文。加入与退出先锁家庭行，不消费邀请码；用户已属于家庭则拒绝。成员只能退出自己，创建者无特殊权限。注销保留历史外键，不复活旧家庭ID；退出撤销家庭访问，客户端清理家庭缓存；不能声称远程抹除已导出资料。
 
 每次切换登录态取消旧请求、递增 sessionGeneration、清理账号缓存；旧回调如 generation 不匹配必须丢弃。缓存 key 含 userId+householdId+请求规范化参数，避免串号。
 

@@ -1,0 +1,121 @@
+{
+  "device": "MI_PAD_4_PLUS",
+  "api": 27,
+  "baseline": {
+    "bounds": [
+      112,
+      379,
+      376,
+      537
+    ],
+    "height": 158,
+    "text": "\u4eca\u5929\n\u5403\u4ec0\u4e48"
+  },
+  "navigationCycles": [
+    {
+      "bounds": [
+        112,
+        379,
+        376,
+        537
+      ],
+      "height": 158,
+      "text": "\u4eca\u5929\n\u5403\u4ec0\u4e48"
+    },
+    {
+      "bounds": [
+        112,
+        379,
+        376,
+        537
+      ],
+      "height": 158,
+      "text": "\u4eca\u5929\n\u5403\u4ec0\u4e48"
+    },
+    {
+      "bounds": [
+        112,
+        379,
+        376,
+        537
+      ],
+      "height": 158,
+      "text": "\u4eca\u5929\n\u5403\u4ec0\u4e48"
+    },
+    {
+      "bounds": [
+        112,
+        379,
+        376,
+        537
+      ],
+      "height": 158,
+      "text": "\u4eca\u5929\n\u5403\u4ec0\u4e48"
+    }
+  ],
+  "resizeCycles": [
+    {
+      "bounds": [
+        112,
+        211,
+        376,
+        261
+      ],
+      "height": 50,
+      "text": "\u4eca\u5929\u5403\u4ec0\u4e48"
+    },
+    {
+      "bounds": [
+        112,
+        379,
+        376,
+        537
+      ],
+      "height": 158,
+      "text": "\u4eca\u5929\n\u5403\u4ec0\u4e48"
+    },
+    {
+      "bounds": [
+        112,
+        211,
+        376,
+        261
+      ],
+      "height": 50,
+      "text": "\u4eca\u5929\u5403\u4ec0\u4e48"
+    },
+    {
+      "bounds": [
+        112,
+        379,
+        376,
+        537
+      ],
+      "height": 158,
+      "text": "\u4eca\u5929\n\u5403\u4ec0\u4e48"
+    },
+    {
+      "bounds": [
+        112,
+        329,
+        376,
+        487
+      ],
+      "height": 158,
+      "text": "\u4eca\u5929\n\u5403\u4ec0\u4e48"
+    }
+  ],
+  "afterKeyboard": {
+    "bounds": [
+      112,
+      379,
+      376,
+      537
+    ],
+    "height": 158,
+    "text": "\u4eca\u5929\n\u5403\u4ec0\u4e48"
+  },
+  "titleStable": true,
+  "displaySizeRestored": true,
+  "credentialsOnlyForIsolatedTestAccount": true
+}

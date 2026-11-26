@@ -25,13 +25,16 @@ import org.springframework.web.bind.annotation.RestController;
 class HouseholdController implements HouseholdApi {
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
     private final HouseholdReadService read;
+    private final HouseholdSettingsService settings;
+    private final HouseholdInvitationService invitations;
+    private final HouseholdMembershipService membership;
     private final HouseholdWriteService write;
     private final CanonicalRequestDigest digest;
     private final JsonNode schemas;
     private final ObjectMapper json;
 
-    HouseholdController(HouseholdReadService read, HouseholdWriteService write, CanonicalRequestDigest digest, JsonNode schemas, ObjectMapper json) {
-        this.read = read; this.write = write; this.digest = digest; this.schemas = schemas; this.json = json;
+    HouseholdController(HouseholdSettingsService settings, HouseholdInvitationService invitations, HouseholdReadService read, HouseholdMembershipService membership, HouseholdWriteService write, CanonicalRequestDigest digest, JsonNode schemas, ObjectMapper json) {
+        this.settings = settings; this.invitations = invitations; this.read = read; this.membership = membership; this.write = write; this.digest = digest; this.schemas = schemas; this.json = json;
     }
 
     @Override public ResponseEntity<Household> createHousehold(UUID key, CreateHouseholdRequest input) {
@@ -53,6 +56,11 @@ class HouseholdController implements HouseholdApi {
         return ResponseEntity.ok(new Household(home.id, time(home.createdAt), time(home.updatedAt), home.name, home.zoneId, home.version));
     }
 
+    @Override public ResponseEntity<Household> renameHousehold(UUID id, Long expectedVersion, CreateHouseholdRequest input) {
+        HouseholdReadService.Household home = settings.rename(actor(), id, expectedVersion, input.getName());
+        return ResponseEntity.ok(new Household(home.id, time(home.createdAt), time(home.updatedAt), home.name, home.zoneId, home.version));
+    }
+
     @Override public ResponseEntity<MembershipPage> listMembers(UUID id, Integer page, Integer size) {
         HouseholdReadService.MemberPage result = read.listMembers(actor(), id, page, size);
         var members = result.items.stream().map(m -> new Membership(m.id, time(m.createdAt), time(m.updatedAt),
@@ -60,8 +68,16 @@ class HouseholdController implements HouseholdApi {
         return ResponseEntity.ok(new MembershipPage(members, result.page, result.size, result.total));
     }
 
-    @Override public ResponseEntity<Invitation> createInvitation(UUID id, UUID key) { throw new NotImplemented(); }
-    @Override public ResponseEntity<Void> removeMember(UUID id, UUID userId, Long version) { throw new NotImplemented(); }
+    @Override public ResponseEntity<Invitation> getHouseholdInvitation(UUID id) {
+        try { return ResponseEntity.ok(json.readValue(invitations.get(actor(), id), Invitation.class)); }
+        catch (com.fasterxml.jackson.core.JsonProcessingException ex) { throw new IllegalStateException("Invalid invitation response", ex); }
+    }
+
+    @Override public ResponseEntity<Invitation> createInvitation(UUID id, UUID key) {
+        byte[] hash = digest.digestJson("POST", "/api/v1/households/" + id + "/invitations", null, null);
+        return response(invitations.create(actor(), id, key, hash), Invitation.class);
+    }
+    @Override public ResponseEntity<Void> removeMember(UUID id, UUID userId, Long version) { membership.remove(actor(), id, userId, version); return ResponseEntity.noContent().build(); }
 
     private byte[] hash(String path, Object input, String schema) {
         try { return digest.digestJson("POST", path, json.writeValueAsString(input), schemas.get(schema)); }

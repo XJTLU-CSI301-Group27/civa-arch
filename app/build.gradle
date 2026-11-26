@@ -13,6 +13,16 @@ if (configuredApiUrl != null && !validateApiUrl(configuredApiUrl, false)) {
     throw new GradleException('CIVA_API_BASE_URL must be an HTTP(S) origin ending in /, without credentials, query or fragment.')
 }
 
+
+// Machine-local debug target survives Android Studio Run; never supplies the release origin.
+def localDebugSettings = new Properties()
+def localSettingsFile = rootProject.file('local.properties')
+if (localSettingsFile.isFile()) localSettingsFile.withInputStream { localDebugSettings.load(it) }
+def debugApiUrl = configuredApiUrl ?: localDebugSettings.getProperty('civa.debugApiBaseUrl') ?: 'http://10.0.2.2:8080/'
+if (!validateApiUrl(debugApiUrl, false)) {
+    throw new GradleException('civa.debugApiBaseUrl must be an HTTP(S) origin ending in /, without credentials, query or fragment.')
+}
+
 android {
     namespace 'edu.xjtlu.civa'
     compileSdk 36
@@ -21,7 +31,7 @@ android {
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     buildFeatures { viewBinding true; buildConfig true }
     buildTypes {
-        debug { buildConfigField 'String', 'API_BASE_URL', groovy.json.JsonOutput.toJson(configuredApiUrl ?: 'http://10.0.2.2:8080/') }
+        debug { buildConfigField 'String', 'API_BASE_URL', groovy.json.JsonOutput.toJson(debugApiUrl) }
         release { buildConfigField 'String', 'API_BASE_URL', groovy.json.JsonOutput.toJson(configuredApiUrl ?: 'https://invalid.invalid/') }
     }
     lint { error 'ResourceName' }

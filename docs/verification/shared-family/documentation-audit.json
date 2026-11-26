@@ -1,0 +1,62 @@
+[
+  {
+    "file": "docs/EF_SHARED_FAMILY_HANDOFF.md",
+    "beforeSha256": null,
+    "afterSha256": "e3425353463b4526d10f6dba7fb77b5ed1b6c2abc118f8a8210a6e0cfc153c01"
+  },
+  {
+    "file": "PROJECT_DOC.md",
+    "beforeSha256": "992539904a93babae605ad487025956618ae6ebdd81402c0e07a69bb64d383a4",
+    "afterSha256": "49d1517ffad2ae14107ef64373d10d78329de08a10c4b1a79decb828ef9c0e95"
+  },
+  {
+    "file": "docs/DATA_CONTRACT.md",
+    "beforeSha256": "dab84499c468907d8f78d2ffe74d885d837475cca20fb6adeac110b7b2abb9b3",
+    "afterSha256": "0b18988aa01552097758dcd434a2f1f7a7a66e42e085d1a018b940e7148e4bcc"
+  },
+  {
+    "file": "docs/PRODUCT_RULES.md",
+    "beforeSha256": "dffba4ba38962357142a2c3e3e6b1792fd441aa1babe7e3832663a5a56320b14",
+    "afterSha256": "cf86fc4a45039d99efd0894db5ef6bca2b1785a022af86f21fce9933a5345bc7"
+  },
+  {
+    "file": "docs/UI_RULES.md",
+    "beforeSha256": "1bdbf666a48d12ae0333304936f6b78cca9dc9658715d6ee96278b25fde293c6",
+    "afterSha256": "b152c1e17401f7e34af99e6b1f7881cb903086c7cb62360293e3e81f08306447"
+  },
+  {
+    "file": "docs/TEST_PLAN.md",
+    "beforeSha256": "e12955e5a85a0550f6af6516ea2cdc3dc0341eee271deaec86d77338ccab2954",
+    "afterSha256": "6311d7372d52c89bea3c1f12bedfdb186d07afa6e704601738bc959314a7dd02"
+  },
+  {
+    "file": "docs/HANDOFF.md",
+    "beforeSha256": "15310a9fe53781e2071aac2dabcd13169fee8fa4933dbcabbb1f1d421b7f4311",
+    "afterSha256": "938fe502561b614e598f686d1ba4caefc580f5ee763384288135a3c0f40b8991"
+  },
+  {
+    "file": "docs/LOCAL_DEV_STACK.md",
+    "beforeSha256": "db5c1e00fdd4497d1e8374673f3b07300054f5e9a50a594f7cd76364a3b48afa",
+    "afterSha256": "7d7bc6b8dee85ad9560e2c3aff5c147c53c0c67968f1e0ddb78e5cf591143850"
+  },
+  {
+    "file": "OPEN_QUESTIONS.md",
+    "beforeSha256": "e034cfa353c7eeb20d3d307b7f68e2432e09ae0599447d9c99eeae8f0bfd5f22",
+    "afterSha256": "ac24cbf7aae5d6058c79f5732200e177b80ea54581dd2ec9ef1a42bf4051b335"
+  },
+  {
+    "file": "README.md",
+    "beforeSha256": "0a3504887aa504c15c9c860bc49459da2139ed4d461b9c28d3d5ea150acf817c",
+    "afterSha256": "717d62f9addde6ab610bda29071a285b1e7704e9753cd1203fca849fb259dbef"
+  },
+  {
+    "file": "docs/EF_EMPTY_INVITATION_HANDOFF.md",
+    "beforeSha256": "32b1fc994c0039d523f1392f2faeff9330fbb4bf7aaa2628c6b7094e8bcb6d18",
+    "afterSha256": "82e0aa0e6e987826ad14ba4925e6f3f2d6959b0ba27c00fee2ed45b3eaefba6c"
+  },
+  {
+    "file": "docs/EF_FAMILY_CATALOG_HANDOFF.md",
+    "beforeSha256": "04891b2ca0f814d739e2c14aaea7e29389bc7b62504388ef73055599099f38a2",
+    "afterSha256": "fcd38491cebf9a2ad26885b48c68099818830b94266d2a980a2f6a99c1f3ff8a"
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "testDatabase": "civa_family_test",
+  "joinedGroupMovedUp": true,
+  "requestedOrder": true,
+  "loadedNameEditable": true,
+  "emptyNameRejected": true,
+  "realSharedRename": true,
+  "successStaysInSettings": true,
+  "profileShowsUpdatedName": true,
+  "copyAndPermanentCodeUnchanged": true,
+  "draftSurvivesWideRecreation": true,
+  "cancelDoesNotSave": true,
+  "conflictPreservesDraft": true,
+  "explicitConflictRetryWorks": true,
+  "ordinaryMemberCanRename": true,
+  "unjoinedSetupUnchanged": true
+}

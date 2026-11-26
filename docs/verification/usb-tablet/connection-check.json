@@ -1,0 +1,18 @@
+{
+  "loginService": {
+    "httpStatus": 401,
+    "meaning": "reachable; no user credentials submitted"
+  },
+  "registrationService": {
+    "httpStatus": 400,
+    "meaning": "reachable; no user credentials submitted"
+  },
+  "deviceModel": "MI_PAD_4_PLUS",
+  "androidApi": 27,
+  "usbPortForward": 8080,
+  "apiBaseUrl": "http://127.0.0.1:8080/",
+  "updateInstalled": true,
+  "dataCleared": false,
+  "apkSha256": "76b189945cfff183640b75e3c7efd8a755661ea240f77ed7e5b940174a306f56",
+  "accountCreationTestPerformed": false
+}

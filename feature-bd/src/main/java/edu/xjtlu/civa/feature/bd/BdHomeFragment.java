@@ -52,11 +52,13 @@ public final class BdHomeFragment extends Fragment {
             }
         }).get(BdHomeViewModel.class);
         String owner = "unavailable";
+        String[] legacyOwners = new String[0];
         if (host != null) {
             SessionStore sessions = host.sessions();
-            owner = sessions.isLoggedIn() ? "account:" + sessions.currentUserId() + "/" + sessions.currentHouseholdId() : "signed-out";
+            owner = sessions.isLoggedIn() ? "account:" + sessions.currentUserId() : "signed-out";
+            if (sessions.isLoggedIn()) legacyOwners = new String[]{owner + "/" + sessions.currentHouseholdId(), owner + "/null"};
         }
-        model.initialize(owner, savedInstanceState);
+        model.initialize(owner, savedInstanceState, legacyOwners);
     }
 
     @Override public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {

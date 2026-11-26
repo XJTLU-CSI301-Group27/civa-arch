@@ -1,0 +1,27 @@
+[
+  {
+    "path": "docs/EF_FAMILY_CATALOG_HANDOFF.md",
+    "before": null,
+    "after": "267255ae0d6b4b8b00da0f13a6862bf11b3a5de0b1f31f83c5af0d31d1fc5b9a"
+  },
+  {
+    "path": "docs/DATA_CONTRACT.md",
+    "before": "cee48bc359d5582f6d74af0ccb53359ba24f03214fb661e21c5ee831c8207270",
+    "after": "6939b561d9a66e79480db3e37322c08cb8f93bb59d39cc469160af5f211c8996"
+  },
+  {
+    "path": "docs/UI_RULES.md",
+    "before": "bda1fd42e91b2990fa4db6148b598d5d18368edc7b509086d2b3954598e90df3",
+    "after": "7a4d5539b47db4f081c755ca9293725845542cedca01bdf655097802767ebc5d"
+  },
+  {
+    "path": "docs/TEST_PLAN.md",
+    "before": "f51d8289c5b6d688f4733d3107d783023ab1bf1e53ad2d20ed5f963399d0acce",
+    "after": "b2a2a7eaa1136976bb88a091c26ae54fc5db299e9160cce204d2cd1d73352f63"
+  },
+  {
+    "path": "docs/HANDOFF.md",
+    "before": "18ad53d4930c2089e049e65e88c936869f47555149d5546f44a34e632c8ead11",
+    "after": "5cd3f0c041c49e2927eee3b8c40827d0ba9012e2a713b07fa8c3c9617fc25064"
+  }
+]

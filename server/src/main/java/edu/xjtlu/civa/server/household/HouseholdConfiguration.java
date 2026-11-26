@@ -15,10 +15,19 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration(proxyBeanMethods = false)
 class HouseholdConfiguration {
+    @Bean HouseholdSettingsService householdSettingsService(JdbcTemplate jdbc, HouseholdReadService read, PlatformTransactionManager manager) { return new HouseholdSettingsService(jdbc, read, manager); }
+    @Bean HouseholdMembershipService householdMembershipService(JdbcTemplate jdbc, PlatformTransactionManager manager) { return new HouseholdMembershipService(jdbc, manager); }
+    @Bean InvitationReceiptCipher invitationReceiptCipher(@org.springframework.beans.factory.annotation.Value("${civa.media-dir}") String mediaDir) throws IOException {
+        return new InvitationReceiptCipher(java.nio.file.Path.of(mediaDir).resolve(".private/invitation-receipt.key"));
+    }
+    @Bean HouseholdInvitationService householdInvitationService(JdbcTemplate jdbc, IdempotencyExecutor executor, JsonbCodec json, InvitationReceiptCipher receipts, PlatformTransactionManager manager) {
+        return new HouseholdInvitationService(jdbc, executor, json, receipts, manager);
+    }
+    @Bean org.springframework.boot.ApplicationRunner householdInvitationBackfill(HouseholdInvitationService invitations) { return args -> invitations.provisionExisting(); }
     @Bean HouseholdReadService householdReadService(JdbcTemplate jdbc) { return new HouseholdReadService(jdbc); }
     @Bean IdempotencyExecutor idempotencyExecutor(JdbcTemplate jdbc, PlatformTransactionManager manager) { return new IdempotencyExecutor(jdbc, manager); }
-    @Bean HouseholdWriteService householdWriteService(JdbcTemplate jdbc, IdempotencyExecutor executor, JsonbCodec json) {
-        return new HouseholdWriteService(jdbc, executor, json, Clock.systemUTC());
+    @Bean HouseholdWriteService householdWriteService(JdbcTemplate jdbc, IdempotencyExecutor executor, JsonbCodec json, HouseholdInvitationService invitations) {
+        return new HouseholdWriteService(jdbc, executor, json, Clock.systemUTC(), invitations::provisionLocked);
     }
     @Bean JsonNode contractSchemas(ObjectMapper json) throws IOException {
         JsonNode schemas = json.readTree(new ClassPathResource("contracts/openapi.json").getInputStream()).path("components").path("schemas");

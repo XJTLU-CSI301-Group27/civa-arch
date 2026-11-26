@@ -1,0 +1,193 @@
+{
+  "layouts": {
+    "tabletEmpty": {
+      "app_navigation": [
+        28,
+        1680,
+        1172,
+        1808
+      ],
+      "bd_home_hero": [
+        40,
+        168,
+        1160,
+        748
+      ],
+      "bd_home_hero_title": [
+        112,
+        379,
+        376,
+        537
+      ],
+      "bd_home_breakfast_card": [
+        40,
+        816,
+        1160,
+        1040
+      ],
+      "bd_home_lunch_card": [
+        40,
+        1128,
+        1160,
+        1352
+      ],
+      "bd_home_dinner_card": [
+        40,
+        1440,
+        1160,
+        1664
+      ]
+    },
+    "tabletPopulated": {
+      "app_navigation": [
+        28,
+        1680,
+        1172,
+        1808
+      ],
+      "bd_home_hero": [
+        40,
+        168,
+        1160,
+        748
+      ],
+      "bd_home_hero_title": [
+        112,
+        379,
+        376,
+        537
+      ],
+      "bd_home_breakfast_card": [
+        40,
+        816,
+        1160,
+        1040
+      ],
+      "bd_home_lunch_card": [
+        40,
+        1128,
+        1160,
+        1352
+      ],
+      "bd_home_dinner_card": [
+        40,
+        1440,
+        1160,
+        1664
+      ]
+    },
+    "landscape": {
+      "app_navigation": [
+        28,
+        960,
+        1892,
+        1088
+      ],
+      "bd_home_hero": [
+        40,
+        168,
+        1880,
+        304
+      ],
+      "bd_home_hero_title": [
+        112,
+        198,
+        376,
+        274
+      ],
+      "bd_home_breakfast_card": [
+        40,
+        372,
+        1880,
+        504
+      ],
+      "bd_home_lunch_card": [
+        40,
+        592,
+        1880,
+        724
+      ],
+      "bd_home_dinner_card": [
+        40,
+        812,
+        1880,
+        944
+      ]
+    },
+    "phone-size": {
+      "app_navigation": [
+        28,
+        1580,
+        792,
+        1708
+      ],
+      "bd_home_hero": [
+        40,
+        168,
+        780,
+        648
+      ],
+      "bd_home_hero_title": [
+        112,
+        329,
+        376,
+        487
+      ],
+      "bd_home_breakfast_card": [
+        40,
+        716,
+        780,
+        940
+      ],
+      "bd_home_lunch_card": [
+        40,
+        1028,
+        780,
+        1252
+      ],
+      "bd_home_dinner_card": [
+        40,
+        1340,
+        780,
+        1564
+      ]
+    }
+  },
+  "allTabNavigation": {
+    "app_recipes": [
+      28,
+      1680,
+      1172,
+      1808
+    ],
+    "app_inventory": [
+      28,
+      1680,
+      1172,
+      1808
+    ],
+    "app_diary": [
+      28,
+      1680,
+      1172,
+      1808
+    ],
+    "app_profile": [
+      28,
+      1680,
+      1172,
+      1808
+    ],
+    "app_today": [
+      28,
+      1680,
+      1172,
+      1808
+    ]
+  },
+  "warmCorners": {
+    "left": 550,
+    "center": 510,
+    "right": 551
+  }
+}

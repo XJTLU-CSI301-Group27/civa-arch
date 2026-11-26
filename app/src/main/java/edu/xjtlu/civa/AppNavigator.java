@@ -37,14 +37,19 @@ final class AppNavigator implements NavHost {
             case COOKING_CONFIRM: title = R.string.app_cooking_confirm; break;
             case MEAL_EDIT: title = R.string.app_meal_edit; break;
             case LOGIN: title = R.string.app_login; primary = true; break;
-            case HOUSEHOLD: title = R.string.app_household; break;
+            case HOUSEHOLD:
+                title = R.string.app_household;
+                // First-login onboarding replaces Login. Restoring an authenticated
+                // Login during Skip would otherwise navigate back to Household.
+                primary = fragments.findFragmentById(R.id.app_content) instanceof LoginFragment;
+                break;
             case PREFERENCES: title = R.string.app_preferences; break;
             default: throw new IllegalArgumentException("Unknown route: " + route);
         }
         // Queue the pop with the replacement; onResume callbacks can navigate during a pop.
         if (primary) fragments.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
         var fragment = route == Route.LOGIN ? new LoginFragment()
-                : route == Route.HOUSEHOLD ? new HouseholdFragment()
+                : route == Route.HOUSEHOLD ? householdFragment(entityId)
                 : route == Route.TODAY ? new BdHomeFragment()
                 : route == Route.RECIPES ? new RecipeCatalogFragment()
                 : route == Route.RECIPE_DETAIL ? RecipeCatalogDetailFragment.create(entityId)
@@ -58,4 +63,15 @@ final class AppNavigator implements NavHost {
         if (!primary) transaction.addToBackStack(null);
         transaction.commit();
     }
+
+    private HouseholdFragment householdFragment(String requestedReturn) {
+        HouseholdFragment fragment = new HouseholdFragment();
+        android.os.Bundle args = new android.os.Bundle();
+        boolean profile = "PROFILE".equals(requestedReturn)
+                || fragments.findFragmentById(R.id.app_content) instanceof ProfileFragment;
+        args.putString("ef.household.return", profile ? "PROFILE" : "TODAY");
+        fragment.setArguments(args);
+        return fragment;
+    }
+
 }

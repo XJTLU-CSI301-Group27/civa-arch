@@ -1,104 +1,32 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:paddingHorizontal="16dp"
-    android:paddingTop="12dp"
-    android:paddingBottom="4dp">
-
-    <TextView
-        android:id="@+id/ac_catalog_title"
-        style="@style/CivaText.Title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/ac_catalog_title" />
-
-    <TextView
-        android:id="@+id/ac_catalog_subtitle"
-        style="@style/CivaText.Subtitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/ac_catalog_subtitle" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/ac_catalog_sources"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            app:chipSpacingHorizontal="8dp"
-            app:singleLine="true" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/ac_catalog_create"
-            style="@style/CivaWidget.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/ac_editor_new_title"
-            android:visibility="gone" />
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingHorizontal="16dp" android:paddingTop="12dp" android:paddingBottom="4dp" android:clipChildren="true" android:clipToPadding="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:clipChildren="false" android:clipToPadding="false">
+        <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:clipChildren="false" android:clipToPadding="false">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:gravity="center_vertical" android:orientation="horizontal">
+                    <TextView android:id="@+id/ac_catalog_title" style="@style/CivaText.Title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="@string/ac_catalog_title" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/ac_catalog_create" style="@style/CivaWidget.SecondaryButton" android:layout_width="wrap_content" android:layout_height="48dp" android:minHeight="48dp" android:layout_marginStart="8dp" android:textSize="15sp" android:paddingHorizontal="14dp" android:text="@string/ac_catalog_create_label" android:visibility="invisible" />
+                </LinearLayout>
+                <TextView android:id="@+id/ac_catalog_subtitle" style="@style/CivaText.Subtitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ac_catalog_subtitle" android:paddingEnd="116dp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center_vertical" android:orientation="horizontal" android:layout_marginEnd="116dp">
+                    <HorizontalScrollView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:scrollbars="none">
+                        <com.google.android.material.chip.ChipGroup android:id="@+id/ac_catalog_sources" android:layout_width="wrap_content" android:layout_height="wrap_content" app:chipSpacingHorizontal="8dp" app:singleLine="true" />
+                    </HorizontalScrollView>
+                </LinearLayout>
+            </LinearLayout>
+            <ImageView android:id="@+id/ac_catalog_cat" android:layout_width="112dp" android:layout_height="110dp" android:layout_gravity="bottom|end" android:src="@drawable/civa_cat_pan" android:scaleType="fitEnd" android:importantForAccessibility="no" android:translationY="20dp" />
+        </FrameLayout>
+        <EditText android:id="@+id/ac_catalog_search" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="12dp" android:background="@drawable/ac_catalog_search" android:hint="@string/ac_catalog_search" android:inputType="text" android:maxLines="1" android:paddingHorizontal="16dp" android:singleLine="true" android:textColor="@color/civa_text" android:textSize="14sp" android:textColorHint="@color/civa_muted" />
+        <View android:id="@+id/ac_catalog_cat_clearance" android:layout_width="match_parent" android:layout_height="32dp" android:visibility="gone" android:importantForAccessibility="no" />
     </LinearLayout>
-
-    <EditText
-        android:id="@+id/ac_catalog_search"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginTop="12dp"
-        android:background="@drawable/ac_catalog_search"
-        android:hint="@string/ac_catalog_search"
-        android:inputType="text"
-        android:maxLines="1"
-        android:paddingHorizontal="16dp"
-        android:singleLine="true"
-        android:textColor="@color/civa_text"
-        android:textSize="14sp"
-        android:textColorHint="@color/civa_muted" />
-
-    <HorizontalScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:scrollbars="none">
-
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/ac_catalog_chips"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:chipSpacingHorizontal="8dp"
-            app:singleLine="true" />
+    <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:scrollbars="none">
+        <com.google.android.material.chip.ChipGroup android:id="@+id/ac_catalog_chips" android:layout_width="wrap_content" android:layout_height="wrap_content" app:chipSpacingHorizontal="8dp" app:singleLine="true" />
     </HorizontalScrollView>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/ac_catalog_grid"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="8dp"
-        android:clipToPadding="false"
-        android:paddingBottom="8dp"
-        android:scrollbars="none" />
-
-    <TextView
-        android:id="@+id/ac_catalog_status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="4dp"
-        android:textSize="13sp"
-        android:textColor="@color/civa_muted" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/ac_catalog_more"
-        style="@style/CivaWidget.TextButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:text="@string/ac_catalog_more_plain"
-        android:visibility="gone" />
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="8dp">
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/ac_catalog_grid" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:paddingBottom="8dp" android:scrollbars="none" />
+        <LinearLayout android:id="@+id/ac_catalog_empty" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center" android:padding="24dp" android:visibility="gone">
+            <TextView android:id="@+id/ac_catalog_empty_text" style="@style/CivaText.Title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="20sp" android:gravity="center" android:text="@string/ac_catalog_empty_mine" />
+        </LinearLayout>
+    </FrameLayout>
+    <TextView android:id="@+id/ac_catalog_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="4dp" android:textSize="13sp" android:textColor="@color/civa_muted" />
+    <com.google.android.material.button.MaterialButton android:id="@+id/ac_catalog_more" style="@style/CivaWidget.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center_horizontal" android:text="@string/ac_catalog_more_plain" android:visibility="gone" />
 </LinearLayout>

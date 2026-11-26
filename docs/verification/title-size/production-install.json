@@ -1,0 +1,11 @@
+{
+  "package": "edu.xjtlu.civa",
+  "device": "MI_PAD_4_PLUS",
+  "apkSha256": "4cc275c6807c9867e3b9b4541ed8b74e430a7820898476af74ddc58c945d9446",
+  "actualInstalledHashVerified": true,
+  "apiUrl": "http://127.0.0.1:8080/",
+  "deviceUnauthenticatedMeStatus": 401,
+  "localFilesCompared": 5,
+  "localFilesUnchanged": true,
+  "credentialsNotSubmitted": true
+}

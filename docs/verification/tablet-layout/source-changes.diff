@@ -1,0 +1,179 @@
+--- a/app/src/main/res/layout-w600dp/app_activity_main.xml
++++ /dev/null
+@@ -1,29 +0,0 @@
+-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-    xmlns:app="http://schemas.android.com/apk/res-auto"
+-    android:id="@+id/app_root"
+-    android:layout_width="match_parent" android:layout_height="match_parent"
+-    android:background="@color/civa_background">
+-
+-    <edu.xjtlu.civa.core.ui.PaperBackdropView
+-        android:layout_width="match_parent" android:layout_height="match_parent" />
+-
+-    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+-        android:orientation="horizontal">
+-
+-        <com.google.android.material.navigationrail.NavigationRailView
+-            android:id="@+id/app_navigation"
+-            android:layout_width="wrap_content" android:layout_height="match_parent"
+-            android:layout_margin="8dp"
+-            android:background="@drawable/civa_navigation_background" android:elevation="0dp"
+-            app:itemIconSize="24dp" app:itemIconTint="@color/app_navigation_icon"
+-            app:itemTextColor="@color/app_navigation_text"
+-            app:itemTextAppearanceActive="@style/CivaText.Navigation"
+-            app:itemTextAppearanceInactive="@style/CivaText.Navigation"
+-            app:itemActiveIndicatorStyle="@style/CivaWidget.NavigationIndicator"
+-            app:itemRippleColor="#18AA7048"
+-            app:labelVisibilityMode="labeled" app:menu="@menu/app_navigation" />
+-
+-        <androidx.fragment.app.FragmentContainerView android:id="@+id/app_content"
+-            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+-    </LinearLayout>
+-</FrameLayout>
+--- a/feature-bd/src/main/res/layout-w600dp/bd_fragment_home.xml
++++ /dev/null
+@@ -1,72 +0,0 @@
+-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent" android:layout_height="match_parent" tools:context=".HomeFragment">
+-    <edu.xjtlu.civa.core.ui.PaperBackdropView android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" />
+-    <edu.xjtlu.civa.feature.bd.BdHomeLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingHorizontal="20dp" android:paddingTop="10dp" android:paddingBottom="8dp">
+-        <LinearLayout android:id="@+id/bd_home_header" android:layout_width="match_parent" android:layout_height="50dp" android:orientation="horizontal" android:gravity="center_vertical">
+-            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center_vertical" android:orientation="vertical">
+-                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+-                    <TextView android:id="@+id/bd_home_weekday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textSize="26sp" android:textColor="@color/civa_primary_dark" android:includeFontPadding="false" tools:text="周五" />
+-                    <TextView android:id="@+id/bd_home_weekday_en" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:fontFamily="serif" android:textStyle="italic" android:textSize="14sp" android:textColor="@color/civa_secondary" tools:text="Friday" />
+-                </LinearLayout>
+-                <TextView android:id="@+id/bd_home_date" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textSize="10sp" android:textColor="@color/civa_muted" android:letterSpacing="0.14" tools:text="2026.11.20" />
+-            </LinearLayout>
+-            <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/bd_home_calendar" android:layout_width="48dp" android:layout_height="48dp" android:padding="10dp" android:background="@drawable/bd_home_calendar_background" app:srcCompat="@drawable/bd_ic_calendar" android:contentDescription="@string/bd_home_calendar" />
+-        </LinearLayout>
+-        <FrameLayout android:id="@+id/bd_home_hero" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:paddingVertical="3dp">
+-            <LinearLayout android:layout_width="300dp" android:layout_height="match_parent" android:layout_gravity="center" android:orientation="horizontal" android:gravity="center">
+-                <LinearLayout android:layout_width="132dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp" android:translationX="28dp">
+-                    <TextView android:id="@+id/bd_home_hero_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bd_home_hero_title" android:fontFamily="@font/civa_kuaile" android:textSize="38sp" android:includeFontPadding="false" android:lineSpacingExtra="3dp" android:textColor="@color/civa_primary_dark" />
+-                </LinearLayout>
+-                <edu.xjtlu.civa.core.ui.BakeryCatStage android:id="@id/bd_cat_stage" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:padding="12dp">
+-                    <ImageView android:id="@id/civa_cat_art" android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/civa_cat_bread" android:scaleType="fitCenter" android:contentDescription="@string/civa_cat_greeting" />
+-                </edu.xjtlu.civa.core.ui.BakeryCatStage>
+-            </LinearLayout>
+-        </FrameLayout>
+-        <LinearLayout android:id="@+id/bd_home_meals" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+-            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp">
+-                <LinearLayout android:id="@+id/bd_home_breakfast_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
+-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_breakfast" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_breakfast_en" />
+-                </LinearLayout>
+-                <FrameLayout android:id="@+id/bd_home_breakfast_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_breakfast_card" android:padding="10dp">
+-                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
+-                        <HorizontalScrollView android:id="@+id/bd_home_breakfast_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+-                            <LinearLayout android:id="@+id/bd_home_breakfast_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
+-                        </HorizontalScrollView>
+-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_breakfast" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_breakfast" android:text="@string/bd_home_add_dish" />
+-                    </LinearLayout>
+-                </FrameLayout>
+-            </LinearLayout>
+-            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp">
+-                <LinearLayout android:id="@+id/bd_home_lunch_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
+-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_lunch" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_lunch_en" />
+-                </LinearLayout>
+-                <FrameLayout android:id="@+id/bd_home_lunch_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_lunch_card" android:padding="10dp">
+-                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
+-                        <HorizontalScrollView android:id="@+id/bd_home_lunch_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+-                            <LinearLayout android:id="@+id/bd_home_lunch_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
+-                        </HorizontalScrollView>
+-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_lunch" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_lunch" android:text="@string/bd_home_add_dish" />
+-                    </LinearLayout>
+-                </FrameLayout>
+-            </LinearLayout>
+-            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+-                <LinearLayout android:id="@+id/bd_home_dinner_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
+-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_dinner" />
+-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_dinner_en" />
+-                </LinearLayout>
+-                <FrameLayout android:id="@+id/bd_home_dinner_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_dinner_card" android:padding="10dp">
+-                    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
+-                        <HorizontalScrollView android:id="@+id/bd_home_dinner_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+-                            <LinearLayout android:id="@+id/bd_home_dinner_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
+-                        </HorizontalScrollView>
+-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_dinner" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_dinner" android:text="@string/bd_home_add_dish" />
+-                    </LinearLayout>
+-                </FrameLayout>
+-            </LinearLayout>
+-        </LinearLayout>
+-    </edu.xjtlu.civa.feature.bd.BdHomeLayout>
+-</FrameLayout>
+--- a/core-ui/src/main/java/edu/xjtlu/civa/core/ui/BakeryWelcomeLayout.java
++++ b/core-ui/src/main/java/edu/xjtlu/civa/core/ui/BakeryWelcomeLayout.java
+@@ -3,6 +3,9 @@
+ import android.animation.ValueAnimator;
+ import android.content.Context;
+ import android.graphics.drawable.GradientDrawable;
++import android.graphics.Canvas;
++import android.graphics.Path;
++import android.graphics.RectF;
+ import android.util.AttributeSet;
+ import android.view.Gravity;
+ import android.view.View;
+@@ -34,10 +37,10 @@
+     @Override protected void onFinishInflate() {
+         super.onFinishInflate();
+         form = getChildAt(0); removeView(form);
+-        sheet = new FrameLayout(getContext());
++        sheet = new RoundedSheet(getContext(), dp(32));
+         GradientDrawable shape = new GradientDrawable(); shape.setColor(ContextCompat.getColor(getContext(), R.color.civa_welcome_paper));
+         shape.setCornerRadii(new float[]{dp(32),dp(32),dp(32),dp(32),0,0,0,0}); sheet.setBackground(shape);
+-        sheet.setClipToOutline(true);
++        // Clip the paper and form explicitly: old Android cannot outline-clip asymmetric corners.
+         addView(sheet); sheet.addView(new PaperBackdropView(getContext(), null), new FrameLayout.LayoutParams(-1,-1)); sheet.addView(form);
+         catWindow = new FrameLayout(getContext()); catWindow.setClipChildren(true); addView(catWindow);
+         cat = new ImageView(getContext()); cat.setImageResource(R.drawable.civa_cat_long_hat);
+@@ -106,5 +109,25 @@
+         if (entrance != null) { entrance.cancel(); entrance = null; }
+         super.onDetachedFromWindow();
+     }
++    /** Keeps top-only rounded corners visible even when a full-size paper child paints its own background. */
++    private static final class RoundedSheet extends FrameLayout {
++        private final Path clip = new Path();
++        private final float radius;
++        RoundedSheet(Context context, float radius) { super(context); this.radius = radius; }
++        @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
++            super.onSizeChanged(width, height, oldWidth, oldHeight);
++            clip.reset();
++            float r = Math.min(radius, Math.min(width / 2f, height / 2f));
++            if (r > 0) clip.addRoundRect(new RectF(0, 0, width, height),
++                    new float[]{r, r, r, r, 0, 0, 0, 0}, Path.Direction.CW);
++        }
++        @Override protected void dispatchDraw(Canvas canvas) {
++            int saved = canvas.save();
++            if (!clip.isEmpty()) canvas.clipPath(clip);
++            super.dispatchDraw(canvas);
++            canvas.restoreToCount(saved);
++        }
++    }
++
+     private int dp(float n) { return Math.round(n*getResources().getDisplayMetrics().density); }
+ }
+--- a/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeLayout.java
++++ b/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeLayout.java
+@@ -17,13 +17,12 @@
+             float density = getResources().getDisplayMetrics().density;
+             float height = (MeasureSpec.getSize(heightSpec) - getPaddingTop() - getPaddingBottom()) / density;
+             float font = Math.min(1.6f, getResources().getConfiguration().fontScale);
+-            boolean wide = ((LinearLayout) findViewById(R.id.bd_home_meals)).getOrientation() == HORIZONTAL;
+-            int header = Math.round(Math.max(wide ? 44 : 50, 44 * font) * density);
++            int header = Math.round(Math.max(50, 44 * font) * density);
+             int label = Math.round(Math.max(34, 33 * font) * density);
+-            float reserved = header / density + (wide ? 64 : 82 + 20) + label / density * (wide ? 1 : 3);
+-            int card = Math.round(Math.max(66, Math.min(112, (height - reserved) / (wide ? 1 : 3))) * density);
+-            float heroHeight = height - header / density - (label + card) / density * (wide ? 1 : 3) - (wide ? 0 : 20);
+-            boolean compact = wide || heroHeight < 150;
++            float reserved = header / density + (82 + 20) + label / density * 3;
++            int card = Math.round(Math.max(66, Math.min(112, (height - reserved) / 3)) * density);
++            float heroHeight = height - header / density - (label + card) / density * 3 - 20;
++            boolean compact = heroHeight < 150;
+             if (compactTitle == null || compactTitle != compact) {
+                 TextView title = findViewById(R.id.bd_home_hero_title);
+                 String text = getResources().getString(R.string.bd_home_hero_title);

@@ -1,0 +1,85 @@
+{
+  "civa_cat_long_hat": {
+    "source": "C:\\Users\\18192\\.codex\\generated_images\\01a18232-0e5c-7332-a85e-1731a9df977c\\exec-3ab07d73-4248-41bd-9aaf-558057bb27a9.png",
+    "size": [
+      1024,
+      1536
+    ],
+    "sha256": "1e1380bdc72953b08cd1b5df96d31434e71be3d72228cea057494c66b293aea5",
+    "inputFile": "codex-clipboard-2f62c96e-c9f0-4ca9-9636-250907eddca5.jpg",
+    "projectPath": "core-ui/src/main/res/drawable-nodpi/civa_cat_long_hat.png",
+    "tool": "built-in image_gen",
+    "transparent_background": true,
+    "prompt": "Use case: background-extraction. Edit target: attached image. Produce a faithful transparent PNG cutout for an Android UI of the single long-chef-hat orange cat with its yellow star, folded arms and thin ground line; preserve the full very tall chef hat. Keep the supplied exact illustration, its irregular thick dark hand-drawn strokes, colors, proportions, facial expression, pose and every character detail. Do not redesign, add anything, or substitute a different cat. Extract only the central illustrated scene, exclude the empty outer margins and unrelated peripheral text. Keep all white/cream enclosed character areas fully opaque. Actual transparent alpha outside the illustration, no white box, no checkerboard. Center with a small transparent margin, use a tightly fitted canvas appropriate to the subject's original aspect ratio."
+  },
+  "civa_cat_bread": {
+    "source": "C:\\Users\\18192\\.codex\\generated_images\\01a18232-0e5c-7332-a85e-1731a9df977c\\exec-636e3e88-2c91-4923-beb3-e6d9d745f21a.png",
+    "size": [
+      1301,
+      1209
+    ],
+    "sha256": "ae0d81bce1890b349d67c1c2cd63f7fd3c01351e56e86794a5cd86f02c518852",
+    "inputFile": "codex-clipboard-809479a0-2652-4363-88f3-b4d89c5c857a.jpg",
+    "projectPath": "core-ui/src/main/res/drawable-nodpi/civa_cat_bread.png",
+    "tool": "built-in image_gen",
+    "transparent_background": true,
+    "prompt": "Use case: background-extraction. Edit target: attached image. Produce a faithful transparent PNG cutout for an Android UI of the orange cat wearing a large round bread collar, yellow star and thin ground line; remove only the background yellow/white checkerboard, keep cream bread, white paws and face opaque. Keep the supplied exact illustration, its irregular thick dark hand-drawn strokes, colors, proportions, facial expression, pose and every character detail. Do not redesign, add anything, or substitute a different cat. Extract only the central illustrated scene, exclude the empty outer margins and unrelated peripheral text. Keep all white/cream enclosed character areas fully opaque. Actual transparent alpha outside the illustration, no white box, no checkerboard. Center with a small transparent margin, use a tightly fitted canvas appropriate to the subject's original aspect ratio."
+  },
+  "civa_cat_pan": {
+    "source": "C:\\Users\\18192\\.codex\\generated_images\\01a18232-0e5c-7332-a85e-1731a9df977c\\exec-076326c8-0905-4bba-9d6c-187b5fcddde8.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "sha256": "fcdfd29997099dc45238cd7bcbe84fe35491ac20ac78a50e83050bf33d8cf85d",
+    "inputFile": "codex-clipboard-73d0fa6d-8225-45c6-a050-05dcda53e943.jpg",
+    "projectPath": "core-ui/src/main/res/drawable-nodpi/civa_cat_pan.png",
+    "tool": "built-in image_gen",
+    "transparent_background": true,
+    "prompt": "Use case: background-extraction. Edit target: attached image. Produce a faithful transparent PNG cutout for an Android UI of the single orange chef cat with yellow star, raised spatula and frying pan, including motion strokes. Keep the supplied exact illustration, its irregular thick dark hand-drawn strokes, colors, proportions, facial expression, pose and every character detail. Do not redesign, add anything, or substitute a different cat. Extract only the central illustrated scene, exclude the empty outer margins and unrelated peripheral text. Keep all white/cream enclosed character areas fully opaque. Actual transparent alpha outside the illustration, no white box, no checkerboard. Center with a small transparent margin, use a tightly fitted canvas appropriate to the subject's original aspect ratio."
+  },
+  "civa_cat_egg": {
+    "source": "C:\\Users\\18192\\.codex\\generated_images\\01a18232-0e5c-7332-a85e-1731a9df977c\\exec-276a2cfd-8c2e-419b-b353-3c4d395c8d7f.png",
+    "size": [
+      1225,
+      1284
+    ],
+    "sha256": "2d48cc84cb2b1cef93299eef9fe0874f123f3fe36a020ab30dc9fb906b267226",
+    "inputFile": "codex-clipboard-1a48129c-837a-4441-9ac8-b7a67cc44ece.jpg",
+    "projectPath": "core-ui/src/main/res/drawable-nodpi/civa_cat_egg.png",
+    "tool": "built-in image_gen",
+    "transparent_background": true,
+    "prompt": "Use case: background-extraction. Edit target: attached image. Produce a faithful transparent PNG cutout for an Android UI of the single orange chef cat cracking an egg over a pan, yellow star beside it, including pan and thin ground line. Keep the supplied exact illustration, its irregular thick dark hand-drawn strokes, colors, proportions, facial expression, pose and every character detail. Do not redesign, add anything, or substitute a different cat. Extract only the central illustrated scene, exclude the empty outer margins and unrelated peripheral text. Keep all white/cream enclosed character areas fully opaque. Actual transparent alpha outside the illustration, no white box, no checkerboard. Center with a small transparent margin, use a tightly fitted canvas appropriate to the subject's original aspect ratio."
+  },
+  "civa_cat_family": {
+    "source": "C:\\Users\\18192\\.codex\\generated_images\\01a18232-0e5c-7332-a85e-1731a9df977c\\exec-8667bec0-92bb-44d8-94d0-5112fd95607e.png",
+    "size": [
+      1886,
+      834
+    ],
+    "sha256": "e8264d701613e6807a5c2a6d4d4410d27d380ef8bdf95a234f608a333646b936",
+    "inputFile": "codex-clipboard-34bad0db-2f58-4896-9962-9bc196b6e2b9.jpg",
+    "projectPath": "core-ui/src/main/res/drawable-nodpi/civa_cat_family.png",
+    "tool": "built-in image_gen",
+    "transparent_background": true,
+    "prompt": "Use case: background-extraction. Edit target: attached image. Produce a faithful transparent PNG cutout for an Android UI of the complete group of FOUR cats: three diners holding bowls and the tall-hat orange chef carrying rice; preserve ALL FOUR cats, their stars, bowls, rice plate and thin ground line. Keep the supplied exact illustration, its irregular thick dark hand-drawn strokes, colors, proportions, facial expression, pose and every character detail. Do not redesign, add anything, or substitute a different cat. Extract only the central illustrated scene, exclude the empty outer margins and unrelated peripheral text. Keep all white/cream enclosed character areas fully opaque. Actual transparent alpha outside the illustration, no white box, no checkerboard. Center with a small transparent margin, use a tightly fitted canvas appropriate to the subject's original aspect ratio."
+  },
+  "video": {
+    "original": "C:\\Users\\18192\\Desktop\\猫咪动画制作需求.mp4",
+    "originalSha256": "e4576c3bcc2ce6c1215409cb9fe22484beffc4857fec0612a328d89efe39c96b",
+    "frames": 169,
+    "fps": 24.0,
+    "crop": [
+      50,
+      280,
+      620,
+      540
+    ],
+    "background": "#987458",
+    "encodedBackground": "#97745A",
+    "codec": "VP8/WebM",
+    "audio": false,
+    "sha256": "0ef500ad1f130c0737107ee02c22a4c50ffb01cec64d3b9bf558a974d406dcfa",
+    "colorBasis": "observed Android VP8 decoder exterior RGB (151,116,90)"
+  }
+}

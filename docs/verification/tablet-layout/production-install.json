@@ -1,0 +1,13 @@
+{
+  "package": "edu.xjtlu.civa",
+  "device": "MI_PAD_4_PLUS",
+  "androidApi": 27,
+  "preservedLocalFiles": 2,
+  "beforeAfterMatch": true,
+  "qaPackageRemoved": true,
+  "productionLoginObserved": true,
+  "productionLoginNoNavigation": true,
+  "apkSha256": "f73ebee1ad14786f824c04d2f5c23aed7b8f7727b33d1d0ee42a5b9b4cd400ae",
+  "apiBaseUrl": "http://127.0.0.1:8080/",
+  "userCredentialsNotSubmitted": true
+}

@@ -1,0 +1,16 @@
+{
+  "testDatabase": "civa_family_test",
+  "creatorHasEqualRoleAndCanLeave": true,
+  "profileShowsNameAndId": true,
+  "joinedSettingsOnlyCodeCopyLeave": true,
+  "sameCodeForAllMembers": true,
+  "copyButtonWorks": true,
+  "codeReusableAfterCreatorLeft": true,
+  "lastLeaveClosesFamilyAndInvalidatesCode": true,
+  "failedJoinClearsPendingRecord": true,
+  "unjoinedShowsCreateAndJoinOnly": true,
+  "newFamilyHasDifferentIdAndCode": true,
+  "initialReturnsToday": true,
+  "profileOriginReturnsProfile": true,
+  "wideRecreationKeepsState": true
+}

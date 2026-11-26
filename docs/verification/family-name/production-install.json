@@ -1,0 +1,10 @@
+{
+  "package": "edu.xjtlu.civa",
+  "preservedLocalFiles": 10,
+  "beforeAfterMatch": true,
+  "qaPackageRemoved": true,
+  "apkSha256": "b501e9420ee930c9f9b7d8934a53818bce44130d881d61e4c882a10d47e62658",
+  "emulatorWasAlreadyRunning": true,
+  "emulatorLeftRunning": true,
+  "actualIntroCompleted": true
+}

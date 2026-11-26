@@ -1,118 +1,69 @@
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent" android:layout_height="match_parent" tools:context=".HomeFragment">
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent" android:layout_height="match_parent" tools:context=".HomeFragment">
     <edu.xjtlu.civa.core.ui.PaperBackdropView android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" />
-    <edu.xjtlu.civa.feature.bd.BdHomeLayout android:layout_width="match_parent" android:layout_height="match_parent"
-        android:orientation="vertical" android:paddingHorizontal="20dp" android:paddingTop="10dp" android:paddingBottom="8dp">
+    <edu.xjtlu.civa.feature.bd.BdHomeLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingHorizontal="20dp" android:paddingTop="10dp" android:paddingBottom="8dp">
         <LinearLayout android:id="@+id/bd_home_header" android:layout_width="match_parent" android:layout_height="50dp" android:orientation="horizontal" android:gravity="center_vertical">
             <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center_vertical" android:orientation="vertical">
                 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-                    <TextView android:id="@+id/bd_home_weekday" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:fontFamily="@font/civa_kuaile" android:textSize="26sp" android:textColor="@color/civa_primary_dark" android:includeFontPadding="false" tools:text="周五" />
-                    <TextView android:id="@+id/bd_home_weekday_en" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp"
-                        android:fontFamily="serif" android:textStyle="italic" android:textSize="14sp" android:textColor="@color/civa_secondary" tools:text="Friday" />
+                    <TextView android:id="@+id/bd_home_weekday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textSize="26sp" android:textColor="@color/civa_primary_dark" android:includeFontPadding="false" tools:text="周五" />
+                    <TextView android:id="@+id/bd_home_weekday_en" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:fontFamily="serif" android:textStyle="italic" android:textSize="14sp" android:textColor="@color/civa_secondary" tools:text="Friday" />
                 </LinearLayout>
-                <TextView android:id="@+id/bd_home_date" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp"
-                    android:textSize="10sp" android:textColor="@color/civa_muted" android:letterSpacing="0.14" tools:text="2026.11.20" />
+                <TextView android:id="@+id/bd_home_date" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textSize="10sp" android:textColor="@color/civa_muted" android:letterSpacing="0.14" tools:text="2026.11.20" />
             </LinearLayout>
-            <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/bd_home_calendar" android:layout_width="48dp" android:layout_height="48dp"
-                android:padding="10dp" android:background="@drawable/bd_home_calendar_background" app:srcCompat="@drawable/bd_ic_calendar" android:contentDescription="@string/bd_home_calendar" />
+            <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/bd_home_calendar" android:layout_width="48dp" android:layout_height="48dp" android:padding="10dp" android:background="@drawable/bd_home_calendar_background" app:srcCompat="@drawable/bd_ic_calendar" android:contentDescription="@string/bd_home_calendar" />
         </LinearLayout>
         <FrameLayout android:id="@+id/bd_home_hero" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:paddingVertical="3dp">
-          <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
-            android:layout_gravity="center" android:orientation="horizontal" android:gravity="center">
-            <edu.xjtlu.civa.core.ui.BakeryCatStage android:id="@id/bd_cat_stage"
-                android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent">
-                <ImageView android:id="@id/civa_cat_art" android:layout_width="match_parent" android:layout_height="match_parent"
-                    android:src="@drawable/bd_bakery_cat" android:scaleType="fitCenter" android:contentDescription="@string/civa_cat_greeting" />
-            </edu.xjtlu.civa.core.ui.BakeryCatStage>
-            <LinearLayout android:layout_width="132dp" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:orientation="vertical">
-                <TextView android:id="@+id/bd_home_hero_eyebrow" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bd_home_hero_eyebrow"
-                    android:textSize="10sp" android:textColor="@color/civa_secondary" android:letterSpacing="0.08" />
-                <TextView android:id="@+id/bd_home_hero_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
-                    android:text="@string/bd_home_hero_title" android:fontFamily="@font/civa_kuaile" android:textSize="34sp" android:includeFontPadding="false"
-                    android:lineSpacingExtra="3dp" android:textColor="@color/civa_primary_dark" />
-                <TextView android:id="@+id/bd_home_hero_caption" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
-                    android:text="@string/bd_home_hero_caption" android:textSize="10sp" android:textColor="@color/civa_muted" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_gravity="center" android:orientation="horizontal" android:gravity="center">
+                <LinearLayout android:layout_width="132dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="12dp" android:translationX="36dp">
+                    <TextView android:id="@+id/bd_home_hero_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/bd_home_hero_title" android:fontFamily="@font/civa_kuaile" android:textSize="38sp" android:includeFontPadding="false" android:lineSpacingExtra="3dp" android:textColor="@color/civa_primary_dark" />
+                </LinearLayout>
+                <edu.xjtlu.civa.core.ui.BakeryCatStage android:id="@id/bd_cat_stage" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:padding="12dp">
+                    <ImageView android:id="@id/civa_cat_art" android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/civa_cat_bread" android:scaleType="fitCenter" android:contentDescription="@string/civa_cat_greeting" />
+                </edu.xjtlu.civa.core.ui.BakeryCatStage>
             </LinearLayout>
-          </LinearLayout>
         </FrameLayout>
         <LinearLayout android:id="@+id/bd_home_meals" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="10dp">
-                <LinearLayout android:id="@+id/bd_home_breakfast_heading" android:layout_width="match_parent" android:layout_height="34dp"
-                    android:orientation="horizontal" android:gravity="start|center_vertical">
-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp"
-                        android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark"
-                        android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_breakfast" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp"
-                        android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_breakfast_en" />
+                <LinearLayout android:id="@+id/bd_home_breakfast_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
+                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_breakfast" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_breakfast_en" />
                 </LinearLayout>
-                <FrameLayout android:id="@+id/bd_home_breakfast_card" android:layout_width="match_parent" android:layout_height="112dp"
-                    android:background="@drawable/bd_home_breakfast_card" android:padding="10dp">
+                <FrameLayout android:id="@+id/bd_home_breakfast_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_breakfast_card" android:padding="10dp">
                     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
-                        <HorizontalScrollView android:id="@+id/bd_home_breakfast_scroll" android:layout_width="0dp" android:layout_weight="1"
-                            android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone"
-                            android:fillViewport="true" android:scrollbars="none">
-                            <LinearLayout android:id="@+id/bd_home_breakfast_items" android:layout_width="wrap_content" android:layout_height="match_parent"
-                                android:orientation="horizontal" android:gravity="start|center_vertical" />
+                        <HorizontalScrollView android:id="@+id/bd_home_breakfast_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+                            <LinearLayout android:id="@+id/bd_home_breakfast_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
                         </HorizontalScrollView>
-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_breakfast"
-                            style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp"
-                            android:contentDescription="@string/bd_home_add_breakfast" android:text="@string/bd_home_add_dish" />
+                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_breakfast" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_breakfast" android:text="@string/bd_home_add_dish" />
                     </LinearLayout>
                 </FrameLayout>
             </LinearLayout>
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="10dp">
-                <LinearLayout android:id="@+id/bd_home_lunch_heading" android:layout_width="match_parent" android:layout_height="34dp"
-                    android:orientation="horizontal" android:gravity="end|center_vertical">
-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp"
-                        android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark"
-                        android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_lunch" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp"
-                        android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_lunch_en" />
+                <LinearLayout android:id="@+id/bd_home_lunch_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="end|center_vertical">
+                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_lunch" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_lunch_en" />
                 </LinearLayout>
-                <FrameLayout android:id="@+id/bd_home_lunch_card" android:layout_width="match_parent" android:layout_height="112dp"
-                    android:background="@drawable/bd_home_lunch_card" android:padding="10dp">
+                <FrameLayout android:id="@+id/bd_home_lunch_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_lunch_card" android:padding="10dp">
                     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
-                        <HorizontalScrollView android:id="@+id/bd_home_lunch_scroll" android:layout_width="0dp" android:layout_weight="1"
-                            android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone"
-                            android:fillViewport="true" android:scrollbars="none">
-                            <LinearLayout android:id="@+id/bd_home_lunch_items" android:layout_width="wrap_content" android:layout_height="match_parent"
-                                android:orientation="horizontal" android:gravity="start|center_vertical" />
+                        <HorizontalScrollView android:id="@+id/bd_home_lunch_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+                            <LinearLayout android:id="@+id/bd_home_lunch_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
                         </HorizontalScrollView>
-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_lunch"
-                            style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp"
-                            android:contentDescription="@string/bd_home_add_lunch" android:text="@string/bd_home_add_dish" />
+                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_lunch" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_lunch" android:text="@string/bd_home_add_dish" />
                     </LinearLayout>
                 </FrameLayout>
             </LinearLayout>
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" >
-                <LinearLayout android:id="@+id/bd_home_dinner_heading" android:layout_width="match_parent" android:layout_height="34dp"
-                    android:orientation="horizontal" android:gravity="start|center_vertical">
-                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp"
-                        android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark"
-                        android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_dinner" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp"
-                        android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_dinner_en" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <LinearLayout android:id="@+id/bd_home_dinner_heading" android:layout_width="match_parent" android:layout_height="34dp" android:orientation="horizontal" android:gravity="start|center_vertical">
+                    <ImageView android:layout_width="15dp" android:layout_height="15dp" android:layout_marginEnd="6dp" android:src="@drawable/bd_ic_paw" android:importantForAccessibility="no" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:textColor="@color/civa_primary_dark" android:textAppearance="@style/BdText.MealTitle" android:text="@string/bd_home_dinner" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:textAppearance="@style/BdText.MealEnglish" android:text="@string/bd_home_dinner_en" />
                 </LinearLayout>
-                <FrameLayout android:id="@+id/bd_home_dinner_card" android:layout_width="match_parent" android:layout_height="112dp"
-                    android:background="@drawable/bd_home_dinner_card" android:padding="10dp">
+                <FrameLayout android:id="@+id/bd_home_dinner_card" android:layout_width="match_parent" android:layout_height="112dp" android:background="@drawable/bd_home_dinner_card" android:padding="10dp">
                     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center">
-                        <HorizontalScrollView android:id="@+id/bd_home_dinner_scroll" android:layout_width="0dp" android:layout_weight="1"
-                            android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone"
-                            android:fillViewport="true" android:scrollbars="none">
-                            <LinearLayout android:id="@+id/bd_home_dinner_items" android:layout_width="wrap_content" android:layout_height="match_parent"
-                                android:orientation="horizontal" android:gravity="start|center_vertical" />
+                        <HorizontalScrollView android:id="@+id/bd_home_dinner_scroll" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:visibility="gone" android:fillViewport="true" android:scrollbars="none">
+                            <LinearLayout android:id="@+id/bd_home_dinner_items" android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="start|center_vertical" />
                         </HorizontalScrollView>
-                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_dinner"
-                            style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp"
-                            android:contentDescription="@string/bd_home_add_dinner" android:text="@string/bd_home_add_dish" />
+                        <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_add_dinner" style="@style/BdWidget.AddDish" android:layout_width="88dp" android:layout_height="48dp" android:contentDescription="@string/bd_home_add_dinner" android:text="@string/bd_home_add_dish" />
                     </LinearLayout>
                 </FrameLayout>
             </LinearLayout>

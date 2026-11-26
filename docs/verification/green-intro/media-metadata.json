@@ -1,0 +1,30 @@
+{
+  "source": "C:\\Users\\18192\\Desktop\\\u732b\u54aa\u52a8\u753b\u5236\u4f5c\u9700\u6c42.mp4",
+  "sourceSha256": "03982ea5b00aa2ac683e6f62363d3b6f720aa0d9008b08b774ac55ba50dbb9fc",
+  "crop": [
+    0,
+    120,
+    720,
+    780
+  ],
+  "fps": 24.0,
+  "frames": 169,
+  "durationSeconds": 7.041666666666667,
+  "background": "#97745A",
+  "keyHSV": {
+    "min": [
+      30,
+      35,
+      110
+    ],
+    "max": [
+      48,
+      180,
+      255
+    ]
+  },
+  "edgeFeatherSigma": 0.45,
+  "codec": "VP8/WebM",
+  "originalAudioRetained": false,
+  "outputSha256": "6bb2892c33996b27d88ba53436f59a5aa47af469f9bd00e4fe206b25fbe19166"
+}

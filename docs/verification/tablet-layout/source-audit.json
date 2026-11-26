@@ -1,0 +1,26 @@
+[
+  {
+    "path": "app/src/main/res/layout-w600dp/app_activity_main.xml",
+    "action": "delete",
+    "beforeSha256": "b8a87aa01575e6cc043917413df3a8a84bac738c4b8630ac6e578208e1cf1f31",
+    "afterSha256": null
+  },
+  {
+    "path": "feature-bd/src/main/res/layout-w600dp/bd_fragment_home.xml",
+    "action": "delete",
+    "beforeSha256": "12d472f9d3870b9bbd12b100e87a7bc827bbe9cf657c7743bc18bde78c5ec386",
+    "afterSha256": null
+  },
+  {
+    "path": "core-ui/src/main/java/edu/xjtlu/civa/core/ui/BakeryWelcomeLayout.java",
+    "action": "modify",
+    "beforeSha256": "d6858b929f29f94ddf7470b8bb84ce740c8bbf07006adc874e58657ca726e2b4",
+    "afterSha256": "e6fca9f59d3e19cd6024debe2ee68af56d1cea1f675d65798640908365d4ad43"
+  },
+  {
+    "path": "feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeLayout.java",
+    "action": "modify",
+    "beforeSha256": "2922315ceffa73dfddece60de80f02d7aad7c43e5f9f69bc272e7c3fd4118f1c",
+    "afterSha256": "15a5793a877389b5fbee3300c8ede31d328408a90b3e824db200145099744c2f"
+  }
+]

@@ -45,6 +45,22 @@
     {
       "type": "edu.xjtlu.civa.feature.bd.BdHomeViewModel",
       "reason": "ViewModel reflection needs a public type; owned by BdHomeFragment."
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.ChefCatView",
+      "reason": "Shared original animated artwork, used only by app-owned bakery scenes."
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.MeowSound",
+      "reason": "Bundled audio primitive with explicit view lifecycle ownership."
+    },
+    {
+      "type": "edu.xjtlu.civa.core.ui.BakeryWelcomeLayout",
+      "reason": "Shared internal login and household presentation; feature forms retain their contracts."
+    },
+    {
+      "type": "edu.xjtlu.civa.feature.ef.ProfileEditDialog",
+      "reason": "DialogFragment must be public for framework recreation; private local-display editor, not a business contract."
     }
   ],
   "symbols": [
@@ -445,7 +461,8 @@
         "void login(LoginRequest request, ApiCallback<User> callback)",
         "void cancelLogin()",
         "void logout(ApiCallback<Void> callback)",
-        "void refreshMe(ApiCallback<User> callback)"
+        "void refreshMe(ApiCallback<User> callback)",
+        "void leaveHousehold(ApiCallback<Void> callback)"
       ],
       "incomplete": [
         "session cache cleanup",
@@ -768,7 +785,7 @@
       ],
       "thread": "blocking; authenticating caller derives digest server-side",
       "members": [
-        "HouseholdWriteService(JdbcTemplate jdbc, IdempotencyExecutor idempotency, JsonbCodec json, Clock clock)",
+        "HouseholdWriteService(JdbcTemplate jdbc, IdempotencyExecutor idempotency, JsonbCodec json, Clock clock, BiConsumer<UUID, UUID> provisionInvitation)",
         "Result createHousehold(UUID actor, UUID key, byte[] digest, String requestedName)",
         "Result joinHousehold(UUID actor, UUID key, byte[] digest, String invitationCode)"
       ],

@@ -1,0 +1,15 @@
+{
+  "device": "MI_PAD_4_PLUS",
+  "androidApi": 27,
+  "launchKeyboardHidden": true,
+  "launchInputNotFocused": true,
+  "usernameTapKeyboardShown": true,
+  "passwordTapKeyboardShown": true,
+  "coldRestartKeyboardHidden": true,
+  "userTextNotEntered": true,
+  "credentialsNotSubmitted": true,
+  "preservedLocalFiles": 2,
+  "beforeAfterMatch": true,
+  "productionPackage": "edu.xjtlu.civa",
+  "apkSha256": "983a48cf58d47ef69deede910036329aec9de8891a9f7ce1bcc173f0b7792272"
+}

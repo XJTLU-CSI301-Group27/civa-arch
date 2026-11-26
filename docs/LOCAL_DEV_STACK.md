@@ -54,7 +54,8 @@ double-click the task — no run configuration needed.
 
 It never fails the build: when Docker is unavailable it prints [dev-stack] ... warnings and
 the app still installs. CI=true or -PdevStackOff disables it. The database container uses
-estart: unless-stopped, so it comes back when Docker Desktop starts.
+
+estart: unless-stopped, so it comes back when Docker Desktop starts.
 
 ## Typical acceptance flow
 
@@ -116,3 +117,8 @@ Android Studio / Gradle 必须指向一个**独立安装的 JDK 17**（或在 St
 切换方式：`File > Sync Project with Gradle Files` 前，在
 `Settings > Build, Execution, Deployment > Build Tools > Gradle > Gradle JDK`
 选择独立 JDK（Studio 会写进不入库的 `<project>/.gradle/config.properties`）。
+
+## 2026-11-25 fixed family invitation migration
+
+The new app and backend must be updated together: new GET household invitations, expiresAt=null, all members self-leave and last-member closure. Startup applies additive Flyway V20261125210000 and backfills one permanent encrypted invitation for existing populated households. Old temporary invitations no longer grant entry.
+Before upgrading, back up the database and CIVA_MEDIA_DIR/.private/invitation-receipt.key. Keep this key persistent outside build cleanup; do not commit/share it. Native launcher uses .civa-local/media. The local normal database was backed up and verified without resetting existing data. See [EF_SHARED_FAMILY_HANDOFF.md](EF_SHARED_FAMILY_HANDOFF.md) for exact test/migration evidence.

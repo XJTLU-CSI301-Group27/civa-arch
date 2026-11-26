@@ -1,0 +1,32 @@
+[
+  {
+    "path": "feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeFragment.java",
+    "beforeSha256": "4eac73789a732deb933acf78badc721e47fab74b835425f48b2b8ad4a3f9908e",
+    "afterSha256": "51c3f37092845087af5cc5bb630c66f8861f191597ea669bc7b71276ab72c15a"
+  },
+  {
+    "path": "feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeViewModel.java",
+    "beforeSha256": "3cb8d5f4cb00165a053247e4046162e0a7d3f6128fb07504bf42ad8a8c6cbc92",
+    "afterSha256": "06bcfc9249e9abea22890aa99e3844b7cf6ea394f1184aedadd50791efdd1dd9"
+  },
+  {
+    "path": "feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdDraft.java",
+    "beforeSha256": "dfb67e5077be7eeaa6fe69bc82320355dd4d336e58d42b80d2ad2d5fc02c3ee7",
+    "afterSha256": "5f3303d8eff92b0449f4efe678c4883d6bd067e9f3d62e34d4a836a810301b7d"
+  },
+  {
+    "path": "feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdDraftStore.java",
+    "beforeSha256": "0f6eb7a891430636146e5de38854477a9e66c98d50043a169e801a3733aae587",
+    "afterSha256": "2c26f38463616f0fdbb37e7ec339b3b90d03ef1406b32e017327f9a79b831d84"
+  },
+  {
+    "path": "feature-ef/src/main/res/values/ef_strings.xml",
+    "beforeSha256": "ed0ef635f8c919d00ed2df155b742996092f46c04a11b3131d3664f6d9dd18d8",
+    "afterSha256": "717ca68f7bd4b4bf77b64b769136157f62f81868ed62792d9f3e6d32ca503a8a"
+  },
+  {
+    "path": "feature-bd/src/test/java/edu/xjtlu/civa/feature/bd/BdPersonalDraftMigrationTest.java",
+    "beforeSha256": null,
+    "afterSha256": "0d91a8ae440f0158be6e5806c41f5a739680200a391ae99c7f123f25dfe16464"
+  }
+]

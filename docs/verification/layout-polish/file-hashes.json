@@ -1,0 +1,22 @@
+{
+  "core-ui/src/main/java/edu/xjtlu/civa/core/ui/BakeryWelcomeLayout.java": {
+    "before": "fe756cfc3d92db6f75f8c42f231656e205a7b08e122698b2a9b01819d69e6cb3",
+    "after": "d6858b929f29f94ddf7470b8bb84ce740c8bbf07006adc874e58657ca726e2b4"
+  },
+  "feature-ef/src/main/res/layout/ef_fragment_login.xml": {
+    "before": "589c655bf5678f8f232e0c7530561ff537bb8c670496630768aa73034a183508",
+    "after": "d38e4d4aa5cb56da0fac08a4c9e04d4f6b9b457f79dbf0a951854e267dc47b56"
+  },
+  "feature-bd/src/main/res/layout/bd_fragment_home.xml": {
+    "before": "1685f4fb0ca993eae14a526358ebc4d14099188ad02f4ef75b0c8c128b8a0474",
+    "after": "5393840bd444e2d2a97adb8eac431a588382ab3d369c09430f63edba20da57df"
+  },
+  "feature-bd/src/main/res/layout-w600dp/bd_fragment_home.xml": {
+    "before": "f899c1ebb4da4b3794b44a66c7921a5a13650ffdfee81f93696b3e2129ceb6b3",
+    "after": "bcfcc9b0ffd8dfb6fe2f9d274a1208e3480a04d48b12deb0cc302193e5f2ba2e"
+  },
+  "feature-ac/src/main/res/layout/ac_fragment_catalog.xml": {
+    "before": "a0c01a7400b36119d8d4580aef7022e3a62b674d4b8fb6bb1d3906fa205123cb",
+    "after": "c4db16cc7e8042edb498eebee2f7b734805656067ef09a541d56c0310218fdd3"
+  }
+}

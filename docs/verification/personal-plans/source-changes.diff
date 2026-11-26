@@ -1,0 +1,362 @@
+--- a/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeFragment.java
++++ b/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeFragment.java
+@@ -52,11 +52,13 @@
+             }
+         }).get(BdHomeViewModel.class);
+         String owner = "unavailable";
++        String[] legacyOwners = new String[0];
+         if (host != null) {
+             SessionStore sessions = host.sessions();
+-            owner = sessions.isLoggedIn() ? "account:" + sessions.currentUserId() + "/" + sessions.currentHouseholdId() : "signed-out";
++            owner = sessions.isLoggedIn() ? "account:" + sessions.currentUserId() : "signed-out";
++            if (sessions.isLoggedIn()) legacyOwners = new String[]{owner + "/" + sessions.currentHouseholdId(), owner + "/null"};
+         }
+-        model.initialize(owner, savedInstanceState);
++        model.initialize(owner, savedInstanceState, legacyOwners);
+     }
+ 
+     @Override public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+--- a/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeViewModel.java
++++ b/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdHomeViewModel.java
+@@ -74,7 +74,7 @@
+         this.calls = calls;
+     }
+ 
+-    void initialize(String nextOwner, Bundle restored) {
++    void initialize(String nextOwner, Bundle restored, String... legacyOwners) {
+         if (nextOwner.equals(owner)) return;
+         if (owner != null) discardDraftPhoto();
+         cancelNutrition();
+@@ -89,10 +89,12 @@
+         date = LocalDate.now(); data = BdDraft.empty(scope);
+         if (restored != null && scope.equals(restored.getString("home.scope"))) restore(restored);
+         String loadingScope = scope;
++        List<String> legacyScopes = new ArrayList<>();
++        for (String legacyOwner : legacyOwners) legacyScopes.add(BdDraft.scopeHash(legacyOwner));
+         io.execute(() -> {
+             try {
+                 BdDraftStore loadedStore = new BdDraftStore(getApplication(), loadingScope);
+-                BdDraft loaded = loadedStore.load();
++                BdDraft loaded = loadedStore.loadMigrating(legacyScopes);
+                 BdRecipeCatalog loadedCatalog;
+                 try (InputStreamReader reader = new InputStreamReader(getApplication().getAssets().open("recipes/catalog.json"), StandardCharsets.UTF_8)) {
+                     loadedCatalog = new BdRecipeCatalog(reader);
+--- a/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdDraft.java
++++ b/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdDraft.java
+@@ -41,6 +41,7 @@
+     int version;
+     String scope;
+     Map<String, List<Dish>> meals;
++    java.util.Set<String> migratedScopes = new java.util.LinkedHashSet<>();
+ 
+     static BdDraft empty(String scope) {
+         BdDraft data = new BdDraft();
+@@ -112,6 +113,7 @@
+     static BdDraft decode(String json, String expectedScope) {
+         BdDraft data = new Gson().fromJson(json, BdDraft.class);
+         if (data == null || data.version != 1 || !expectedScope.equals(data.scope) || data.meals == null) throw new IllegalArgumentException("Invalid local draft");
++        if (data.migratedScopes == null) data.migratedScopes = new java.util.LinkedHashSet<>();
+         for (Map.Entry<String, List<Dish>> entry : data.meals.entrySet()) {
+             String[] parts = entry.getKey().split("/", -1);
+             if (parts.length != 2 || !key(LocalDate.parse(parts[0]), parts[1]).equals(entry.getKey()) || entry.getValue() == null) throw new IllegalArgumentException("Invalid meal key");
+@@ -124,6 +126,24 @@
+         return data;
+     }
+ 
++    /** Copy an explicitly owned old scope once; current entries win and removed entries stay removed. */
++    BdDraft importLegacy(BdDraft legacy, java.util.function.UnaryOperator<String> copyImage) {
++        if (scope.equals(legacy.scope) || migratedScopes.contains(legacy.scope)) return this;
++        BdDraft copy = decode(new Gson().toJson(this), scope);
++        java.util.Set<String> existing = new java.util.HashSet<>();
++        for (List<Dish> rows : copy.meals.values()) for (Dish dish : rows) existing.add(dish.id);
++        for (Map.Entry<String, List<Dish>> entry : legacy.meals.entrySet()) {
++            for (Dish dish : entry.getValue()) {
++                if (!existing.add(dish.id)) continue;
++                Dish imported = new Gson().fromJson(new Gson().toJson(dish), Dish.class);
++                if (imported.image != null && imported.image.startsWith("local:")) imported.image = copyImage.apply(imported.image);
++                copy.meals.computeIfAbsent(entry.getKey(), ignored -> new ArrayList<>()).add(imported);
++            }
++        }
++        copy.migratedScopes.add(legacy.scope);
++        return decode(new Gson().toJson(copy), scope);
++    }
++
+     static String scopeHash(String owner) {
+         try {
+             byte[] bytes = MessageDigest.getInstance("SHA-256").digest(owner.getBytes(StandardCharsets.UTF_8));
+--- a/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdDraftStore.java
++++ b/feature-bd/src/main/java/edu/xjtlu/civa/feature/bd/BdDraftStore.java
+@@ -10,13 +10,15 @@
+ import java.nio.charset.StandardCharsets;
+ import java.util.Arrays;
+ 
+-/** Private, atomic local drafts; the server remains the authority for shared household plans. */
++/** Personal account drafts, independent of household membership; old sources are retained during migration. */
+ final class BdDraftStore {
+     private final AtomicFile file;
++    private final Context context;
+     private final String scope;
+ 
+     BdDraftStore(Context context, String scope) throws IOException {
+         this.scope = scope;
++        this.context = context.getApplicationContext();
+         File directory = new File(context.getFilesDir(), "home-plan-drafts");
+         if (!directory.isDirectory() && !directory.mkdirs()) throw new IOException("Cannot create draft storage");
+         file = new AtomicFile(new File(directory, scope + ".json"));
+@@ -27,6 +29,43 @@
+         byte[] contents;
+         try (FileInputStream input = file.openRead()) { contents = read(input); }
+         return BdDraft.decode(new String(contents, StandardCharsets.UTF_8), scope);
++    }
++
++    BdDraft loadMigrating(java.util.List<String> ownedLegacyScopes) throws IOException {
++        BdDraft current = load();
++        for (String legacyScope : new java.util.LinkedHashSet<>(ownedLegacyScopes)) {
++            if (!legacyScope.matches("[0-9a-f]{64}") || legacyScope.equals(scope) || current.migratedScopes.contains(legacyScope)) continue;
++            BdDraftStore legacy = new BdDraftStore(context, legacyScope);
++            if (!legacy.file.getBaseFile().exists() && !new File(legacy.file.getBaseFile().getPath() + ".bak").exists()) continue;
++            try {
++                current = current.importLegacy(legacy.load(), reference -> {
++                    try { return copyLegacyPhoto(reference, legacyScope); }
++                    catch (IOException error) { throw new java.io.UncheckedIOException(error); }
++                });
++                save(current);
++            } catch (java.io.UncheckedIOException error) { throw error.getCause(); }
++        }
++        return current;
++    }
++
++    private String copyLegacyPhoto(String reference, String legacyScope) throws IOException {
++        String prefix = "local:home-dish-photos/" + legacyScope + "/";
++        if (!reference.startsWith(prefix)) throw new IOException("Photo owner mismatch");
++        String name = reference.substring(prefix.length());
++        if (!name.matches("[A-Za-z0-9_-]+\\.[A-Za-z0-9]+")) throw new IOException("Invalid photo filename");
++        File source = new File(context.getFilesDir(), reference.substring(6));
++        if (source.length() > 20 * 1024 * 1024) throw new IOException("Photo too large");
++        File directory = new File(context.getFilesDir(), "home-dish-photos/" + scope);
++        if (!directory.isDirectory() && !directory.mkdirs()) throw new IOException("Cannot create photo storage");
++        String targetName = legacyScope + "-" + name;
++        AtomicFile target = new AtomicFile(new File(directory, targetName));
++        FileOutputStream output = target.startWrite();
++        try (FileInputStream input = new FileInputStream(source)) {
++            byte[] buffer = new byte[8192]; int count;
++            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
++            output.getFD().sync(); target.finishWrite(output);
++        } catch (IOException | RuntimeException error) { target.failWrite(output); throw error; }
++        return "local:home-dish-photos/" + scope + "/" + targetName;
+     }
+ 
+     void save(BdDraft data) throws IOException {
+--- a/feature-ef/src/main/res/values/ef_strings.xml
++++ b/feature-ef/src/main/res/values/ef_strings.xml
+@@ -1,70 +1,140 @@
+ <resources>
++
+     <string name="ef_welcome">一起吃好每一天</string>
++
+     <string name="ef_welcome_detail">登录后与家人共享菜谱、冰箱和餐桌计划。</string>
++
+     <string name="ef_username">用户名</string>
++
+     <string name="ef_display_name">显示名称</string>
++
+     <string name="ef_password">密码</string>
++
+     <string name="ef_login">登录</string>
++
+     <string name="ef_register">创建账号</string>
++
+     <string name="ef_to_register">还没有账号？创建账号</string>
++
+     <string name="ef_to_login">已有账号？返回登录</string>
++
+     <string name="ef_busy">正在处理…</string>
++
+     <string name="ef_registered">账号已创建，请登录。</string>
++
+     <string name="ef_invalid_credentials">用户名或密码不正确。</string>
++
+     <string name="ef_username_taken">用户名已被使用。</string>
++
+     <string name="ef_invalid_input">请检查输入的信息。</string>
++
+     <string name="ef_rate_limited">尝试次数过多，请稍后再试。</string>
++
+     <string name="ef_network_error">无法连接服务，请检查网络后重试。</string>
++
+     <string name="ef_generic_error">请求未完成，请稍后重试。</string>
++
+     <string name="ef_household_title">家庭</string>
++
+     <string name="ef_household_detail">创建或加入一个家庭，与家人共享菜谱和冰箱。</string>
++
+     <string name="ef_create_household">创建家庭</string>
++
+     <string name="ef_household_name">家庭名称</string>
++
+     <string name="ef_join_household">加入家庭</string>
++
+     <string name="ef_household_code">邀请码</string>
++
+     <string name="ef_already_in_household">你已经在一个家庭中。</string>
++
+     <string name="ef_invalid_invitation">邀请码无效或已过期。</string>
++
+     <string name="ef_recovered">检测到未确认的家庭操作，已恢复；可重试或放弃。放弃不等于服务端已回滚。</string>
++
+     <string name="ef_abandon">放弃上次操作</string>
++
+     <string name="ef_profile_title">我的</string>
++
+     <string name="ef_profile_subtitle">账号、家庭与偏好设置</string>
++
+     <string name="ef_profile_account">登录账号</string>
++
+     <string name="ef_profile_signed_out">未登录</string>
++
+     <string name="ef_profile_household">当前家庭</string>
++
+     <string name="ef_profile_no_household">还尚未加入家庭哦</string>
+-    <string name="ef_profile_household_note">家庭成员共享菜谱、冰箱与排餐</string>
++
++    <string name="ef_profile_household_note">家庭成员共享菜谱与冰箱</string>
++
+     <string name="ef_profile_household_missing">创建或加入家庭后可使用共享功能</string>
++
+     <string name="ef_profile_household_settings">家庭设置</string>
++
+     <string name="ef_profile_household_join">加入家庭</string>
++
+     <string name="ef_profile_logout">退出登录</string>
++
+     <string name="ef_profile_footer">Civa · CSI301 小组项目</string>
++
+     <string name="ef_login_title">和我一起CIVA</string>
++
+     <string name="ef_household_greeting">和家人共享菜谱和冰箱吧</string>
++
+     <string name="ef_close_symbol">×</string><string name="ef_close">关闭</string>
++
+     <string name="ef_language">语言设置</string><string name="ef_language_symbol">文 / A</string>
++
+     <string name="ef_language_chinese">中文</string><string name="ef_language_english">英文</string>
++
+     <string name="ef_edit_profile">编辑个人资料</string><string name="ef_profile_save">保存</string>
++
+     <string name="ef_change_avatar">点击更换头像</string><string name="ef_profile_avatar">个人头像</string>
++
+     <string name="ef_profile_default_name">小猫饭友</string><string name="ef_profile_id">ID: %1$s</string>
++
+     <string name="ef_profile_save_error">请输入 1–60 个字的名字，或稍后重试保存。</string>
++
+     <string name="ef_photo_loading">正在准备照片…</string><string name="ef_photo_error">这张照片没能打开，换一张试试吧。</string>
++
+     <string name="ef_language_title">语言选择</string>
++
+     <string name="ef_leave_household">退出家庭</string>
++
+     <string name="ef_household_close">关闭家庭页面</string>
++
+     <string name="ef_household_leave_confirm">退出当前家庭？如果你是最后一位成员，这个家庭将注销，邀请码随之失效。个人资料和个人菜谱会保留。</string>
++
+     <string name="ef_household_leave_yes">确认退出</string>
++
+     <string name="ef_household_leave_cancel">再想想</string>
++
+     <string name="ef_household_version_conflict">家庭成员信息已更新，请重试。</string>
++
+     <string name="ef_invitation_title">家庭邀请码</string>
++
+     <string name="ef_invitation_copy">复制邀请码</string>
++
+     <string name="ef_invitation_copied">已复制邀请码</string>
++
+     <string name="ef_fixed_invitation_label">邀请码</string>
++
+     <string name="ef_invitation_loading">正在读取邀请码…</string>
++
+     <string name="ef_household_name_loading">正在读取家庭名称…</string>
++
+     <string name="ef_household_name_unavailable">暂时无法读取家庭名称</string>
++
+     <string name="ef_retry_same_operation">请先重试或取消上次操作，再进行其他操作。</string>
++
+     <string name="ef_edit_household_name">修改家庭名</string>
++
+     <string name="ef_save_household_name">保存</string>
++
+     <string name="ef_household_name_saved">家庭名已保存</string>
++
+     <string name="ef_household_name_conflict">其他成员修改了家庭信息。你输入的名字已保留，请确认后再保存。</string>
++
+ </resources>
++
+--- /dev/null
++++ b/feature-bd/src/test/java/edu/xjtlu/civa/feature/bd/BdPersonalDraftMigrationTest.java
+@@ -0,0 +1,66 @@
++package edu.xjtlu.civa.feature.bd;
++
++import static org.junit.Assert.*;
++import com.google.gson.Gson;
++import java.time.LocalDate;
++import java.util.concurrent.atomic.AtomicInteger;
++import org.junit.Test;
++
++public class BdPersonalDraftMigrationTest {
++    private final String personal = BdDraft.scopeHash("account:alice");
++    private final String first = BdDraft.scopeHash("account:alice/home-one");
++    private final String second = BdDraft.scopeHash("account:alice/home-two");
++    private final LocalDate day = LocalDate.of(2026, 11, 26);
++
++    @Test public void combinesHouseholdsAndUnjoinedDaysWithoutMixingDatesOrMeals() {
++        BdDraft a = BdDraft.empty(first).withDish(day,"BREAKFAST",BdDraft.Dish.custom("a","早餐",null));
++        BdDraft b = BdDraft.empty(second).withDish(day,"LUNCH",BdDraft.Dish.custom("b","午餐",null));
++        BdDraft unjoined = BdDraft.empty(BdDraft.scopeHash("account:alice/null"))
++                .withDish(day.plusDays(1),"DINNER",BdDraft.Dish.custom("c","明晚",null));
++        BdDraft result = BdDraft.empty(personal).importLegacy(a,x->x).importLegacy(b,x->x).importLegacy(unjoined,x->x);
++        assertEquals("早餐",result.dishes(day,"BREAKFAST").get(0).name);
++        assertEquals("午餐",result.dishes(day,"LUNCH").get(0).name);
++        assertTrue(result.dishes(day,"DINNER").isEmpty());
++        assertEquals("明晚",result.dishes(day.plusDays(1),"DINNER").get(0).name);
++        assertEquals(personal,result.scope);
++        assertEquals(first,a.scope);
++    }
++
++    @Test public void currentEditsWinAndImportedDeletionDoesNotResurrectAfterRestart() {
++        BdDraft old = BdDraft.empty(first).withDish(day,"BREAKFAST",BdDraft.Dish.custom("same","旧名称",null));
++        BdDraft current = BdDraft.empty(personal).withDish(day,"BREAKFAST",BdDraft.Dish.custom("same","已修改",null));
++        BdDraft imported = current.importLegacy(old,x->x);
++        assertEquals(1,imported.dishes(day,"BREAKFAST").size());
++        assertEquals("已修改",imported.dishes(day,"BREAKFAST").get(0).name);
++        BdDraft removed = imported.withoutDish(day,"BREAKFAST","same");
++        BdDraft reopened = BdDraft.decode(new Gson().toJson(removed),personal).importLegacy(old,x->x);
++        assertTrue(reopened.dishes(day,"BREAKFAST").isEmpty());
++    }
++
++    @Test public void photosAreReownedExactlyOnceAndSourceSnapshotStaysUnchanged() {
++        String oldPhoto="local:home-dish-photos/"+first+"/photo.jpg";
++        String newPhoto="local:home-dish-photos/"+personal+"/copied.jpg";
++        BdDraft old=BdDraft.empty(first).withDish(day,"DINNER",BdDraft.Dish.custom("photo","照片菜",oldPhoto));
++        AtomicInteger copies=new AtomicInteger();
++        BdDraft migrated=BdDraft.empty(personal).importLegacy(old,x->{assertEquals(oldPhoto,x);copies.incrementAndGet();return newPhoto;});
++        migrated=migrated.importLegacy(old,x->{fail("Repeated photo copy");return x;});
++        assertEquals(1,copies.get());assertEquals(newPhoto,migrated.dishes(day,"DINNER").get(0).image);
++        assertEquals(oldPhoto,old.dishes(day,"DINNER").get(0).image);
++    }
++
++    @Test public void failedPhotoCopyLeavesNoCompletedMigrationAndCanBeRetried() {
++        BdDraft old=BdDraft.empty(first).withDish(day,"DINNER",BdDraft.Dish.custom("photo","菜","local:home-dish-photos/"+first+"/a.jpg"));
++        BdDraft current=BdDraft.empty(personal);
++        assertThrows(IllegalStateException.class,()->current.importLegacy(old,x->{throw new IllegalStateException("disk");}));
++        assertFalse(current.migratedScopes.contains(first));assertTrue(current.meals.isEmpty());
++        assertEquals(1,current.importLegacy(old,x->"local:home-dish-photos/"+personal+"/a.jpg").dishes(day,"DINNER").size());
++    }
++
++    @Test public void otherAccountsCannotDecodePersonalPlanAndOldVersionOneStillLoads() {
++        BdDraft migrated=BdDraft.empty(personal).importLegacy(BdDraft.empty(first),x->x);
++        assertThrows(IllegalArgumentException.class,()->BdDraft.decode(new Gson().toJson(migrated),BdDraft.scopeHash("account:bob")));
++        String legacy="{\"version\":1,\"scope\":\""+first+"\",\"meals\":{}}";
++        assertNotNull(BdDraft.decode(legacy,first).migratedScopes);
++        assertEquals(1,BdDraft.empty(personal).importLegacy(BdDraft.decode(legacy,first),x->x).migratedScopes.size());
++    }
++}

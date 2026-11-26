@@ -1,0 +1,41 @@
+{
+  "android": {
+    "tests": 124,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "server": {
+    "tests": 61,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "contractToolTests": 16,
+  "lint": {
+    "app": {
+      "errors": 0,
+      "warnings": 22
+    },
+    "core-data": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "core-ui": {
+      "errors": 0,
+      "warnings": 11
+    },
+    "feature-ac": {
+      "errors": 0,
+      "warnings": 31
+    },
+    "feature-bd": {
+      "errors": 0,
+      "warnings": 17
+    },
+    "feature-ef": {
+      "errors": 0,
+      "warnings": 2
+    }
+  }
+}

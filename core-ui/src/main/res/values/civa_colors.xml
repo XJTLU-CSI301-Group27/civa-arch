@@ -13,4 +13,7 @@
     <color name="civa_breakfast">#FFFAEE</color>
     <color name="civa_lunch">#F3E4CB</color>
     <color name="civa_dinner">#F6E6DB</color>
+    <color name="civa_welcome_paper">@color/civa_background</color>
+    <color name="civa_welcome_brown">#97745A</color>
+    <color name="civa_sage">#496455</color>
 </resources>

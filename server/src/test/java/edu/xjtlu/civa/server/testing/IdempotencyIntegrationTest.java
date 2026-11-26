@@ -107,7 +107,7 @@ class IdempotencyIntegrationTest {
                 return new IdempotencyExecutor.Result(201, "{}");
             }, result -> fail("must not replay")));
 
-            var households = new HouseholdWriteService(jdbc, transactions, new JsonbCodec(mapper), Clock.systemUTC());
+            var households = new HouseholdWriteService(jdbc, transactions, new JsonbCodec(mapper), Clock.systemUTC(), (homeId, userId) -> { /* This executor test seeds invitation fixtures below; HTTP tests cover real provisioning. */ });
             String createBody = "{\"name\":\"Shared home\"}";
             byte[] createDigest = canonicalizer.digestJson("POST", "/api/v1/households", createBody, schemas.get("CreateHouseholdRequest"));
             UUID createKey = UUID.randomUUID();
@@ -126,8 +126,8 @@ class IdempotencyIntegrationTest {
             }
             String invite = "AAAAAAAAAAAAAAAAAAAAAAAAAA";
             byte[] inviteHash = MessageDigest.getInstance("SHA-256").digest(invite.getBytes(StandardCharsets.US_ASCII));
-            jdbc.update("INSERT INTO invitations(id,household_id,created_by,code_hash,expires_at) VALUES (?,?,?,?,?)",
-                    UUID.randomUUID(), home, actor, inviteHash, Timestamp.from(Clock.systemUTC().instant().plus(Duration.ofHours(1))));
+            jdbc.update("INSERT INTO invitations(id,household_id,created_by,code_hash,expires_at,permanent,sealed_code) VALUES (?,?,?,?,NULL,true,?)",
+                    UUID.randomUUID(), home, actor, inviteHash, "executor-test-sealed-fixture");
             String joinBody = "{\"code\":\"" + invite.toLowerCase() + "\"}";
             byte[] joinDigest = canonicalizer.digestJson("POST", "/api/v1/households/join", joinBody, schemas.get("JoinHouseholdRequest"));
             UUID joinKey = UUID.randomUUID();
@@ -136,8 +136,7 @@ class IdempotencyIntegrationTest {
             assertEquals("MEMBER", mapper.readTree(joined.body).path("role").asText());
             assertEquals(mapper.readTree(joined.body), mapper.readTree(households.joinHousehold(member, joinKey, joinDigest, invite.toLowerCase()).body));
             byte[] uppercaseDigest = canonicalizer.digestJson("POST", "/api/v1/households/join", "{\"code\":\"" + invite + "\"}", schemas.get("JoinHouseholdRequest"));
-            assertEquals("INVALID_INVITATION", assertThrows(HouseholdWriteService.Failure.class,
-                    () -> households.joinHousehold(outsider, UUID.randomUUID(), uppercaseDigest, invite)).code);
+            assertEquals(home.toString(),mapper.readTree(households.joinHousehold(outsider,UUID.randomUUID(),uppercaseDigest,invite).body).path("householdId").asText());
             jdbc.update("UPDATE memberships SET active=false WHERE user_id=? AND household_id=?", member, home);
             assertEquals("HOUSEHOLD_ACCESS_REVOKED", assertThrows(HouseholdWriteService.Failure.class,
                     () -> households.joinHousehold(member, joinKey, joinDigest, invite.toLowerCase())).code);
@@ -150,13 +149,13 @@ class IdempotencyIntegrationTest {
             String secondBody = "{\"name\":\"Second home\"}";
             byte[] secondDigest = canonicalizer.digestJson("POST", "/api/v1/households", secondBody, schemas.get("CreateHouseholdRequest"));
             UUID secondHome = UUID.fromString(mapper.readTree(households.createHousehold(secondOwner, UUID.randomUUID(), secondDigest, "Second home").body).path("id").asText());
-            String firstCode = "AAAQEAYEAUDAOCAJBIFQYDIOB4", secondCode = "77777777777777777777777774";
-            for (int i = 0; i < 2; i++) {
+            String firstCode = invite, secondCode = "77777777777777777777777774";
+            for (int i = 1; i < 2; i++) {
                 String code = i == 0 ? firstCode : secondCode;
-                jdbc.update("INSERT INTO invitations(id,household_id,created_by,code_hash,expires_at) VALUES (?,?,?,?,?)",
+                jdbc.update("INSERT INTO invitations(id,household_id,created_by,code_hash,expires_at,permanent,sealed_code) VALUES (?,?,?,?,NULL,true,?)",
                         UUID.randomUUID(), i == 0 ? home : secondHome, i == 0 ? actor : secondOwner,
                         MessageDigest.getInstance("SHA-256").digest(code.getBytes(StandardCharsets.US_ASCII)),
-                        Timestamp.from(Clock.systemUTC().instant().plus(Duration.ofHours(1))));
+                        "executor-test-sealed-fixture");
             }
             CountDownLatch ready = new CountDownLatch(2), start = new CountDownLatch(1);
             var joinTasks = new java.util.ArrayList<java.util.concurrent.Future<String>>();
@@ -174,7 +173,7 @@ class IdempotencyIntegrationTest {
             var outcomes = java.util.Set.of(joinTasks.get(0).get(10, TimeUnit.SECONDS), joinTasks.get(1).get(10, TimeUnit.SECONDS));
             assertEquals(java.util.Set.of("JOINED", "ALREADY_IN_HOUSEHOLD"), outcomes);
             assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM memberships WHERE user_id=? AND active", Integer.class, joiner));
-            assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM invitations WHERE code_hash IN (?,?) AND used_at IS NOT NULL", Integer.class,
+            assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM invitations WHERE code_hash IN (?,?) AND used_at IS NOT NULL", Integer.class,
                     MessageDigest.getInstance("SHA-256").digest(firstCode.getBytes(StandardCharsets.US_ASCII)),
                     MessageDigest.getInstance("SHA-256").digest(secondCode.getBytes(StandardCharsets.US_ASCII))));
         } finally {

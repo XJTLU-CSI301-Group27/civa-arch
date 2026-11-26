@@ -1,0 +1,78 @@
+{
+  "phone": {
+    "ef_household_heading": [
+      74,
+      733,
+      1006,
+      812
+    ],
+    "ef_edit_household_name": [
+      74,
+      858,
+      1006,
+      978
+    ],
+    "ef_invitation_code": [
+      74,
+      1114,
+      1006,
+      1271
+    ],
+    "ef_copy_invitation": [
+      74,
+      1313,
+      1006,
+      1455
+    ],
+    "ef_save_household_name": [
+      74,
+      1502,
+      1006,
+      1644
+    ],
+    "ef_leave": [
+      74,
+      1681,
+      1006,
+      1823
+    ]
+  },
+  "wide": {
+    "ef_household_heading": [
+      649,
+      520,
+      1751,
+      599
+    ],
+    "ef_edit_household_name": [
+      649,
+      645,
+      1751,
+      765
+    ],
+    "ef_invitation_code": [
+      649,
+      901,
+      1751,
+      1058
+    ],
+    "ef_copy_invitation": [
+      649,
+      1100,
+      1751,
+      1242
+    ],
+    "ef_save_household_name": [
+      649,
+      1289,
+      1751,
+      1431
+    ],
+    "ef_leave": [
+      649,
+      1468,
+      1751,
+      1516
+    ]
+  }
+}

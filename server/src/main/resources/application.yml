@@ -15,7 +15,7 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 civa:
-  media-dir: ${CIVA_MEDIA_DIR}
+  media-dir: ${CIVA_MEDIA_DIR:./build/private-media}
   nutrition:
     provider: ${CIVA_NUTRITION_PROVIDER:auto}
     api-key: ${CIVA_NUTRITION_API_KEY:}

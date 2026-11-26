@@ -1,0 +1,25 @@
+{
+  "database": "civa_arch_dev",
+  "unrelatedTablesUnchanged": [
+    "users",
+    "sessions",
+    "user_recipes",
+    "recipe_favorites",
+    "recipes",
+    "inventory_batches",
+    "inventory_movements",
+    "plan_slots",
+    "plan_items",
+    "cooking_events",
+    "meal_entries",
+    "media",
+    "preferences"
+  ],
+  "householdRowsPreserved": 6,
+  "membershipRowsPreserved": 7,
+  "activeRolesAllMember": true,
+  "noActiveMembershipInClosedHouseholds": true,
+  "allPopulatedHomesHaveOnePermanentCode": true,
+  "privateKeyUnchanged": true,
+  "migrationApplied": true
+}

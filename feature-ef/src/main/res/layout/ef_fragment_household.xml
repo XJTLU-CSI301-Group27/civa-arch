@@ -1,30 +1,27 @@
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@color/civa_background">
-
-    <edu.xjtlu.civa.core.ui.PaperBackdropView
-        android:layout_width="match_parent" android:layout_height="match_parent" />
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent">
+<edu.xjtlu.civa.core.ui.BakeryWelcomeLayout android:id="@+id/ef_welcome_scene"
+    android:layout_width="match_parent" android:layout_height="match_parent">
 
     <ScrollView android:layout_width="match_parent" android:layout_height="match_parent"
         android:fillViewport="true">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_gravity="center" android:orientation="vertical"
+        <LinearLayout android:id="@+id/ef_household_content" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:gravity="center_vertical" android:orientation="vertical"
             android:paddingStart="28dp" android:paddingEnd="28dp"
-            android:paddingTop="40dp" android:paddingBottom="32dp">
+            android:paddingTop="42dp" android:paddingBottom="34dp">
             <TextView style="@style/CivaText.Title"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="@string/ef_household_title" />
-            <TextView style="@style/CivaText.Subtitle"
+                android:id="@+id/ef_household_heading" android:text="@string/ef_household_title" />
+            <TextView android:id="@+id/ef_household_detail" style="@style/CivaText.Subtitle"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="8dp" android:layout_marginBottom="24dp"
                 android:text="@string/ef_household_detail" />
-            <TextView style="@style/CivaText.Section"
+            <LinearLayout android:id="@+id/ef_setup_controls" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+            <TextView style="@style/CivaText.WelcomeSection"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="@string/ef_create_household" />
-            <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent"
+            <com.google.android.material.textfield.TextInputLayout style="@style/CivaWidget.WelcomeInput" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:layout_marginTop="8dp" android:hint="@string/ef_household_name">
-                <com.google.android.material.textfield.TextInputEditText android:id="@+id/ef_household_name"
+                <com.google.android.material.textfield.TextInputEditText android:fontFamily="@font/civa_kuaile" android:paddingHorizontal="16dp" android:paddingVertical="14dp" android:id="@+id/ef_household_name"
                     android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:inputType="textCapWords" android:saveEnabled="false" />
             </com.google.android.material.textfield.TextInputLayout>
@@ -32,19 +29,32 @@
                 style="@style/CivaWidget.PrimaryButton"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="16dp" android:text="@string/ef_create_household" />
-            <TextView style="@style/CivaText.Section"
+            <TextView style="@style/CivaText.WelcomeSection"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="32dp" android:text="@string/ef_join_household" />
-            <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent"
+                android:layout_marginTop="20dp" android:text="@string/ef_join_household" />
+            <com.google.android.material.textfield.TextInputLayout style="@style/CivaWidget.WelcomeInput" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:layout_marginTop="8dp" android:hint="@string/ef_household_code">
-                <com.google.android.material.textfield.TextInputEditText android:id="@+id/ef_household_code"
+                <com.google.android.material.textfield.TextInputEditText android:fontFamily="@font/civa_kuaile" android:paddingHorizontal="16dp" android:paddingVertical="14dp" android:id="@+id/ef_household_code"
                     android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:inputType="textCapCharacters" android:saveEnabled="false" />
+                    android:inputType="textVisiblePassword" android:saveEnabled="false" />
             </com.google.android.material.textfield.TextInputLayout>
             <com.google.android.material.button.MaterialButton android:id="@+id/ef_join"
                 style="@style/CivaWidget.SecondaryButton"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="16dp" android:text="@string/ef_join_household" />
+            </LinearLayout>
+            <LinearLayout android:id="@+id/ef_joined_controls" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+                <com.google.android.material.textfield.TextInputLayout style="@style/CivaWidget.WelcomeInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:hint="@string/ef_household_name">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/ef_edit_household_name" android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="@font/civa_kuaile" android:paddingHorizontal="16dp" android:paddingVertical="14dp" android:inputType="textCapWords" android:singleLine="true" android:saveEnabled="false" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <TextView style="@style/CivaText.WelcomeSection" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/ef_fixed_invitation_label" />
+                <TextView android:id="@id/ef_invitation_code" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:padding="18dp" android:background="@drawable/ef_profile_card" android:fontFamily="monospace" android:textSize="18sp" android:textColor="@color/civa_text" android:textIsSelectable="true" android:saveEnabled="false" android:breakStrategy="simple" android:text="@string/ef_invitation_loading" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/ef_copy_invitation" style="@style/CivaWidget.SecondaryButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:enabled="false" android:text="@string/ef_invitation_copy" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/ef_save_household_name" style="@style/CivaWidget.PrimaryButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="@string/ef_save_household_name" android:enabled="false" />
+            </LinearLayout>
+            <com.google.android.material.button.MaterialButton android:id="@+id/ef_leave"
+                style="@style/CivaWidget.SecondaryButton" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="14dp" android:text="@string/ef_leave_household" android:textColor="@color/civa_primary_dark" android:visibility="gone" />
             <com.google.android.material.button.MaterialButton android:id="@+id/ef_abandon"
                 style="@style/CivaWidget.TextButton"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -55,4 +65,7 @@
                 android:visibility="gone" />
         </LinearLayout>
     </ScrollView>
+</edu.xjtlu.civa.core.ui.BakeryWelcomeLayout>
+
+    <com.google.android.material.button.MaterialButton android:id="@+id/ef_household_close" style="@style/CivaWidget.TextButton" android:layout_width="48dp" android:layout_height="48dp" android:layout_gravity="top|start" android:layout_margin="10dp" android:minWidth="0dp" android:padding="0dp" android:text="@string/ef_close_symbol" android:textSize="22sp" android:textColor="@color/civa_surface" android:contentDescription="@string/ef_household_close" />
 </FrameLayout>
