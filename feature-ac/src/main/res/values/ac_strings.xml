@@ -69,6 +69,12 @@
     <string name="ac_catalog_empty_mine">这里还空着，放进你的第一道拿手菜吧</string>
     <string name="ac_catalog_empty_favorites">这里还空着，快加入你最想吃的菜吧</string>
     <string name="ac_catalog_join_first">先加入家庭，再和家人分享菜谱吧</string>
+    <string name="ac_stock_checking">检查库存…</string>
+    <string name="ac_stock_enough">可制作（按 %1$s 份）</string>
+    <string name="ac_stock_no_tracking">无需库存</string>
+    <string name="ac_stock_missing">缺 %1$s（按 %2$s 份）</string>
+    <string name="ac_stock_more">等 %1$d 项</string>
+    <string name="ac_stock_unknown">无法判断</string>
     <!-- Food diary -->
     <string name="ac_diary_previous">‹</string>
     <string name="ac_diary_next">›</string>

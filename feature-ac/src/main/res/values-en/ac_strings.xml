@@ -69,6 +69,12 @@
     <string name="ac_catalog_empty_mine">Nothing here yet. Add your first signature dish.</string>
     <string name="ac_catalog_empty_favorites">Nothing here yet. Add the dishes you want most.</string>
     <string name="ac_catalog_join_first">Join a household first to share recipes with family.</string>
+    <string name="ac_stock_checking">Checking stock…</string>
+    <string name="ac_stock_enough">Can cook (%1$s servings)</string>
+    <string name="ac_stock_no_tracking">No stock needed</string>
+    <string name="ac_stock_missing">Missing %1$s (%2$s servings)</string>
+    <string name="ac_stock_more">+%1$d more</string>
+    <string name="ac_stock_unknown">Stock unknown</string>
     <!-- Food diary -->
     <string name="ac_diary_previous">‹</string>
     <string name="ac_diary_next">›</string>

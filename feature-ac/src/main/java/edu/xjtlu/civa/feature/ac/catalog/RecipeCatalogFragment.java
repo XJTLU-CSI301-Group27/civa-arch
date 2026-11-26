@@ -20,15 +20,25 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import edu.xjtlu.civa.api.model.CatalogRecipePage;
+import edu.xjtlu.civa.api.model.Ingredient;
+import edu.xjtlu.civa.api.model.IngredientPage;
+import edu.xjtlu.civa.api.model.MatchEntry;
+import edu.xjtlu.civa.api.model.MatchRequest;
 import edu.xjtlu.civa.api.model.PersonalRecipePage;
+import edu.xjtlu.civa.api.model.Recipe;
 import edu.xjtlu.civa.api.model.RecipeFavoritePage;
+import edu.xjtlu.civa.api.model.RecipeMatch;
 import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.core.ui.Route;
 import edu.xjtlu.civa.feature.ac.AcHost;
+import edu.xjtlu.civa.feature.ac.AcText;
 import edu.xjtlu.civa.feature.ac.R;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import retrofit2.Call;
 
 /** Recipe tab: public catalogue, my personal recipes, and my "want to eat" list. */
@@ -54,6 +64,11 @@ public final class RecipeCatalogFragment extends Fragment {
     private final RecipeCard.RecipeCards cards = RecipeCard.cards();
     private final CatalogAdapter adapter = new CatalogAdapter(this::open);
     private final Handler debounce = new Handler(Looper.getMainLooper());
+    private final Map<UUID, Recipe> householdRecipes = new LinkedHashMap<>();
+    private final Map<String, RecipeStockPresenter.StockView> stockViews = new LinkedHashMap<>();
+    private final Map<String, String> stockTexts = new LinkedHashMap<>();
+    private Map<UUID, Ingredient> ingredientDictionary = Map.of();
+    private long stockToken;
 
     private final RecipeViewCallbacks viewCallbacks = new RecipeViewCallbacks();
 
@@ -215,6 +230,10 @@ public final class RecipeCatalogFragment extends Fragment {
         if (reset) {
             // A newly selected source/search owns a fresh callback generation.
             viewCallbacks.startView();
+            stockToken++;
+            householdRecipes.clear();
+            stockViews.clear();
+            stockTexts.clear();
             if (call != null) { call.cancel(); call = null; }
             loading = false;
         }
@@ -224,7 +243,7 @@ public final class RecipeCatalogFragment extends Fragment {
             page = 0;
             total = 0;
             loaded.clear();
-            adapter.submit(loaded);
+            adapter.submit(loaded, stockTexts);
         }
         loading = true;
         status.setText(R.string.ac_catalog_loading);
@@ -254,7 +273,7 @@ public final class RecipeCatalogFragment extends Fragment {
                         if (cached != null && cached.getItems() != null && !cached.getItems().isEmpty()) {
                             loaded.addAll(cards.fromCatalog(cached.getItems()));
                             total = cached.getTotal() == null ? loaded.size() : cached.getTotal();
-                            adapter.submit(loaded);
+                            adapter.submit(loaded, stockTexts);
                             status.setText(R.string.ac_catalog_offline);
                             return;
                         }
@@ -277,9 +296,13 @@ public final class RecipeCatalogFragment extends Fragment {
                     if (!isAdded()) return;
                     loading = false;
                     if (value == null || value.getItems() == null) { failed(); return; }
+                    for (Recipe recipe : value.getItems()) {
+                        if (recipe != null && recipe.getId() != null) householdRecipes.put(recipe.getId(), recipe);
+                    }
                     loaded.addAll(cards.fromHousehold(value.getItems()));
                     total = value.getTotal() == null ? loaded.size() : value.getTotal();
                     render(requestPage);
+                    requestHouseholdStock(home, ++stockToken);
                 }
 
                 @Override public void onError(ApiError error) {
@@ -331,7 +354,7 @@ public final class RecipeCatalogFragment extends Fragment {
     }
 
     private void render(int requestPage) {
-        adapter.submit(loaded);
+        adapter.submit(loaded, stockTexts);
         emptyText.setText(source == Source.FAVORITES ? R.string.ac_catalog_empty_favorites : R.string.ac_catalog_empty_mine);
         empty.setVisibility(loaded.isEmpty() && source != Source.PUBLIC ? View.VISIBLE : View.GONE);
         page = requestPage + 1;
@@ -345,6 +368,157 @@ public final class RecipeCatalogFragment extends Fragment {
         more.setVisibility(View.GONE);
     }
 
+    /**
+     * Household cards get a stock status without blocking the list. Requests are generation-guarded
+     * so a late response for an old home/source/search can never paint the new page.
+     */
+    private void requestHouseholdStock(UUID home, long token) {
+        if (!stockValid(home, token)) return;
+        for (RecipeCard card : loaded) {
+            if (card.kind() == RecipeCard.Kind.HOUSEHOLD) {
+                stockTexts.put(card.id(), getString(R.string.ac_stock_checking));
+            }
+        }
+        adapter.submit(loaded, stockTexts);
+        if (ingredientDictionary.isEmpty()) {
+            loadDictionary(home, 0, new ArrayList<>(), token);
+        } else {
+            matchStock(home, token);
+        }
+    }
+
+    private void loadDictionary(UUID home, int page, List<Ingredient> collected, long token) {
+        if (!stockValid(home, token)) return;
+        host.calls().enqueue(host.api().inventory().listIngredients(null, page, 100),
+                new ApiCallback<IngredientPage>() {
+                    @Override public void onSuccess(@Nullable IngredientPage value) {
+                        if (!stockValid(home, token)) return;
+                        if (value == null || value.getItems() == null) { stockUnavailable(home, token); return; }
+                        collected.addAll(value.getItems());
+                        long total = value.getTotal() == null ? collected.size() : value.getTotal();
+                        if (collected.size() < total) {
+                            if (!value.getItems().isEmpty()) {
+                                loadDictionary(home, page + 1, collected, token);
+                            } else {
+                                // A short page before the advertised total would make units/names
+                                // unreliable; degrade to UNKNOWN instead of guessing.
+                                stockUnavailable(home, token);
+                            }
+                            return;
+                        }
+                        Map<UUID, Ingredient> dictionary = new LinkedHashMap<>();
+                        for (Ingredient ingredient : collected) {
+                            if (ingredient != null && ingredient.getId() != null) dictionary.put(ingredient.getId(), ingredient);
+                        }
+                        ingredientDictionary = dictionary;
+                        matchStock(home, token);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (stockValid(home, token)) stockUnavailable(home, token);
+                    }
+                });
+    }
+
+    private void matchStock(UUID home, long token) {
+        if (!stockValid(home, token)) return;
+        List<Recipe> recipes = new ArrayList<>(householdRecipes.values());
+        for (int start = 0; start < recipes.size(); start += 100) {
+            List<Recipe> chunk = new ArrayList<>(recipes.subList(start, Math.min(start + 100, recipes.size())));
+            List<MatchEntry> entries = new ArrayList<>();
+            for (Recipe recipe : chunk) {
+                entries.add(new MatchEntry().recipeId(recipe.getId()).servings(RecipeStockPresenter.servingsFor(recipe)));
+            }
+            host.calls().enqueue(host.api().inventory().matchRecipes(home, new MatchRequest().entries(entries)),
+                    new ApiCallback<List<RecipeMatch>>() {
+                        @Override public void onSuccess(@Nullable List<RecipeMatch> value) {
+                            if (!stockValid(home, token)) return;
+                            Map<UUID, RecipeMatch> byRecipe = new LinkedHashMap<>();
+                            if (value != null) {
+                                for (RecipeMatch match : value) {
+                                    if (match != null && match.getRecipeId() != null) byRecipe.put(match.getRecipeId(), match);
+                                }
+                            }
+                            for (Recipe recipe : chunk) {
+                                RecipeMatch match = byRecipe.get(recipe.getId());
+                                RecipeStockPresenter.StockView view = RecipeStockPresenter.present(
+                                        recipe, match, ingredientDictionary, RecipeStockPresenter.servingsFor(recipe));
+                                putStock(recipe.getId(), view);
+                            }
+                            applyStockResult();
+                        }
+
+                        @Override public void onError(ApiError error) {
+                            if (!stockValid(home, token)) return;
+                            for (Recipe recipe : chunk) {
+                                putStock(recipe.getId(), RecipeStockPresenter.StockView.unknown(
+                                        RecipeStockPresenter.servingsFor(recipe)));
+                            }
+                            applyStockResult();
+                        }
+                    });
+        }
+    }
+
+    private void stockUnavailable(UUID home, long token) {
+        if (!stockValid(home, token)) return;
+        for (RecipeCard card : loaded) {
+            if (card.kind() == RecipeCard.Kind.HOUSEHOLD) {
+                Recipe recipe = householdRecipes.get(uuidOrNull(card.id()));
+                putStock(uuidOrNull(card.id()), RecipeStockPresenter.StockView.unknown(
+                        recipe == null ? "1" : RecipeStockPresenter.servingsFor(recipe)));
+            }
+        }
+        applyStockResult();
+    }
+
+    private void putStock(UUID recipeId, RecipeStockPresenter.StockView view) {
+        if (recipeId == null) return;
+        stockViews.put(recipeId.toString(), view);
+        stockTexts.put(recipeId.toString(), stockText(view));
+    }
+
+    private String stockText(RecipeStockPresenter.StockView view) {
+        if (view == null) return getString(R.string.ac_stock_unknown);
+        if (view.state() == RecipeStockPresenter.State.UNKNOWN) return getString(R.string.ac_stock_unknown);
+        if (view.state() == RecipeStockPresenter.State.ENOUGH) {
+            return view.tracked() ? getString(R.string.ac_stock_enough, view.servings())
+                    : getString(R.string.ac_stock_no_tracking);
+        }
+        List<String> parts = new ArrayList<>();
+        int shown = Math.min(2, view.missing().size());
+        for (int index = 0; index < shown; index++) {
+            RecipeStockPresenter.Missing missing = view.missing().get(index);
+            parts.add(missing.name() + " " + missing.quantity() + " "
+                    + AcText.unit(getResources(), missing.unit(), missing.name()));
+        }
+        String summary = AcText.join(getResources(), parts);
+        if (view.missing().size() > shown) {
+            summary += " " + getString(R.string.ac_stock_more, view.missing().size() - shown);
+        }
+        return getString(R.string.ac_stock_missing, summary, view.servings());
+    }
+
+    private void applyStockResult() {
+        loaded.sort((left, right) -> Integer.compare(stockRank(left), stockRank(right)));
+        adapter.submit(loaded, stockTexts);
+    }
+
+    private int stockRank(RecipeCard card) {
+        if (card.kind() != RecipeCard.Kind.HOUSEHOLD) return 0;
+        return RecipeStockPresenter.rank(stockViews.get(card.id()));
+    }
+
+    private boolean stockValid(UUID home, long token) {
+        return token == stockToken && isAdded() && grid != null && source == Source.HOUSEHOLD
+                && home != null && home.equals(currentHome());
+    }
+
+    private UUID currentHome() {
+        return host == null || host.sessions() == null ? null
+                : uuidOrNull(host.sessions().currentHouseholdId());
+    }
+
     private static java.util.UUID uuidOrNull(String value) {
         if (value == null || value.isEmpty()) return null;
         try { return java.util.UUID.fromString(value); } catch (IllegalArgumentException invalid) { return null; }
@@ -353,6 +527,7 @@ public final class RecipeCatalogFragment extends Fragment {
     @Override public void onDestroyView() {
         // Invalidate before cancel(): cancellation can deliver an error callback.
         viewCallbacks.endView();
+        stockToken++;
         debounce.removeCallbacksAndMessages(null);
         if (call != null) {
             call.cancel();
