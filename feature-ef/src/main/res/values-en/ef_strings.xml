@@ -1,0 +1,159 @@
+<resources>
+
+    <string name="ef_welcome">Eat well together, every day</string>
+
+    <string name="ef_welcome_detail">Log in to share recipes, the fridge, and meal plans with family.</string>
+
+    <string name="ef_username">Username</string>
+
+    <string name="ef_display_name">Display name</string>
+
+    <string name="ef_password">Password</string>
+
+    <string name="ef_login">Log in</string>
+
+    <string name="ef_register">Create account</string>
+
+    <string name="ef_to_register">No account yet? Create one</string>
+
+    <string name="ef_to_login">Already have an account? Back to log in</string>
+
+    <string name="ef_busy">Working…</string>
+
+    <string name="ef_registered">Account created. Please log in.</string>
+
+    <string name="ef_invalid_credentials">Incorrect username or password.</string>
+
+    <string name="ef_username_taken">This username is already taken.</string>
+
+    <string name="ef_invalid_input">Please check your input.</string>
+
+    <string name="ef_rate_limited">Too many attempts. Try again later.</string>
+
+    <string name="ef_network_error">Cannot reach the service. Check your network and try again.</string>
+
+    <string name="ef_generic_error">Request did not complete. Try again later.</string>
+
+    <string name="ef_household_title">Household</string>
+
+    <string name="ef_household_detail">Create or join a household to share recipes and the fridge with family.</string>
+
+    <string name="ef_create_household">Create household</string>
+
+    <string name="ef_household_name">Household name</string>
+
+    <string name="ef_join_household">Join household</string>
+
+    <string name="ef_household_code">Invite code</string>
+
+    <string name="ef_already_in_household">You are already in a household.</string>
+
+    <string name="ef_invalid_invitation">The invite code is invalid or has expired.</string>
+
+    <string name="ef_recovered">An unconfirmed household action was detected and recovered. You can retry or abandon it. Abandoning does not mean the server has rolled back.</string>
+
+    <string name="ef_abandon">Abandon last action</string>
+
+    <string name="ef_profile_title">Me</string>
+
+    <string name="ef_profile_subtitle">Account, household, and preferences</string>
+
+    <string name="ef_profile_account">Signed-in account</string>
+
+    <string name="ef_profile_signed_out">Not signed in</string>
+
+    <string name="ef_profile_household">Current household</string>
+
+    <string name="ef_profile_no_household">You have not joined a household yet</string>
+
+    <string name="ef_profile_household_note">Household members share recipes and the fridge</string>
+
+    <string name="ef_profile_household_missing">Create or join a household to use sharing features</string>
+
+    <string name="ef_profile_household_settings">Household settings</string>
+
+    <string name="ef_profile_household_join">Join household</string>
+
+    <string name="ef_profile_logout">Log out</string>
+
+    <string name="ef_profile_footer">Civa · CSI301 group project</string>
+
+    <string name="ef_login_title">Civa with me</string>
+
+    <string name="ef_household_greeting">Share recipes and the fridge with family</string>
+
+    <string name="ef_close_symbol">×</string><string name="ef_close">Close</string>
+
+    <string name="ef_language">Language</string><string name="ef_language_symbol">文 / A</string>
+
+    <string name="ef_language_chinese">Chinese</string><string name="ef_language_english">English</string>
+
+    <string name="ef_edit_profile">Edit profile</string><string name="ef_profile_save">Save</string>
+
+    <string name="ef_change_avatar">Tap to change avatar</string><string name="ef_profile_avatar">Profile photo</string>
+
+    <string name="ef_profile_default_name">Kitten foodie</string><string name="ef_profile_id">ID: %1$s</string>
+
+    <string name="ef_profile_save_error">Enter a name of 1–60 characters, or try saving again later.</string>
+
+    <string name="ef_photo_loading">Preparing photo…</string><string name="ef_photo_error">This photo could not be opened. Try another one.</string>
+
+    <string name="ef_language_title">Choose language</string>
+
+    <string name="ef_leave_household">Leave household</string>
+
+    <string name="ef_household_close">Close household page</string>
+
+    <string name="ef_household_leave_confirm">Leave the current household? If you are the last member, the household will be closed and its invite code will stop working. Your profile and personal recipes are kept.</string>
+
+    <string name="ef_household_leave_yes">Leave</string>
+
+    <string name="ef_household_leave_cancel">Not now</string>
+
+    <string name="ef_household_version_conflict">Household member info has been updated. Try again.</string>
+
+    <string name="ef_invitation_title">Household invite code</string>
+
+    <string name="ef_invitation_copy">Copy invite code</string>
+
+    <string name="ef_invitation_copied">Invite code copied</string>
+
+    <string name="ef_fixed_invitation_label">Invite code</string>
+
+    <string name="ef_invitation_loading">Loading invite code…</string>
+
+    <string name="ef_household_name_loading">Loading household name…</string>
+
+    <string name="ef_household_name_unavailable">Cannot load household name right now</string>
+
+    <string name="ef_retry_same_operation">Retry or cancel the last action before doing anything else.</string>
+
+    <string name="ef_edit_household_name">Edit household name</string>
+
+    <string name="ef_save_household_name">Save</string>
+
+    <string name="ef_household_name_saved">Household name saved</string>
+
+    <string name="ef_household_name_conflict">Another member changed the household info. Your entered name is kept; review and save again.</string>
+
+    <string name="ef_profile_preferences">Preferences</string>
+    <string name="ef_preferences_title">Preferences</string>
+    <string name="ef_preferences_subtitle">Liked flavors and excluded ingredients, used for recommendations and plans</string>
+    <string name="ef_preferences_liked_tags">Preferred flavor tags</string>
+    <string name="ef_preferences_tags_hint">Separate with commas, e.g. mild, lightly spicy</string>
+    <string name="ef_preferences_excluded">Excluded ingredients</string>
+    <string name="ef_preferences_none_excluded">No excluded ingredients yet</string>
+    <string name="ef_preferences_excluded_summary">Excluding %1$d kinds: %2$s</string>
+    <string name="ef_preferences_unknown_ingredient">Unknown ingredient</string>
+    <string name="ef_preferences_pick_excluded">Choose excluded ingredients</string>
+    <string name="ef_preferences_done">Done</string>
+    <string name="ef_preferences_save">Save preferences</string>
+    <string name="ef_preferences_loading">Loading preferences…</string>
+    <string name="ef_preferences_loaded">Current version v%1$d</string>
+    <string name="ef_preferences_error">Failed to load preferences. Try again later.</string>
+    <string name="ef_preferences_saved">Preferences saved</string>
+    <string name="ef_preferences_conflict">Preferences were updated on another device and reloaded for you.</string>
+    <string name="ef_profile_members_title">Household members</string>
+    <string name="ef_l10n_tag_separator">", "</string>
+    <string name="ef_l10n_name_separator">", "</string>
+</resources>

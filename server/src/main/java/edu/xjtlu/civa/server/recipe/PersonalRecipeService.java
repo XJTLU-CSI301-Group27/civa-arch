@@ -29,8 +29,8 @@ final class PersonalRecipeService {
             .withZone(ZoneOffset.UTC);
     private static final String COLUMNS = "id, name, category, description, emoji, steps, ingredients, methods,"
             + " flavors, meal_types, estimated_minutes, servings, serving_size, kcal, protein, carbs, fat,"
-            + " protein_per100g, carbs_per100g, fat_per100g, origin_household_recipe_id, archived, version,"
-            + " created_at, updated_at";
+            + " protein_per100g, carbs_per100g, fat_per100g, origin_household_recipe_id, image_id, archived,"
+            + " version, created_at, updated_at";
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
@@ -80,34 +80,37 @@ final class PersonalRecipeService {
 
     IdempotencyExecutor.Result create(UUID actor, UUID key, byte[] digest, CreatePersonalRecipeRequest body) {
         validate(body.getName(), body.getSteps(), body.getIngredients());
+        validateImage(actor, body.getImageId());
         return executor.execute(actor, key, digest, () -> {
             UUID id = UUID.randomUUID();
             jdbc.update("INSERT INTO user_recipes(id, user_id, name, category, description, emoji, steps, ingredients,"
                             + " methods, flavors, meal_types, estimated_minutes, servings, kcal, protein, carbs, fat,"
-                            + " protein_per100g, carbs_per100g, fat_per100g, origin_household_recipe_id)"
-                            + " VALUES (?,?,?,?,?,?,CAST(? AS jsonb),CAST(? AS jsonb),?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                            + " protein_per100g, carbs_per100g, fat_per100g, origin_household_recipe_id, image_id)"
+                            + " VALUES (?,?,?,?,?,?,CAST(? AS jsonb),CAST(? AS jsonb),?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     id, actor, body.getName().trim(), safe(body.getCategory()), safe(body.getDescription()),
                     body.getEmoji(), write(body.getSteps()), write(body.getIngredients()),
                     array(body.getMethods()), array(body.getFlavors()), array(body.getMealTypes()),
                     body.getEstimatedMinutes(), body.getServings(), body.getKcal(), body.getProtein(),
                     body.getCarbs(), body.getFat(), body.getProteinPer100g(), body.getCarbsPer100g(),
-                    body.getFatPer100g(), body.getOriginHouseholdRecipeId());
+                    body.getFatPer100g(), body.getOriginHouseholdRecipeId(), body.getImageId());
             return new IdempotencyExecutor.Result(201, writeModel(row(id, actor)));
         }, ignored -> { });
     }
 
     PersonalRecipe update(UUID actor, UUID id, UpdatePersonalRecipeRequest body) {
         validate(body.getName(), body.getSteps(), body.getIngredients());
+        validateImage(actor, body.getImageId());
         int updated = jdbc.update("UPDATE user_recipes SET name=?, category=?, description=?, emoji=?,"
                         + " steps=CAST(? AS jsonb), ingredients=CAST(? AS jsonb), methods=?, flavors=?, meal_types=?,"
                         + " estimated_minutes=?, servings=?, kcal=?, protein=?, carbs=?, fat=?, protein_per100g=?,"
-                        + " carbs_per100g=?, fat_per100g=?, version=version+1, updated_at=CURRENT_TIMESTAMP"
-                        + " WHERE id=? AND user_id=? AND version=?",
+                        + " carbs_per100g=?, fat_per100g=?, image_id=?, version=version+1,"
+                        + " updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND version=?",
                 body.getName().trim(), safe(body.getCategory()), safe(body.getDescription()), body.getEmoji(),
                 write(body.getSteps()), write(body.getIngredients()), array(body.getMethods()), array(body.getFlavors()),
                 array(body.getMealTypes()), body.getEstimatedMinutes(), body.getServings(), body.getKcal(),
                 body.getProtein(), body.getCarbs(), body.getFat(), body.getProteinPer100g(),
-                body.getCarbsPer100g(), body.getFatPer100g(), id, actor, body.getExpectedVersion());
+                body.getCarbsPer100g(), body.getFatPer100g(), body.getImageId(), id, actor,
+                body.getExpectedVersion());
         return writeResult(actor, id, updated);
     }
 
@@ -154,6 +157,18 @@ final class PersonalRecipeService {
         }
     }
 
+    private void validateImage(UUID actor, UUID imageId) {
+        if (imageId == null) return;
+        List<UUID> owners = jdbc.query("SELECT owner_user_id FROM media WHERE id=?", (rs, row) ->
+                rs.getObject(1, UUID.class), imageId);
+        if (owners.isEmpty()) throw new PersonalRecipeFault("INVALID_IMAGE");
+        if (actor.equals(owners.get(0))) return;
+        Boolean shared = jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM media m JOIN memberships mb"
+                + " ON mb.household_id=m.household_id AND mb.user_id=? AND mb.active"
+                + " WHERE m.id=? AND m.scope='HOUSEHOLD')", Boolean.class, actor, imageId);
+        if (!Boolean.TRUE.equals(shared)) throw new PersonalRecipeFault("INVALID_IMAGE");
+    }
+
     private PersonalRecipe map(ResultSet rs) throws SQLException {
         PersonalRecipe recipe = new PersonalRecipe(
                 rs.getObject("id", UUID.class),
@@ -182,6 +197,7 @@ final class PersonalRecipeService {
         recipe.setCarbsPer100g(text(rs.getBigDecimal("carbs_per100g")));
         recipe.setFatPer100g(text(rs.getBigDecimal("fat_per100g")));
         recipe.setOriginHouseholdRecipeId(rs.getObject("origin_household_recipe_id", UUID.class));
+        recipe.setImageId(rs.getObject("image_id", UUID.class));
         return recipe;
     }
 

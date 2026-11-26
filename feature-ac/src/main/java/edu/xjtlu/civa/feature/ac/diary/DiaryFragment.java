@@ -42,12 +42,15 @@ import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.data.PlannedDish;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.feature.ac.AcHost;
+import edu.xjtlu.civa.feature.ac.AcText;
 import edu.xjtlu.civa.feature.ac.R;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -57,9 +60,6 @@ import java.util.UUID;
 
 /** Food diary: month calendar of actual intake, per-day entries and household cooking history. */
 public final class DiaryFragment extends Fragment {
-    private static final DateTimeFormatter MONTH_TITLE = DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA);
-    private static final DateTimeFormatter DAY_TITLE = DateTimeFormatter.ofPattern("M月d日 EEEE", Locale.CHINA);
-    private static final String[] WEEK = {"一", "二", "三", "四", "五", "六", "日"};
 
     private AcHost host;
     private YearMonth month = YearMonth.now();
@@ -106,12 +106,23 @@ public final class DiaryFragment extends Fragment {
         loadMonth();
     }
 
+    /** Date patterns and weekday names follow the app language, not a fixed locale. */
+    private DateTimeFormatter monthTitleFormat() {
+        return DateTimeFormatter.ofPattern(
+                getString(R.string.ac_l10n_date_month), AcText.locale(getResources()));
+    }
+
+    private DateTimeFormatter dayTitleFormat() {
+        return DateTimeFormatter.ofPattern(
+                getString(R.string.ac_l10n_date_day_week), AcText.locale(getResources()));
+    }
+
     private void loadMonth() {
         if (!isAdded()) return;
         loading = true;
         renderCalendar();
-        monthLabel.setText(MONTH_TITLE.format(month));
-        dayTitle.setText(DAY_TITLE.format(selected));
+        monthLabel.setText(monthTitleFormat().format(month));
+        dayTitle.setText(dayTitleFormat().format(selected));
         daySummary.setText("");
         host.calls().enqueue(host.api().records().getMealSummary(month.atDay(1).toString(),
                         month.atEndOfMonth().toString()),
@@ -143,7 +154,7 @@ public final class DiaryFragment extends Fragment {
         if (!isAdded()) return;
         String day = selected.toString();
         DaySummary summary = marker.get(day);
-        dayTitle.setText(DAY_TITLE.format(selected));
+        dayTitle.setText(dayTitleFormat().format(selected));
         daySummary.setText(summary == null ? getString(R.string.ac_diary_no_records)
                 : getString(R.string.ac_diary_day_summary, summary.getKnownKcal(),
                         summary.getUnknownCount() == null ? 0 : summary.getUnknownCount()));
@@ -332,14 +343,16 @@ public final class DiaryFragment extends Fragment {
         if (!isAdded()) return;
         List<String> lines = new ArrayList<>();
         for (MatchLine shortage : preview.getShortages()) {
-            String name = ingredientNames.getOrDefault(shortage.getIngredientId(), "食材");
+            String name = ingredientNames.getOrDefault(shortage.getIngredientId(),
+                    getString(R.string.ac_l10n_ingredient_fallback));
             lines.add(getString(R.string.ac_diary_plan_shortage_row, name,
                     shortage.getRequired() == null ? "?" : shortage.getRequired(),
                     shortage.getAvailable() == null ? "0" : shortage.getAvailable()));
         }
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.ac_diary_plan_shortage_title)
-                .setMessage(getString(R.string.ac_diary_plan_shortage, String.join("、", lines)))
+                .setMessage(getString(R.string.ac_diary_plan_shortage,
+                        AcText.join(getResources(), lines)))
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.ac_diary_plan_record_only, (dialog, which) ->
                         recordPlannedMeal(dish, recipe, null, false))
@@ -479,7 +492,15 @@ public final class DiaryFragment extends Fragment {
         calendar.removeAllViews();
         LinearLayout header = new LinearLayout(requireContext());
         header.setOrientation(LinearLayout.HORIZONTAL);
-        for (String label : WEEK) header.addView(cell(label, false, false, false, 0));
+        Locale locale = AcText.locale(getResources());
+        for (int weekday = 1; weekday <= 7; weekday++)
+            header.addView(
+                    cell(
+                            DayOfWeek.of(weekday).getDisplayName(TextStyle.NARROW, locale),
+                            false,
+                            false,
+                            false,
+                            0));
         calendar.addView(header);
         int offset = month.atDay(1).getDayOfWeek().getValue() - 1;
         LinearLayout week = newWeek();
@@ -630,9 +651,12 @@ public final class DiaryFragment extends Fragment {
         list.setOrientation(LinearLayout.VERTICAL);
         list.addView(line(getString(R.string.ac_diary_home_ingredients_hint), 12, R.color.ac_catalog_muted));
         for (InventoryBatch batch : batches) {
-            String ingredient = ingredientNames.getOrDefault(batch.getIngredientId(), "食材");
-            String label = ingredient + " · " + batch.getQuantity() + " " + batch.getUnit().getValue()
-                    + (batch.getExpiresOn() == null ? "" : " · 到期 " + batch.getExpiresOn());
+            String ingredient = ingredientNames.getOrDefault(batch.getIngredientId(),
+                    getString(R.string.ac_l10n_ingredient_fallback));
+            String label = ingredient + " · " + batch.getQuantity() + " "
+                    + AcText.unit(getResources(), batch.getUnit(), ingredient)
+                    + (batch.getExpiresOn() == null ? ""
+                            : getString(R.string.ac_l10n_diary_expiry_suffix, batch.getExpiresOn()));
             com.google.android.material.checkbox.MaterialCheckBox check =
                     new com.google.android.material.checkbox.MaterialCheckBox(requireContext());
             check.setText(label);
@@ -718,7 +742,8 @@ public final class DiaryFragment extends Fragment {
                         }
                         picked.add(batch);
                         used.add(amount);
-                        lines.add(ingredientNames.getOrDefault(batch.getIngredientId(), "食材")
+                        lines.add(ingredientNames.getOrDefault(batch.getIngredientId(),
+                                        getString(R.string.ac_l10n_ingredient_fallback))
                                 + " " + plain(amount) + " " + batch.getUnit().getValue());
                     }
                     if (picked.isEmpty()) {
@@ -801,7 +826,8 @@ public final class DiaryFragment extends Fragment {
     private void recordHomeMeal(EntryMealType meal, String dish, List<String> lines,
                                 @Nullable BigDecimal kcal) {
         if (!isAdded()) return;
-        String note = getString(R.string.ac_diary_at_home) + "：" + String.join("、", lines);
+        String note = getString(R.string.ac_l10n_diary_note, getString(R.string.ac_diary_at_home),
+                AcText.join(getResources(), lines));
         if (note.length() > 2000) note = note.substring(0, 2000);
         CreateMealEntryRequest request = new CreateMealEntryRequest()
                 .date(selected.toString())

@@ -7,13 +7,17 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import java.util.UUID;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.button.MaterialButton;
+import edu.xjtlu.civa.api.model.Membership;
+import edu.xjtlu.civa.api.model.MembershipPage;
 import edu.xjtlu.civa.api.model.User;
 import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.ui.ApiError;
@@ -33,6 +37,7 @@ public final class ProfileFragment extends Fragment {
         TextView household=view.findViewById(R.id.ef_profile_household);TextView note=view.findViewById(R.id.ef_profile_note);
         paintHousehold(view,host);
         view.findViewById(R.id.ef_profile_household_action).setOnClickListener(v->host.navigate(Route.HOUSEHOLD,null));
+        paintMembers(view, host, host.sessions() == null ? null : host.sessions().currentHouseholdId());
         view.findViewById(R.id.ef_profile_preferences).setOnClickListener(v->host.navigate(Route.PREFERENCES,null));
         view.findViewById(R.id.ef_profile_language).setOnClickListener(v->{if(getChildFragmentManager().findFragmentByTag("language")==null)new LanguageDialog().show(getChildFragmentManager(),"language");});
         view.findViewById(R.id.ef_profile_edit).setOnClickListener(v->{if(getChildFragmentManager().findFragmentByTag("edit-profile")==null)ProfileEditDialog.create(userId,shownName()).show(getChildFragmentManager(),"edit-profile");});
@@ -40,11 +45,17 @@ public final class ProfileFragment extends Fragment {
             @Override public void onSuccess(@Nullable Void value){host.navigate(Route.LOGIN,null);}
             @Override public void onError(ApiError error){host.navigate(Route.LOGIN,null);}
         });});
-        getChildFragmentManager().setFragmentResultListener("ef_profile_changed",getViewLifecycleOwner(),(key,result)->paint(view));paint(view);
+        getChildFragmentManager().setFragmentResultListener("ef_profile_changed",getViewLifecycleOwner(),
+                (key,result)->{paint(view);paintHousehold(view,host);
+                    host.authRepository().refreshMe(new ApiCallback<User>(){
+                        @Override public void onSuccess(@Nullable User user){if(getView()==view&&user!=null)paint(view);}
+                        @Override public void onError(ApiError error){ }
+                    });});paint(view);
         host.authRepository().refreshMe(new ApiCallback<User>(){
             @Override public void onSuccess(@Nullable User user){
                 if(getView()!=view||user==null||!userId.equals(host.sessions().currentUserId()))return;
                 paintHousehold(view,host);
+                paintMembers(view,host,host.sessions().currentHouseholdId());
                 registeredName=user.getDisplayName()==null||user.getDisplayName().isBlank()?user.getUsername():user.getDisplayName();
                 if(profile.name().isBlank())profile.save(registeredName,null);paint(view);
             }
@@ -67,6 +78,46 @@ public final class ProfileFragment extends Fragment {
         }
         ((MaterialButton)view.findViewById(R.id.ef_profile_household_action)).setText(joined?R.string.ef_profile_household_settings:R.string.ef_profile_household_join);
     }
+    private void paintMembers(View view, ProfileHost host, String householdId) {
+        LinearLayout container = view.findViewById(R.id.ef_profile_members);
+        TextView title = view.findViewById(R.id.ef_profile_members_title);
+        container.removeAllViews();
+        if (householdId == null || householdId.isEmpty()) {
+            container.setVisibility(View.GONE);
+            title.setVisibility(View.GONE);
+            return;
+        }
+        title.setVisibility(View.VISIBLE);
+        container.setVisibility(View.VISIBLE);
+        host.calls().enqueue(host.api().household().listMembers(UUID.fromString(householdId), 0, 50),
+                new ApiCallback<MembershipPage>() {
+                    @Override public void onSuccess(@Nullable MembershipPage value) {
+                        if (!isAdded() || getView() != view) return;
+                        container.removeAllViews();
+                        if (value == null || value.getItems() == null) return;
+                        for (Membership member : value.getItems()) {
+                            TextView row = new TextView(requireContext());
+                            String name = member.getDisplayName() == null || member.getDisplayName().isBlank()
+                                    ? (member.getUsername() == null ? "" : member.getUsername())
+                                    : member.getDisplayName();
+                            String username = member.getUsername() == null ? "" : "  @" + member.getUsername();
+                            row.setText(name + username);
+                            row.setTextSize(14);
+                            row.setTextColor(requireContext().getColor(
+                                    edu.xjtlu.civa.core.ui.R.color.civa_text));
+                            row.setPadding(0, dp(6), 0, dp(6));
+                            container.addView(row);
+                        }
+                    }
+
+                    @Override public void onError(ApiError error) { }
+                });
+    }
+
+    private int dp(float value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
     private String shownName(){String local=profile.name();return !local.isBlank()?local:registeredName.isBlank()?getString(R.string.ef_profile_default_name):registeredName;}
     private void paint(View view){if(profile==null)return;((TextView)view.findViewById(R.id.ef_profile_account)).setText(shownName());ProfileEditDialog.paintAvatar((ImageView)view.findViewById(R.id.ef_profile_avatar),profile.avatar());}
     @Override public void onDestroyView(){profile=null;super.onDestroyView();}

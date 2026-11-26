@@ -118,6 +118,17 @@ M0（基线，可并行）
 
 ## 5. 进度记录（倒序）
 
+### 2026-11-26（第七轮：成员姓名/计划作者/菜谱图片/完整英文）
+
+- ✅ 契约新增（用户授权，IC-20261126-PROFILE-IMAGE-AUTHOR）：`PUT /me/profile`；`Membership.displayName/username`；
+  `PlanSlot.lastEditorId/lastEditorName`；`PersonalRecipe*` 增加 `imageId`。服务端迁移记录作者与图片，新增测试
+  覆盖姓名同步/成员列表、计划最后编辑人、个人菜谱图片归属校验（服务端 69/69）。
+- ✅ 客户端：个人中心家庭成员列表（姓名+@用户名），编辑资料真正写服务端；计划页显示“由 X 添加”；
+  个人/家庭菜谱编辑器支持系统选图、上传、预览与保存 `imageId`，详情页展示图片。
+- ✅ 英文资源：app/core-ui/feature-ac/feature-bd/feature-ef 全量 `values-en`；Java 中硬编码界面文案迁移到
+  `*_l10n_*` 字符串资源（中英双语）；语言选择持久化并启动时应用，模拟器已切换英文并重启验证。
+- 待组内人工验收：系统相册选图链路（需真机/模拟器相册）、家庭成员第二账号的显示名同步演示。
+
 ### 2026-11-26（第六轮：契约 57/57 全部实现）
 
 - ✅ 家庭计划（planning 4）：listPlanSlots（14 天分页）、

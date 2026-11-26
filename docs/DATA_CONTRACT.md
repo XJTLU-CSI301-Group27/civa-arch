@@ -356,3 +356,15 @@ EF uses ApiCalls/generated API. Save stays in settings; GET reconciliation on st
 ## Tablet presentation only (2026-11-26)
 
 Bottom navigation, vertical meal measurement and explicit welcome-sheet clipping change presentation only. No public signature, DTO, API, schema, ownership, persistence or dependencies changed. See [EF_TABLET_LAYOUT_HANDOFF.md](EF_TABLET_LAYOUT_HANDOFF.md) for the four-file audit; previous family contracts remain unchanged.
+
+
+## Profile display names, plan authors and personal recipe images (2026-11-26)
+
+Authorized by the user on 2026-11-26 (contract change allowed). Record: contracts/changes/IC-20261126-PROFILE-IMAGE-AUTHOR.md.
+
+- PUT /api/v1/me/profile with UpdateProfileRequest { displayName: 1..120 chars } updates users.display_name and returns the updated User. Display names are now server data, so every household member sees them.
+- Membership (and therefore listMembers / joinHousehold) gains nullable displayName and username, filled from users. The Android member list and future member pickers must use these fields.
+- PlanSlot gains nullable lastEditorId / lastEditorName: the planning service records plan_slots.author_id on replace, lock/unlock and commit, and joins users.display_name. A null author means the slot predates this change or was never edited.
+- PersonalRecipe, CreatePersonalRecipeRequest and UpdatePersonalRecipeRequest gain nullable imageId, referencing an uploaded Media. The server only accepts an image the caller can read (personal owner, or household-scoped media of an active member). The client uploads through the existing /api/v1/media multipart endpoint and shows the image in the detail screen; omitting the field keeps the previous image on update.
+- Additive Flyway migration V20261126213000__profile_images_and_plan_author.sql adds user_recipes.image_id and plan_slots.author_id with indexes; no existing column changes.
+- UI localization (2026-11-26): all user-visible text now resolves through Android string resources with a complete alues-en set, including login, navigation, recipe/fridge/diary/plan/profile screens. User-entered names, recipe notes and server data are never translated. Language choice persists through LocalePrefs/AppCompat per-app locales and is applied on startup.

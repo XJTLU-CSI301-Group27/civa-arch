@@ -153,5 +153,8 @@
     <string name="ef_preferences_error">偏好加载失败，请稍后重试</string>
     <string name="ef_preferences_saved">偏好已保存</string>
     <string name="ef_preferences_conflict">偏好已在其它设备更新，已为你重新加载</string>
+    <string name="ef_profile_members_title">家庭成员</string>
+    <string name="ef_l10n_tag_separator">，</string>
+    <string name="ef_l10n_name_separator">、</string>
 </resources>
 

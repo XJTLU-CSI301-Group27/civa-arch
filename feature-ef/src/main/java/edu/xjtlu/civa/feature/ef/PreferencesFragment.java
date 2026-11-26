@@ -56,7 +56,7 @@ public final class PreferencesFragment extends Fragment {
                 loading = false;
                 version = value == null || value.getVersion() == null ? 0 : value.getVersion();
                 tags.setText(value == null || value.getLikedTags() == null ? ""
-                        : String.join("，", value.getLikedTags()));
+                        : String.join(getString(R.string.ef_l10n_tag_separator), value.getLikedTags()));
                 excluded.clear();
                 if (value != null && value.getExcludedIngredientIds() != null) {
                     excluded.addAll(value.getExcludedIngredientIds());
@@ -76,6 +76,7 @@ public final class PreferencesFragment extends Fragment {
     private void save() {
         if (loading) return;
         java.util.Set<String> liked = new LinkedHashSet<>();
+        // i18n: non-UI — input syntax: the user may type an ASCII or a full-width comma.
         for (String raw : tags.getText().toString().split("[，,]")) {
             String value = raw.trim();
             if (!value.isEmpty()) liked.add(value);
@@ -155,7 +156,7 @@ public final class PreferencesFragment extends Fragment {
             names.add(name == null ? getString(R.string.ef_preferences_unknown_ingredient) : name);
         }
         excludedSummary.setText(getString(R.string.ef_preferences_excluded_summary, names.size(),
-                String.join("、", names)));
+                String.join(getString(R.string.ef_l10n_name_separator), names)));
     }
 
     private void toast(int text) {

@@ -107,6 +107,17 @@ class AuthService {
                 Timestamp.from(clock.instant()), hashToken(bytes));
     }
 
+    User updateDisplayName(UUID id, String displayName) {
+        String name = displayName == null ? "" : displayName.trim();
+        if (name.isEmpty() || name.codePointCount(0, name.length()) > 120) {
+            throw new Failure("INVALID_DISPLAY_NAME", 0);
+        }
+        int updated = jdbc.update("UPDATE users SET display_name=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                name, id);
+        if (updated == 0) throw new Failure("NOT_FOUND", 0);
+        return findUser(id);
+    }
+
     User findUser(UUID id) {
         return jdbc.queryForObject("SELECT u.id,u.username,u.display_name,u.zone_id,u.created_at,u.updated_at,m.household_id FROM users u LEFT JOIN memberships m ON m.user_id=u.id AND m.active WHERE u.id=?",
                 (rs, n) -> new User(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),

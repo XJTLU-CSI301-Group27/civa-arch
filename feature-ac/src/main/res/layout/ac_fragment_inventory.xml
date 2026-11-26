@@ -9,10 +9,10 @@
             </LinearLayout>
         </LinearLayout>
         <com.google.android.material.chip.ChipGroup android:id="@+id/ac_filters" android:layout_width="match_parent" android:layout_height="wrap_content">
-            <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="全部" android:textColor="@color/ac_fridge_ink" app:chipBackgroundColor="@color/ac_fridge_selected" />
-            <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="未过期" android:textColor="@color/ac_fridge_ink" app:chipBackgroundColor="@color/ac_fridge_panel" />
-            <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="临期" android:textColor="@color/ac_fridge_ink" app:chipBackgroundColor="@color/ac_fridge_panel" />
-            <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="已过期" android:textColor="@color/ac_fridge_ink" app:chipBackgroundColor="@color/ac_fridge_panel" />
+            <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ac_l10n_inventory_filter_all" android:textColor="@color/ac_fridge_ink" app:chipBackgroundColor="@color/ac_fridge_selected" />
+            <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ac_l10n_inventory_filter_valid" android:textColor="@color/ac_fridge_ink" app:chipBackgroundColor="@color/ac_fridge_panel" />
+            <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ac_l10n_inventory_filter_soon" android:textColor="@color/ac_fridge_ink" app:chipBackgroundColor="@color/ac_fridge_panel" />
+            <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ac_l10n_inventory_filter_expired" android:textColor="@color/ac_fridge_ink" app:chipBackgroundColor="@color/ac_fridge_panel" />
         </com.google.android.material.chip.ChipGroup>
         <ProgressBar android:id="@+id/ac_loading" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="4dp" android:indeterminate="true" android:visibility="gone" />
         <TextView android:id="@+id/ac_message" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="12sp" android:textColor="@color/ac_fridge_ink" android:paddingBottom="4dp" android:maxLines="2" android:ellipsize="end" android:accessibilityLiveRegion="polite" android:visibility="gone" />

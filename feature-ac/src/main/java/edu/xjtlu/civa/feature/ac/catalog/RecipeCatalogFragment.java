@@ -32,7 +32,19 @@ import retrofit2.Call;
 
 /** Recipe tab: public catalogue, my personal recipes, and my "want to eat" list. */
 public final class RecipeCatalogFragment extends Fragment {
+    // i18n: API filter values (data sent to the server); the chips show localized labels.
     private static final String[] CATEGORIES = {"全部", "家常菜", "减脂", "增肌", "营养", "保持", "食疗", "小吃", "烘焙"};
+    private static final int[] CATEGORY_LABELS = {
+            R.string.ac_l10n_catalog_category_all,
+            R.string.ac_l10n_catalog_category_home,
+            R.string.ac_l10n_catalog_category_low_fat,
+            R.string.ac_l10n_catalog_category_muscle,
+            R.string.ac_l10n_catalog_category_nutrition,
+            R.string.ac_l10n_catalog_category_maintain,
+            R.string.ac_l10n_catalog_category_therapy,
+            R.string.ac_l10n_catalog_category_snack,
+            R.string.ac_l10n_catalog_category_baking
+    };
     private static final int PAGE_SIZE = 60;
 
     private enum Source { PUBLIC, PERSONAL, HOUSEHOLD, FAVORITES }
@@ -119,13 +131,21 @@ public final class RecipeCatalogFragment extends Fragment {
     }
 
     private void buildSources() {
-        String[][] labels = {{"公共", "PUBLIC"}, {"我的", "PERSONAL"}, {"家庭", "HOUSEHOLD"}, {"想吃", "FAVORITES"}};
-        for (String[] entry : labels) {
+        String[] values = {"PUBLIC", "PERSONAL", "HOUSEHOLD", "FAVORITES"};
+        int[] labels = {
+                R.string.ac_l10n_catalog_source_public,
+                R.string.ac_l10n_catalog_source_personal,
+                R.string.ac_l10n_catalog_source_household,
+                R.string.ac_l10n_card_want_to_eat
+        };
+        for (int index = 0; index < values.length; index++) {
+            String value = values[index];
             Chip chip = new Chip(requireContext());
-            chip.setText(entry[0]);
+            chip.setText(labels[index]);
+            chip.setTextSize(12);
             chip.setCheckable(true);
-            chip.setTag(entry[1]);
-            chip.setChecked(entry[1].equals(source.name()));
+            chip.setTag(value);
+            chip.setChecked(value.equals(source.name()));
             chip.setOnCheckedChangeListener((button, checked) -> {
                 if (updatingChips || !checked) return;
                 updatingChips = true;
@@ -134,7 +154,7 @@ public final class RecipeCatalogFragment extends Fragment {
                     if (child instanceof Chip other && other != button) other.setChecked(false);
                 }
                 updatingChips = false;
-                source = Source.valueOf(entry[1]);
+                source = Source.valueOf(value);
                 lastSource = source;
                 search.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
                 chips.setVisibility(source == Source.FAVORITES ? View.GONE : View.VISIBLE);
@@ -150,10 +170,11 @@ public final class RecipeCatalogFragment extends Fragment {
         for (int index = 0; index < CATEGORIES.length; index++) {
             String name = CATEGORIES[index];
             Chip chip = new Chip(requireContext());
-            chip.setText(name);
+            chip.setText(CATEGORY_LABELS[index]);
             chip.setCheckable(true);
             chip.setTag(name);
-            chip.setChecked("全部".equals(name));
+            chip.setChecked(index == 0);
+            final int categoryIndex = index;
             chip.setOnCheckedChangeListener((button, checked) -> {
                 if (updatingChips) return;
                 boolean any = false;
@@ -173,13 +194,13 @@ public final class RecipeCatalogFragment extends Fragment {
                     return;
                 }
                 updatingChips = false;
-                category = "全部".equals(name) ? "" : name;
+                category = categoryIndex == 0 ? "" : name;
                 load(true);
             });
             chips.addView(chip);
         }
         Chip protein = new Chip(requireContext());
-        protein.setText("高蛋白");
+        protein.setText(R.string.ac_l10n_catalog_high_protein);
         protein.setCheckable(true);
         protein.setChecked(highProtein);
         protein.setOnCheckedChangeListener((button, checked) -> {

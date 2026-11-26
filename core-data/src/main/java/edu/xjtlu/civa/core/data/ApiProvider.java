@@ -2,6 +2,7 @@ package edu.xjtlu.civa.core.data;
 
 import edu.xjtlu.civa.api.HouseholdApi;
 import edu.xjtlu.civa.api.InventoryApi;
+import edu.xjtlu.civa.api.MediaApi;
 import edu.xjtlu.civa.api.PlanningApi;
 import edu.xjtlu.civa.api.NutritionApi;
 import edu.xjtlu.civa.api.ProfileApi;
@@ -24,4 +25,6 @@ public interface ApiProvider {
     RecordsApi records();
 
     NutritionApi nutrition();
+
+    MediaApi media();
 }

@@ -1,6 +1,8 @@
 package edu.xjtlu.civa.feature.ac.catalog;
 
+import android.net.Uri;
 import android.os.Bundle;
+import android.widget.ImageView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,13 +11,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.button.MaterialButton;
 import edu.xjtlu.civa.api.model.CreatePersonalRecipeRequest;
 import edu.xjtlu.civa.api.model.PersonalRecipe;
 import edu.xjtlu.civa.api.model.PersonalRecipeIngredient;
+import edu.xjtlu.civa.api.model.MediaScope;
 import edu.xjtlu.civa.api.model.UpdatePersonalRecipeRequest;
 import edu.xjtlu.civa.core.data.ApiCallback;
+import edu.xjtlu.civa.core.data.MediaImages;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.feature.ac.AcHost;
 import edu.xjtlu.civa.feature.ac.R;
@@ -33,7 +39,12 @@ public final class PersonalRecipeEditorFragment extends Fragment {
     private String recipeId;
     private PersonalRecipe existing;
     private EditText name, category, description, ingredients, steps;
-    private MaterialButton save;
+    private MaterialButton save, pickImage, removeImage;
+    private ImageView image;
+    private UUID imageId;
+    private boolean uploading;
+    private final ActivityResultLauncher<String> imagePicker = registerForActivityResult(
+            new ActivityResultContracts.GetContent(), this::uploadImage);
 
     public static PersonalRecipeEditorFragment create(@Nullable String recipeId) {
         PersonalRecipeEditorFragment fragment = new PersonalRecipeEditorFragment();
@@ -58,6 +69,15 @@ public final class PersonalRecipeEditorFragment extends Fragment {
         ingredients = view.findViewById(R.id.ac_editor_ingredients);
         steps = view.findViewById(R.id.ac_editor_steps);
         save = view.findViewById(R.id.ac_editor_save);
+        image = view.findViewById(R.id.ac_editor_image);
+        pickImage = view.findViewById(R.id.ac_editor_image_pick);
+        removeImage = view.findViewById(R.id.ac_editor_image_remove);
+        pickImage.setOnClickListener(ignored -> imagePicker.launch("image/*"));
+        removeImage.setOnClickListener(ignored -> {
+            imageId = null;
+            image.setImageDrawable(null);
+            image.setVisibility(View.GONE);
+        });
         TextView heading = view.findViewById(R.id.ac_editor_heading);
         save.setOnClickListener(ignored -> submit());
         if (recipeId != null) {
@@ -82,6 +102,11 @@ public final class PersonalRecipeEditorFragment extends Fragment {
                         description.setText(value.getDescription());
                         ingredients.setText(joinIngredients(value.getIngredients()));
                         steps.setText(String.join("\n", value.getSteps()));
+                        imageId = value.getImageId();
+                        if (imageId != null) {
+                            image.setVisibility(View.VISIBLE);
+                            MediaImages.load(host.api(), host.calls(), imageId, image);
+                        }
                     }
 
                     @Override public void onError(ApiError error) {
@@ -91,7 +116,24 @@ public final class PersonalRecipeEditorFragment extends Fragment {
                 });
     }
 
+    private void uploadImage(@Nullable Uri uri) {
+        if (uri == null || !isAdded()) return;
+        uploading = true;
+        pickImage.setEnabled(false);
+        toast(R.string.ac_editor_image_uploading);
+        MediaImages.upload(requireContext(), host.api(), host.calls(), uri, MediaScope.PERSONAL, null, id -> {
+            if (!isAdded()) return;
+            uploading = false;
+            pickImage.setEnabled(true);
+            if (id == null) { toast(R.string.ac_editor_image_failed); return; }
+            imageId = id;
+            image.setVisibility(View.VISIBLE);
+            image.setImageURI(uri);
+        });
+    }
+
     private void submit() {
+        if (uploading) { toast(R.string.ac_editor_image_uploading); return; }
         String title = name.getText().toString().trim();
         List<String> stepLines = lines(steps.getText().toString());
         List<PersonalRecipeIngredient> ingredientLines = ingredientItems(ingredients.getText().toString());
@@ -106,7 +148,8 @@ public final class PersonalRecipeEditorFragment extends Fragment {
                     .category(category.getText().toString().trim())
                     .description(description.getText().toString().trim())
                     .steps(stepLines)
-                    .ingredients(ingredientLines);
+                    .ingredients(ingredientLines)
+                    .imageId(imageId);
             host.calls().enqueue(host.api().personalRecipes().createPersonalRecipe(UUID.randomUUID(), request),
                     new ApiCallback<PersonalRecipe>() {
                         @Override public void onSuccess(@Nullable PersonalRecipe value) {
@@ -128,6 +171,7 @@ public final class PersonalRecipeEditorFragment extends Fragment {
                     .description(description.getText().toString().trim())
                     .steps(stepLines)
                     .ingredients(ingredientLines)
+                    .imageId(imageId)
                     .expectedVersion(existing.getVersion());
             host.calls().enqueue(host.api().personalRecipes().updatePersonalRecipe(existing.getId(), request),
                     new ApiCallback<PersonalRecipe>() {

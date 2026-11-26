@@ -1,0 +1,10 @@
+<resources>
+    <string name="bd_dish_any_spicy">Any</string>
+    <string name="bd_dish_yes_spicy">Spicy</string>
+    <string name="bd_dish_no_spicy">Not spicy</string>
+    <string name="bd_dish_any_meat">Any</string>
+    <string name="bd_dish_yes_meat">Meat</string>
+    <string name="bd_dish_no_meat">Veggie</string>
+    <string name="bd_dish_time">Time preference</string>
+    <string name="bd_dish_any_time">Any duration</string>
+</resources>

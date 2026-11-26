@@ -27,6 +27,10 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.DialogFragment;
 import com.google.android.material.button.MaterialButton;
+import edu.xjtlu.civa.api.model.UpdateProfileRequest;
+import edu.xjtlu.civa.api.model.User;
+import edu.xjtlu.civa.core.data.ApiCallback;
+import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.core.ui.PressBounce;
 import java.io.File;
 import java.util.concurrent.ExecutorService;
@@ -87,8 +91,22 @@ public final class ProfileEditDialog extends DialogFragment {
         save=new MaterialButton(requireContext());save.setId(R.id.ef_profile_edit_save);save.setText(R.string.ef_profile_save);save.setTextSize(18);save.setTypeface(ResourcesCompat.getFont(requireContext(),edu.xjtlu.civa.core.ui.R.font.civa_kuaile));save.setCornerRadius(dp(27));body.addView(save,new LinearLayout.LayoutParams(-1,dp(56)));
         save.setOnClickListener(v->{
             if(importing||!owner.equals(((ProfileHost)requireActivity()).sessions().currentUserId()))return;
-            if(!store.save(name.getText().toString(),pending)){error.setText(R.string.ef_profile_save_error);return;}
-            getParentFragmentManager().setFragmentResult("ef_profile_changed",new Bundle());dismiss();
+            ProfileHost host=(ProfileHost)requireActivity();
+            String entered=name.getText().toString().trim();
+            if(entered.isEmpty()){error.setText(R.string.ef_profile_save_error);return;}
+            save.setEnabled(false);error.setText("");
+            host.calls().enqueue(host.api().profile().updateProfile(new UpdateProfileRequest().displayName(entered)),
+                    new ApiCallback<User>(){
+                        @Override public void onSuccess(@Nullable User value){
+                            if(!isAdded())return;
+                            if(!store.save(entered,pending)){error.setText(R.string.ef_profile_save_error);save.setEnabled(true);return;}
+                            getParentFragmentManager().setFragmentResult("ef_profile_changed",new Bundle());dismiss();
+                        }
+                        @Override public void onError(ApiError apiError){
+                            if(!isAdded())return;
+                            save.setEnabled(true);error.setText(R.string.ef_profile_save_error);
+                        }
+                    });
         });
         ScrollView scroll=new ScrollView(requireContext());scroll.setFillViewport(false);scroll.addView(body);Dialog dialog=new AlertDialog.Builder(requireContext()).setView(scroll).create();return dialog;
     }

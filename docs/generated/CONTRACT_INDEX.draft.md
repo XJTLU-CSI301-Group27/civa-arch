@@ -59,5 +59,6 @@
 | updateMealEntry | PUT | /api/v1/me/meal-entries/{entryId} | D | application/json: UpdateMealEntryRequest | 200 application/json: MealEntry |
 | updatePersonalRecipe | PUT | /api/v1/me/recipes/{recipeId} | A | application/json: UpdatePersonalRecipeRequest | 200 application/json: PersonalRecipe |
 | updatePreferences | PUT | /api/v1/me/preferences | E | application/json: UpdatePreferenceRequest | 200 application/json: Preference |
+| updateProfile | PUT | /api/v1/me/profile | E | application/json: UpdateProfileRequest | 200 application/json: User |
 | updateRecipe | PUT | /api/v1/households/{householdId}/recipes/{recipeId} | A | application/json: UpdateRecipeRequest | 200 application/json: Recipe |
 | uploadMedia | POST | /api/v1/media | E | multipart/form-data: object | 201 application/json: Media |

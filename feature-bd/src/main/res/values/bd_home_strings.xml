@@ -15,4 +15,13 @@
     <string name="bd_home_cancel">取消</string>
     <string name="bd_home_selected_date">打开日历，当前为%1$s，%2$s的食谱</string>
     <string name="bd_home_plan">计划</string>
+    <string-array name="bd_l10n_weekdays">
+        <item>周一</item>
+        <item>周二</item>
+        <item>周三</item>
+        <item>周四</item>
+        <item>周五</item>
+        <item>周六</item>
+        <item>周日</item>
+    </string-array>
 </resources>

@@ -1,0 +1,27 @@
+<resources>
+    <string name="bd_home_breakfast">Breakfast</string>
+    <string name="bd_home_lunch">Lunch</string>
+    <string name="bd_home_dinner">Dinner</string>
+    <string name="bd_home_breakfast_en">breakfast</string>
+    <string name="bd_home_lunch_en">lunch</string>
+    <string name="bd_home_dinner_en">dinner</string>
+    <string name="bd_home_add_dish">Add dish</string>
+    <string name="bd_home_add_breakfast">Add breakfast dish</string>
+    <string name="bd_home_add_lunch">Add lunch dish</string>
+    <string name="bd_home_add_dinner">Add dinner dish</string>
+    <string name="bd_home_calendar">Open the calendar and choose a recipe date</string>
+    <string name="bd_home_choose_date">Choose recipe date</string>
+    <string name="bd_home_confirm_date">Use this day</string>
+    <string name="bd_home_cancel">Cancel</string>
+    <string name="bd_home_selected_date">Open the calendar, currently showing %1$s, recipes for %2$s</string>
+    <string name="bd_home_plan">Plan</string>
+    <string-array name="bd_l10n_weekdays">
+        <item>Mon</item>
+        <item>Tue</item>
+        <item>Wed</item>
+        <item>Thu</item>
+        <item>Fri</item>
+        <item>Sat</item>
+        <item>Sun</item>
+    </string-array>
+</resources>

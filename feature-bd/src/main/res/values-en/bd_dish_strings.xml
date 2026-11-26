@@ -1,0 +1,37 @@
+<resources>
+    <string name="bd_dish_choose_title">What do you want for this meal?</string>
+    <string name="bd_dish_idea">Let me decide what to eat</string>
+    <string name="bd_dish_hungry">Cannot decide, so hungry</string>
+    <string name="bd_dish_manual_title">Add a dish you want</string>
+    <string name="bd_dish_name_hint">Dish name</string>
+    <string name="bd_dish_photo_label">Dish photo (optional)</string>
+    <string name="bd_dish_pick_photo">Tap to pick a photo</string>
+    <string name="bd_dish_photo_chosen">Change photo</string>
+    <string name="bd_dish_importing">Preparing photo…</string>
+    <string name="bd_dish_manual_confirm">That is the one</string>
+    <string name="bd_dish_preferences_title">You might like</string>
+    <string name="bd_dish_spicy">Spice preference</string>
+    <string name="bd_dish_meat">Meat or veggie</string>
+    <string name="bd_dish_quick">Quick dishes only</string>
+    <string name="bd_dish_matching">%1$d dishes match your taste</string>
+    <string name="bd_dish_blind_box">Surprise me</string>
+    <string name="bd_dish_recommendation_title">Is this a dish you like?</string>
+    <string name="bd_dish_accept">This one</string>
+    <string name="bd_dish_reroll">No, try another</string>
+    <string name="bd_dish_details">See ingredients and steps</string>
+    <string name="bd_dish_hide_details">Hide steps</string>
+    <string name="bd_dish_ingredients">Ingredients</string>
+    <string name="bd_dish_steps">Steps</string>
+    <string name="bd_dish_source">Recipe source: HowToCook open-source community</string>
+    <string name="bd_dish_close">Close and go back</string>
+    <string name="bd_dish_close_home">Close and return home</string>
+    <string name="bd_dish_no_photo">No photo for this dish yet</string>
+    <string name="bd_dish_plate_description">%1$s plate photo</string>
+    <string name="bd_dish_saving">Writing it down…</string>
+    <string name="bd_dish_loading">Opening the recipe book…</string>
+    <string name="bd_dish_name_required">Give this dish a name first (up to 60 characters)</string>
+    <string name="bd_dish_load_error">The kitchen journal cannot open right now. Reopen and try again; existing records are kept.</string>
+    <string name="bd_dish_save_error">Save did not succeed. Try again.</string>
+    <string name="bd_dish_photo_error">This photo cannot be read. Try a different image under 20MB.</string>
+    <string name="bd_dish_no_match">No dishes fully match your preferences right now. Change a preference and try again.</string>
+</resources>

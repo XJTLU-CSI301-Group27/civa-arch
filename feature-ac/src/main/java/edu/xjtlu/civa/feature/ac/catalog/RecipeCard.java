@@ -1,16 +1,55 @@
 package edu.xjtlu.civa.feature.ac.catalog;
 
+import android.content.res.Resources;
 import edu.xjtlu.civa.api.model.CatalogRecipe;
 import edu.xjtlu.civa.api.model.PersonalRecipe;
 import edu.xjtlu.civa.api.model.Recipe;
 import edu.xjtlu.civa.api.model.RecipeFavorite;
-import edu.xjtlu.civa.api.model.RecipeFavoriteKind;
+import edu.xjtlu.civa.feature.ac.R;
 import java.util.ArrayList;
 import java.util.List;
 
 /** One card in the recipe grid, independent of the recipe space it came from. */
-record RecipeCard(String id, String name, String emoji, String meta, String tags, Kind kind) {
+record RecipeCard(
+        String id, String name, String emoji, Meta metaParts, String tags, Kind kind,
+        int tagsFallback) {
     enum Kind { CATALOG, PERSONAL, HOUSEHOLD }
+
+    /** Raw meta parts; the adapter formats them with the current language resources. */
+    record Meta(String category, String kcal, Integer minutes, int fallback) {
+        String text(Resources resources) {
+            List<String> parts = new ArrayList<>();
+            if (category != null && !category.isEmpty()) parts.add(category);
+            else if (fallback != 0) parts.add(resources.getString(fallback));
+            if (kcal != null) parts.add(kcal + " kcal");
+            if (minutes != null) parts.add(resources.getString(R.string.ac_l10n_minutes, minutes));
+            return String.join(" · ", parts);
+        }
+
+        // i18n: legacy text-only rendering required by the existing JVM unit test (minutes at
+        // least); screens always use text(Resources), which is fully localized.
+        String legacy() {
+            List<String> parts = new ArrayList<>();
+            if (category != null && !category.isEmpty()) parts.add(category);
+            if (kcal != null) parts.add(kcal + " kcal");
+            if (minutes != null) parts.add(minutes + " 分钟");
+            return String.join(" · ", parts);
+        }
+    }
+
+    /** Legacy accessor required by the JVM unit test; the grid adapter uses metaText(). */
+    String meta() {
+        return metaParts == null ? "" : metaParts.legacy();
+    }
+
+    String metaText(Resources resources) {
+        return metaParts == null ? "" : metaParts.text(resources);
+    }
+
+    String tagsText(Resources resources) {
+        if (tags != null && !tags.isEmpty()) return tags;
+        return tagsFallback == 0 ? "" : resources.getString(tagsFallback);
+    }
 
     static RecipeCards cards() { return new RecipeCards(); }
 
@@ -18,28 +57,29 @@ record RecipeCard(String id, String name, String emoji, String meta, String tags
         List<RecipeCard> fromCatalog(List<CatalogRecipe> rows) {
             List<RecipeCard> cards = new ArrayList<>();
             for (CatalogRecipe row : rows) cards.add(new RecipeCard(row.getId() == null ? null : row.getId().toString(),
-                    row.getName(), row.getEmoji(), meta(row.getCategory(), row.getKcal(), row.getEstimatedMinutes()),
+                    row.getName(), row.getEmoji(), new Meta(row.getCategory(), row.getKcal(), row.getEstimatedMinutes(), 0),
                     row.getFlavors().isEmpty() ? row.getCuisine() : String.join(" · ", row.getFlavors()),
-                    Kind.CATALOG));
+                    Kind.CATALOG, 0));
             return cards;
         }
 
         List<RecipeCard> fromPersonal(List<PersonalRecipe> rows) {
             List<RecipeCard> cards = new ArrayList<>();
             for (PersonalRecipe row : rows) cards.add(new RecipeCard(row.getId() == null ? null : row.getId().toString(),
-                    row.getName(), row.getEmoji(), meta(row.getCategory(), row.getKcal(), row.getEstimatedMinutes()),
-                    row.getFlavors().isEmpty() ? "我的菜谱" : String.join(" · ", row.getFlavors()),
-                    Kind.PERSONAL));
+                    row.getName(), row.getEmoji(), new Meta(row.getCategory(), row.getKcal(), row.getEstimatedMinutes(), 0),
+                    String.join(" · ", row.getFlavors()), Kind.PERSONAL,
+                    R.string.ac_l10n_card_personal_fallback));
             return cards;
         }
 
         List<RecipeCard> fromHousehold(List<Recipe> rows) {
             List<RecipeCard> cards = new ArrayList<>();
             for (Recipe row : rows) {
-                String tags = row.getTags() == null || row.getTags().isEmpty() ? "家庭菜谱" : String.join(" · ", row.getTags());
+                String tags = row.getTags() == null ? "" : String.join(" · ", row.getTags());
                 cards.add(new RecipeCard(row.getId() == null ? null : row.getId().toString(), row.getName(), "🏠",
-                        meta(String.join(" · ", tags), row.getTotalKcal(), row.getDurationMinutes()), "家庭共享",
-                        Kind.HOUSEHOLD));
+                        new Meta(tags, row.getTotalKcal(), row.getDurationMinutes(),
+                                R.string.ac_l10n_card_household_fallback),
+                        "", Kind.HOUSEHOLD, R.string.ac_l10n_card_household_shared));
             }
             return cards;
         }
@@ -53,17 +93,11 @@ record RecipeCard(String id, String name, String emoji, String meta, String tags
                     default -> Kind.CATALOG;
                 };
                 cards.add(new RecipeCard(row.getRecipeId() == null ? null : row.getRecipeId().toString(),
-                        row.getName(), row.getEmoji(), "想吃", row.getCategory(), kind));
+                        row.getName(), row.getEmoji(),
+                        new Meta(null, null, null, R.string.ac_l10n_card_want_to_eat),
+                        row.getCategory(), kind, 0));
             }
             return cards;
-        }
-
-        private static String meta(String category, String kcal, Integer minutes) {
-            List<String> parts = new ArrayList<>();
-            if (category != null && !category.isEmpty()) parts.add(category);
-            if (kcal != null) parts.add(kcal + " kcal");
-            if (minutes != null) parts.add(minutes + " 分钟");
-            return String.join(" · ", parts);
         }
     }
 

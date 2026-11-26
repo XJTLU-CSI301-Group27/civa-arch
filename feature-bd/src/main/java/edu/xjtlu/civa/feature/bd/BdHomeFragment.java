@@ -76,7 +76,7 @@ public final class BdHomeFragment extends Fragment {
     private void render() {
         View view = getView();
         if (view == null) return;
-        String weekday = "周" + new String[]{"一", "二", "三", "四", "五", "六", "日"}[model.date.getDayOfWeek().getValue() - 1];
+        String weekday = getResources().getStringArray(R.array.bd_l10n_weekdays)[model.date.getDayOfWeek().getValue() - 1];
         ((TextView) view.findViewById(R.id.bd_home_weekday)).setText(weekday);
         ((TextView) view.findViewById(R.id.bd_home_weekday_en)).setText(model.date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH));
         ((TextView) view.findViewById(R.id.bd_home_date)).setText(model.date.format(DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.ROOT)));

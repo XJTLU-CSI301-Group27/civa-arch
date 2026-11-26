@@ -65,6 +65,19 @@
   ],
   "symbols": [
     {
+      "type": "edu.xjtlu.civa.core.data.MediaImages",
+      "kind": "class",
+      "owner": "BD",
+      "consumers": [
+        "feature-ac"
+      ],
+      "thread": "main",
+      "members": [
+        "static void upload(Context context, ApiProvider api, ApiCalls calls, Uri uri, MediaScope scope, UUID householdId, Uploaded callback)",
+        "static void load(ApiProvider api, ApiCalls calls, UUID imageId, ImageView view)"
+      ]
+    },
+    {
       "type": "edu.xjtlu.civa.core.ui.LocalePrefs",
       "kind": "class",
       "owner": "A",

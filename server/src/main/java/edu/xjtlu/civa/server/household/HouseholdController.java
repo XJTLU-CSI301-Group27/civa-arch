@@ -64,7 +64,8 @@ class HouseholdController implements HouseholdApi {
     @Override public ResponseEntity<MembershipPage> listMembers(UUID id, Integer page, Integer size) {
         HouseholdReadService.MemberPage result = read.listMembers(actor(), id, page, size);
         var members = result.items.stream().map(m -> new Membership(m.id, time(m.createdAt), time(m.updatedAt),
-                m.householdId, m.userId, Role.valueOf(m.role), m.active, m.version)).toList();
+                m.householdId, m.userId, Role.valueOf(m.role), m.active, m.version)
+                .username(m.username).displayName(m.displayName)).toList();
         return ResponseEntity.ok(new MembershipPage(members, result.page, result.size, result.total));
     }
 

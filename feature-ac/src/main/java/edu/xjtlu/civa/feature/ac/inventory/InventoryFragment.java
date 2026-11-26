@@ -27,6 +27,9 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import edu.xjtlu.civa.api.model.*;
 import edu.xjtlu.civa.core.ui.Route;
+import edu.xjtlu.civa.feature.ac.AcMessage;
+import edu.xjtlu.civa.feature.ac.AcText;
+import edu.xjtlu.civa.feature.ac.AcValidationException;
 import edu.xjtlu.civa.feature.ac.R;
 import edu.xjtlu.civa.feature.ac.databinding.AcFragmentInventoryBinding;
 import java.math.BigDecimal;
@@ -85,8 +88,8 @@ public final class InventoryFragment extends Fragment {
           if (!model.hasHousehold()) requestAddFood();
           else
             new MaterialAlertDialogBuilder(requireContext())
-                .setMessage(model.message)
-                .setPositiveButton("知道了", null)
+                .setMessage(localized(model.message))
+                .setPositiveButton(R.string.ac_l10n_ack, null)
                 .show();
         });
     binding.acWorkspace.addOnLayoutChangeListener(
@@ -110,12 +113,19 @@ public final class InventoryFragment extends Fragment {
     binding.acAbandonWrite.setOnClickListener(
         v ->
             new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("结束待确认记录？")
-                .setMessage("结束记录不会撤销服务器上的操作。请先刷新核对真实库存，确认后再进行新的操作，避免重复扣减。")
-                .setNegativeButton("继续核对", null)
-                .setPositiveButton("已核对，结束记录", (d, w) -> model.abandon())
+                .setTitle(R.string.ac_l10n_inventory_end_pending_title)
+                .setMessage(R.string.ac_l10n_inventory_end_pending_message)
+                .setNegativeButton(R.string.ac_l10n_inventory_end_pending_continue, null)
+                .setPositiveButton(
+                    R.string.ac_l10n_inventory_end_pending_confirm, (d, w) -> model.abandon())
                 .show());
-    String[] labels = {"全部", "未过期", "临期", "已过期"}, values = {"ALL", "VALID", "SOON", "EXPIRED"};
+    String[] labels = {
+      getString(R.string.ac_l10n_inventory_filter_all),
+      getString(R.string.ac_l10n_inventory_filter_valid),
+      getString(R.string.ac_l10n_inventory_filter_soon),
+      getString(R.string.ac_l10n_inventory_filter_expired)
+    };
+    String[] values = {"ALL", "VALID", "SOON", "EXPIRED"};
     binding.acFilters.removeAllViews();
     for (int i = 0; i < labels.length; i++) {
       String value = values[i];
@@ -182,20 +192,15 @@ public final class InventoryFragment extends Fragment {
 
   private void render() {
     if (binding == null) return;
-    String visibleMessage = model.message.replaceAll("(?m)^已读取 [^\\n]*\\n?", "").trim();
+    String visibleMessage = localized(model.message);
     binding.acMessage.setText(visibleMessage);
-    binding.acMessage.setVisibility(
-        visibleMessage.isEmpty()
-                || model.message.startsWith("已读取 ")
-                || model.message.startsWith("当前筛选下暂无库存")
-            ? View.GONE
-            : View.VISIBLE);
+    binding.acMessage.setVisibility(visibleMessage.isEmpty() ? View.GONE : View.VISIBLE);
     binding.acLoading.setVisibility(model.loading ? View.VISIBLE : View.GONE);
     binding.acRecovery.setVisibility(model.pending != null ? View.VISIBLE : View.GONE);
     binding.acRetryWrite.setEnabled(!model.busy);
     binding.acAbandonWrite.setEnabled(!model.busy);
     binding.acAdd.setEnabled(!model.busy);
-    binding.acAdd.setText(model.busy ? "正在保存…" : getString(R.string.ac_add_food));
+    binding.acAdd.setText(model.busy ? getString(R.string.ac_l10n_saving) : getString(R.string.ac_add_food));
     binding.acRefresh.setEnabled(!model.busy);
     for (int i = 0; i < binding.acFilters.getChildCount(); i++) {
       Chip chip = (Chip) binding.acFilters.getChildAt(i);
@@ -230,8 +235,11 @@ public final class InventoryFragment extends Fragment {
 
   private void buildFridge() {
     binding.acFridge.removeAllViews();
-    coldFrame = compartment("冷藏室 · CHILL", new int[] {0, 1, 2}, false);
-    freezeFrame = compartment("冷冻室 · FREEZE", new int[] {3, 4}, true);
+    coldFrame =
+        compartment(getString(R.string.ac_l10n_inventory_chill_room), new int[] {0, 1, 2}, false);
+    freezeFrame =
+        compartment(
+            getString(R.string.ac_l10n_inventory_freeze_room), new int[] {3, 4}, true);
     coldFrame.setId(R.id.ac_cold_compartment);
     freezeFrame.setId(R.id.ac_frozen_compartment);
     binding.acFridge.addView(coldFrame, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -240,22 +248,21 @@ public final class InventoryFragment extends Fragment {
     binding.acFridge.addView(freezeFrame, lp);
     LinearLayout controls = new LinearLayout(requireContext());
     controls.setGravity(Gravity.CENTER);
-    MaterialButton cold = button("冷藏门 · " + (model.coldOpen ? "已打开" : "关闭"), true),
-        freeze = button("冷冻门 · " + (model.freezeOpen ? "已打开" : "关闭"), true);
+    MaterialButton cold = button(doorLabel(false), true), freeze = button(doorLabel(true), true);
     coldControl = cold;
     freezeControl = freeze;
     cold.setOnClickListener(
         v -> {
           model.coldOpen = !model.coldOpen;
           animateDoor(coldDoor, model.coldOpen);
-          cold.setText("冷藏门 · " + (model.coldOpen ? "已打开" : "关闭"));
+          cold.setText(doorLabel(false));
           updateOpenLabel();
         });
     freeze.setOnClickListener(
         v -> {
           model.freezeOpen = !model.freezeOpen;
           animateDoor(freezeDoor, model.freezeOpen);
-          freeze.setText("冷冻门 · " + (model.freezeOpen ? "已打开" : "关闭"));
+          freeze.setText(doorLabel(true));
           updateOpenLabel();
         });
     controls.addView(cold, new LinearLayout.LayoutParams(0, -2, 1));
@@ -264,10 +271,25 @@ public final class InventoryFragment extends Fragment {
     List<InventoryBatch> elsewhere = new ArrayList<>();
     for (var group : foodGroups) if (group.shelf() < 0) elsewhere.addAll(group.batches);
     if (!elsewhere.isEmpty()) {
-      TextView other = text("其他位置 · " + elsewhere.size() + "批  ›", 12);
-      other.setOnClickListener(v -> showBatches("其他储存位置", elsewhere));
+      TextView other =
+          text(getString(R.string.ac_l10n_inventory_other_locations, elsewhere.size()), 12);
+      other.setOnClickListener(
+          v -> showBatches(getString(R.string.ac_l10n_inventory_other_storage), elsewhere));
       binding.acFridge.addView(other, new LinearLayout.LayoutParams(-1, dp(32)));
     }
+  }
+
+  /** Door state label used by the two door buttons; state words come from resources. */
+  private String doorLabel(boolean freezer) {
+    if (freezer)
+      return getString(
+          model.freezeOpen
+              ? R.string.ac_l10n_inventory_door_freeze_open
+              : R.string.ac_l10n_inventory_door_freeze_closed);
+    return getString(
+        model.coldOpen
+            ? R.string.ac_l10n_inventory_door_cold_open
+            : R.string.ac_l10n_inventory_door_cold_closed);
   }
 
   private FrameLayout compartment(String title, int[] shelves, boolean freezer) {
@@ -297,7 +319,13 @@ public final class InventoryFragment extends Fragment {
     temperature.setTextColor(color(R.color.ac_fridge_accent));
     sectionTitle.addView(temperature);
     inside.addView(sectionTitle);
-    String[] names = {"蛋奶 · 每日补给", "蔬菜 · 留住鲜绿", "水果 · 一点甜", "肉类储备", "海鲜储备"};
+    String[] names = {
+      getString(R.string.ac_l10n_inventory_shelf_dairy),
+      getString(R.string.ac_l10n_inventory_shelf_veg),
+      getString(R.string.ac_l10n_inventory_shelf_fruit),
+      getString(R.string.ac_l10n_inventory_shelf_meat),
+      getString(R.string.ac_l10n_inventory_shelf_seafood)
+    };
     LinearLayout drawers = new LinearLayout(requireContext());
     if (freezer) inside.addView(drawers, new LinearLayout.LayoutParams(-1, 0, 1));
     for (int index : shelves) {
@@ -323,12 +351,17 @@ public final class InventoryFragment extends Fragment {
           groups.add(group);
           items.addAll(group.batches);
         }
-      label.setText(names[index] + (groups.size() > 3 ? "  · " + groups.size() + "种 ›" : ""));
+      label.setText(
+          names[index]
+              + (groups.size() > 3
+                  ? getString(R.string.ac_l10n_inventory_shelf_more, groups.size())
+                  : ""));
       label.setOnClickListener(v -> showBatches(names[index], items));
-      label.setContentDescription(names[index] + "，查看全部批次");
+      label.setContentDescription(
+          getString(R.string.ac_l10n_inventory_shelf_description, names[index]));
       area.addView(label);
       if (items.isEmpty()) {
-        TextView empty = text("暂无食材", 13);
+        TextView empty = text(getString(R.string.ac_l10n_inventory_empty_shelf), 13);
         empty.setGravity(Gravity.CENTER);
         area.addView(empty, new LinearLayout.LayoutParams(-1, 0, 1));
       }
@@ -355,7 +388,10 @@ public final class InventoryFragment extends Fragment {
     door.setBackground(
         gradient(
             R.color.ac_fridge_door_light, R.color.ac_fridge_door, R.color.ac_fridge_door_dark, 20));
-    TextView brand = text(freezer ? "冷冻室   −18°C" : "civa", freezer ? 16 : 36);
+    TextView brand =
+        text(
+            freezer ? getString(R.string.ac_l10n_inventory_brand_freezer) : "civa",
+            freezer ? 16 : 36);
     brand.setTypeface(ResourcesCompat.getFont(requireContext(), R.font.ac_fridge_brand));
     door.addView(brand, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START));
     if (!freezer) {
@@ -365,11 +401,16 @@ public final class InventoryFragment extends Fragment {
       FrameLayout.LayoutParams noteParams = new FrameLayout.LayoutParams(-2, -2);
       noteParams.topMargin = dp(52);
       door.addView(note, noteParams);
-      TextView display = text("4°\n冷藏", 24);
+      TextView display = text(getString(R.string.ac_l10n_inventory_display_cold), 24);
       display.setGravity(Gravity.CENTER);
       door.addView(display, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END));
     }
-    TextView hint = text(freezer ? "点击打开，备好每一餐 ↗" : "点击打开冷藏门    ↗", 12);
+    TextView hint =
+        text(
+            freezer
+                ? getString(R.string.ac_l10n_inventory_hint_freezer)
+                : getString(R.string.ac_l10n_inventory_hint_cold),
+            12);
     door.addView(hint, new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.START));
     View handle = new View(requireContext());
     handle.setBackground(
@@ -381,7 +422,11 @@ public final class InventoryFragment extends Fragment {
             dp(10), dp(freezer ? 65 : 78), Gravity.END | Gravity.CENTER_VERTICAL);
     door.addView(handle, handleLp);
     frame.addView(door, new FrameLayout.LayoutParams(-1, -1));
-    door.setContentDescription(freezer ? "打开冷冻门" : "打开冷藏门");
+    door.setContentDescription(
+        getString(
+            freezer
+                ? R.string.ac_l10n_inventory_cd_open_freezer
+                : R.string.ac_l10n_inventory_cd_open_cold));
     door.setClickable(true);
     door.setFocusable(true);
     boolean open = freezer ? model.freezeOpen : model.coldOpen;
@@ -431,16 +476,19 @@ public final class InventoryFragment extends Fragment {
 
   private void updateOpenLabel() {
     if (binding != null)
-      binding.acOpen.setText(model.coldOpen && model.freezeOpen ? "关上冰箱" : "打开冰箱");
-    if (coldControl != null) coldControl.setText("冷藏门 · " + (model.coldOpen ? "已打开" : "关闭"));
-    if (freezeControl != null) freezeControl.setText("冷冻门 · " + (model.freezeOpen ? "已打开" : "关闭"));
+      binding.acOpen.setText(
+          model.coldOpen && model.freezeOpen
+              ? R.string.ac_l10n_inventory_close_fridge
+              : R.string.ac_open_fridge);
+    if (coldControl != null) coldControl.setText(doorLabel(false));
+    if (freezeControl != null) freezeControl.setText(doorLabel(true));
   }
 
   private View foodTile(InventoryGroups.Group group) {
     InventoryBatch batch = group.first();
     Ingredient ingredient = model.ingredient(batch);
-    String name = InventoryPresentation.name(batch, ingredient),
-        unit = InventoryPresentation.unit(batch.getUnit(), name);
+    String name = InventoryPresentation.name(getResources(), batch, ingredient),
+        unit = unitLabel(batch.getUnit(), name);
     LinearLayout tile = column();
     tile.setGravity(Gravity.CENTER);
     tile.setPadding(dp(2), 0, dp(2), 0);
@@ -455,13 +503,15 @@ public final class InventoryFragment extends Fragment {
     qty.setTypeface(null, Typeface.BOLD);
     tile.addView(qty);
     String status =
-        model.today() == null ? "家庭日期读取中" : InventoryPresentation.expiry(batch, model.today());
+        model.today() == null
+            ? getString(R.string.ac_l10n_inventory_household_date_loading)
+            : InventoryPresentation.expiry(getResources(), batch, model.today());
     if (group.batches.size() > 1)
       status =
-          group.batches.size()
-              + "批 · "
+          getString(R.string.ac_l10n_inventory_batches, group.batches.size())
+              + " · "
               + (model.today() != null && InventoryPresentation.expired(batch, model.today())
-                  ? "含已过期"
+                  ? getString(R.string.ac_l10n_inventory_includes_expired)
                   : status);
     TextView expiry = text(status, 11);
     expiry.setTextColor(color(expiryColor(batch)));
@@ -474,7 +524,11 @@ public final class InventoryFragment extends Fragment {
       child.setPadding(0, 0, 0, 0);
     }
     tile.setContentDescription(
-        name + "，剩余" + groupQuantity(group, unit).replace(" ", "") + "，" + status);
+        getString(
+            R.string.ac_l10n_inventory_food_description,
+            name,
+            groupQuantity(group, unit).replace(" ", ""),
+            status));
     tile.setClickable(true);
     tile.setFocusable(true);
     tile.setOnClickListener(v -> showIngredient(group));
@@ -483,7 +537,7 @@ public final class InventoryFragment extends Fragment {
 
   private View frozenTile(InventoryGroups.Group group) {
     InventoryBatch batch = group.first();
-    String name = InventoryPresentation.name(batch, model.ingredient(batch));
+    String name = InventoryPresentation.name(getResources(), batch, model.ingredient(batch));
     LinearLayout row = new LinearLayout(requireContext());
     row.setGravity(Gravity.CENTER_VERTICAL);
     row.setPadding(dp(3), 0, dp(3), 0);
@@ -495,10 +549,9 @@ public final class InventoryFragment extends Fragment {
     title.setMaxLines(1);
     title.setEllipsize(android.text.TextUtils.TruncateAt.END);
     labels.addView(title);
-    TextView qty =
-        text(groupQuantity(group, InventoryPresentation.unit(batch.getUnit(), name)), 13);
+    TextView qty = text(groupQuantity(group, unitLabel(batch.getUnit(), name)), 13);
     if (model.today() != null && InventoryPresentation.expired(batch, model.today())) {
-      qty.append(" · 含过期");
+      qty.append(getString(R.string.ac_l10n_inventory_includes_expired_suffix));
       qty.setTextColor(color(R.color.ac_fridge_expired));
     }
     labels.addView(qty);
@@ -506,13 +559,11 @@ public final class InventoryFragment extends Fragment {
     qty.setPadding(0, 0, 0, 0);
     row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
     row.setContentDescription(
-        name
-            + "，剩余"
-            + groupQuantity(group, InventoryPresentation.unit(batch.getUnit(), name))
-                .replace(" ", "")
-            + "，"
-            + group.batches.size()
-            + "批");
+        getString(
+            R.string.ac_l10n_inventory_frozen_description,
+            name,
+            groupQuantity(group, unitLabel(batch.getUnit(), name)).replace(" ", ""),
+            group.batches.size()));
     row.setClickable(true);
     row.setFocusable(true);
     row.setOnClickListener(v -> showIngredient(group));
@@ -525,7 +576,7 @@ public final class InventoryFragment extends Fragment {
 
   private void fillDetail(LinearLayout detail) {
     detail.removeAllViews();
-    TextView kicker = text("冰箱里的小档案", 12);
+    TextView kicker = text(getString(R.string.ac_l10n_inventory_kicker), 12);
     kicker.setTextColor(color(R.color.ac_fridge_muted));
     kicker.setLetterSpacing(.12f);
     detail.addView(kicker);
@@ -536,8 +587,8 @@ public final class InventoryFragment extends Fragment {
     ruleParams.bottomMargin = dp(16);
     detail.addView(rule, ruleParams);
     if (!model.hasHousehold()) {
-      detail.addView(text("请先创建或加入家庭，再管理共享库存。", 14));
-      MaterialButton home = button("前往家庭", false);
+      detail.addView(text(getString(R.string.ac_l10n_inventory_need_household), 14));
+      MaterialButton home = button(getString(R.string.ac_l10n_go_household), false);
       home.setOnClickListener(
           v -> ((InventoryHost) requireActivity()).navigate(Route.HOUSEHOLD, null));
       detail.addView(home);
@@ -548,47 +599,64 @@ public final class InventoryFragment extends Fragment {
       TextView mark = text("✳", 48);
       mark.setTextColor(color(R.color.ac_fridge_accent));
       detail.addView(mark);
-      detail.addView(text("新鲜，有迹可循。", 21));
-      TextView prompt = text("打开冰箱门，点一下食材，查看剩余数量和存放日期。", 13);
+      detail.addView(text(getString(R.string.ac_l10n_inventory_motto), 21));
+      TextView prompt = text(getString(R.string.ac_l10n_inventory_prompt), 13);
       prompt.setTextColor(color(R.color.ac_fridge_muted));
       prompt.setLineSpacing(dp(5), 1);
       detail.addView(prompt);
-      detail.addView(text("冷藏   蛋奶 / 蔬菜 / 水果\n\n冷冻   肉类 / 海鲜", 12));
-      detail.addView(text("● 正常    ● 临期    ● 已过期", 11));
+      detail.addView(text(getString(R.string.ac_l10n_inventory_zone_legend), 12));
+      detail.addView(text(getString(R.string.ac_l10n_inventory_status_legend), 11));
       return;
     }
-    String name = InventoryPresentation.name(batch, model.ingredient(batch)),
-        unit = InventoryPresentation.unit(batch.getUnit(), name);
+    String name = InventoryPresentation.name(getResources(), batch, model.ingredient(batch)),
+        unit = unitLabel(batch.getUnit(), name);
     detail.addView(text(InventoryPresentation.emoji(name), compact() ? 36 : 62));
     detail.addView(text(name, 22));
     for (var group : foodGroups)
       if (group.contains(batch.getId().toString()) && group.batches.size() > 1) {
         detail.addView(
             text(
-                ("ALL".equals(model.filter) ? "总库存 " : "筛选合计 ")
-                    + groupQuantity(group, unit)
-                    + " · "
-                    + group.batches.size()
-                    + "批",
+                getString(
+                        "ALL".equals(model.filter)
+                            ? R.string.ac_l10n_inventory_total_stock
+                            : R.string.ac_l10n_inventory_filtered_total,
+                        groupQuantity(group, unit),
+                        group.batches.size()),
                 15));
         String usable = group.usableQuantity(model.today());
-        detail.addView(text("未过期可用 " + (usable == null ? "未知" : usable + " " + unit), 12));
-        MaterialButton batches = button("查看全部批次（" + group.batches.size() + "）", true);
+        detail.addView(
+            text(
+                getString(
+                    R.string.ac_l10n_inventory_available,
+                    usable == null
+                        ? getString(R.string.ac_l10n_unknown)
+                        : usable + " " + unit),
+                12));
+        MaterialButton batches =
+            button(
+                getString(R.string.ac_l10n_inventory_view_batches, group.batches.size()), true);
         batches.setOnClickListener(v -> showIngredient(group));
         detail.addView(batches);
         break;
       }
-    detail.addView(text("当前批次", 12));
-    detail.addView(text("剩余 " + batch.getQuantity() + " " + unit, 29));
-    property(detail, "储存位置", batch.getLocation());
-    property(detail, "入库时间", displayTime(batch.getCreatedAt()));
-    property(detail, "到期日期", batch.getExpiresOn() == null ? "未知" : batch.getExpiresOn());
-    property(detail, "库存批次", batch.getId().toString().substring(0, 8));
+    detail.addView(text(getString(R.string.ac_l10n_inventory_current_batch), 12));
+    detail.addView(
+        text(getString(R.string.ac_l10n_inventory_remaining, batch.getQuantity(), unit), 29));
+    property(detail, getString(R.string.ac_l10n_inventory_location_label), locationLabel(batch.getLocation()));
+    property(detail, getString(R.string.ac_l10n_inventory_added_at), displayTime(batch.getCreatedAt()));
+    property(
+        detail,
+        getString(R.string.ac_l10n_inventory_expiry_date),
+        batch.getExpiresOn() == null ? getString(R.string.ac_l10n_unknown) : batch.getExpiresOn());
+    property(
+        detail,
+        getString(R.string.ac_l10n_inventory_batch_id),
+        batch.getId().toString().substring(0, 8));
     TextView expiry =
         text(
             model.today() == null
-                ? "家庭日期未知，暂不能记录消耗"
-                : InventoryPresentation.expiry(batch, model.today()),
+                ? getString(R.string.ac_l10n_inventory_date_unknown_consume)
+                : InventoryPresentation.expiry(getResources(), batch, model.today()),
             12);
     expiry.setTextColor(color(expiryColor(batch)));
     expiry.setPadding(dp(12), dp(12), dp(12), dp(12));
@@ -600,11 +668,13 @@ public final class InventoryFragment extends Fragment {
     boolean editable = !model.busy && !model.loading && model.pending == null && !model.recovering;
     MaterialButton consume =
         button(
-            new BigDecimal(batch.getQuantity()).signum() == 0
-                ? "已用完"
-                : model.today() != null && InventoryPresentation.expired(batch, model.today())
-                    ? "已过期，请检查处理"
-                    : "记录消耗",
+            getString(
+                new BigDecimal(batch.getQuantity()).signum() == 0
+                    ? R.string.ac_l10n_inventory_used_up
+                    : model.today() != null
+                            && InventoryPresentation.expired(batch, model.today())
+                        ? R.string.ac_l10n_inventory_expired_check
+                        : R.string.ac_l10n_inventory_record_consume),
             false);
     consume.setEnabled(
         editable
@@ -613,44 +683,45 @@ public final class InventoryFragment extends Fragment {
             && !InventoryPresentation.expired(batch, model.today()));
     consume.setOnClickListener(v -> quantityDialog(batch, ChangeReason.CONSUME));
     detail.addView(consume);
-    MaterialButton discard = button("记录丢弃", true);
+    MaterialButton discard =
+        button(getString(R.string.ac_l10n_inventory_record_discard), true);
     discard.setEnabled(editable && new BigDecimal(batch.getQuantity()).signum() > 0);
     discard.setOnClickListener(v -> quantityDialog(batch, ChangeReason.DISCARD));
     detail.addView(discard);
-    MaterialButton correction = button("库存修正", true);
+    MaterialButton correction =
+        button(getString(R.string.ac_l10n_inventory_correct_stock), true);
     correction.setEnabled(editable);
     correction.setOnClickListener(v -> quantityDialog(batch, ChangeReason.CORRECT));
     detail.addView(correction);
-    MaterialButton edit = button("修改位置 / 到期日", true);
+    MaterialButton edit = button(getString(R.string.ac_l10n_inventory_edit_batch), true);
     edit.setEnabled(editable);
     edit.setOnClickListener(v -> editDialog(batch));
     detail.addView(edit);
     if (model.latestMovement != null) {
       InventoryMovement movement = model.latestMovement;
       String kind =
-          switch (movement.getReason()) {
-            case CONSUME -> "最近消耗";
-            case DISCARD -> "最近丢弃";
-            case CORRECT -> "最近修正";
-            case COOK -> "最近做饭扣减";
-          };
+          getString(
+              switch (movement.getReason()) {
+                case CONSUME -> R.string.ac_l10n_inventory_movement_consume;
+                case DISCARD -> R.string.ac_l10n_inventory_movement_discard;
+                case CORRECT -> R.string.ac_l10n_inventory_movement_correct;
+                case COOK -> R.string.ac_l10n_inventory_movement_cook;
+              });
       TextView recent =
           text(
-              kind
-                  + "："
-                  + movement.getBeforeQuantity()
-                  + " → "
-                  + movement.getAfterQuantity()
-                  + " "
-                  + unit
-                  + "\n"
-                  + displayDate(movement.getCreatedAt()),
+              getString(
+                  R.string.ac_l10n_inventory_movement_row,
+                  kind,
+                  movement.getBeforeQuantity(),
+                  movement.getAfterQuantity(),
+                  unit,
+                  displayDate(movement.getCreatedAt())),
               12);
       recent.setId(R.id.ac_recent_movement);
       recent.setTextColor(color(R.color.ac_fridge_muted));
       detail.addView(recent);
-    } else if (!model.movementMessage.isEmpty()) {
-      detail.addView(text(model.movementMessage, 12));
+    } else if (model.movementMessage != null) {
+      detail.addView(text(localized(model.movementMessage), 12));
     }
   }
 
@@ -694,39 +765,39 @@ public final class InventoryFragment extends Fragment {
     if (batches.isEmpty()) {
       new MaterialAlertDialogBuilder(requireContext())
           .setTitle(title)
-          .setMessage("这一层暂无食材，点击顶部添加食材即可录入。")
-          .setPositiveButton("知道了", null)
+          .setMessage(R.string.ac_l10n_inventory_shelf_empty)
+          .setPositiveButton(R.string.ac_l10n_ack, null)
           .show();
       return;
     }
     String[] choices = new String[batches.size()];
     for (int i = 0; i < batches.size(); i++) {
       InventoryBatch batch = batches.get(i);
-      String name = InventoryPresentation.name(batch, model.ingredient(batch));
+      String name = InventoryPresentation.name(getResources(), batch, model.ingredient(batch));
       choices[i] =
-          name
-              + " · "
-              + batch.getQuantity()
-              + " "
-              + InventoryPresentation.unit(batch.getUnit(), name)
-              + "\n入库 "
-              + displayTime(batch.getCreatedAt())
-              + "\n到期 "
-              + (batch.getExpiresOn() == null ? "未知" : batch.getExpiresOn())
-              + "\n"
-              + batch.getLocation()
-              + " · 批次 "
-              + batch.getId().toString().substring(0, 8);
+          getString(
+              R.string.ac_l10n_inventory_batch_row,
+              name,
+              batch.getQuantity(),
+              unitLabel(batch.getUnit(), name),
+              displayTime(batch.getCreatedAt()),
+              batch.getExpiresOn() == null
+                  ? getString(R.string.ac_l10n_unknown)
+                  : batch.getExpiresOn(),
+              locationLabel(batch.getLocation()),
+              batch.getId().toString().substring(0, 8));
     }
     new MaterialAlertDialogBuilder(requireContext())
         .setTitle(title)
         .setItems(choices, (d, which) -> selectBatch(batches.get(which)))
-        .setNegativeButton("关闭", null)
+        .setNegativeButton(R.string.ac_l10n_inventory_close, null)
         .show();
   }
 
   private String groupQuantity(InventoryGroups.Group group, String unit) {
-    return group.quantity() == null ? "数量未知" : group.quantity() + " " + unit;
+    return group.quantity() == null
+        ? getString(R.string.ac_l10n_inventory_quantity_unknown)
+        : group.quantity() + " " + unit;
   }
 
   private void showIngredient(InventoryGroups.Group group) {
@@ -734,38 +805,48 @@ public final class InventoryFragment extends Fragment {
       selectBatch(group.first());
       return;
     }
-    String name = InventoryPresentation.name(group.first(), model.ingredient(group.first()));
-    String unit = InventoryPresentation.unit(group.first().getUnit(), name);
+    String name =
+        InventoryPresentation.name(
+            getResources(), group.first(), model.ingredient(group.first()));
+    String unit = unitLabel(group.first().getUnit(), name);
     showBatches(
         name
             + " · "
-            + ("ALL".equals(model.filter) ? "共 " : "筛选合计 ")
-            + groupQuantity(group, unit)
+            + getString(
+                "ALL".equals(model.filter)
+                    ? R.string.ac_l10n_inventory_total_prefix
+                    : R.string.ac_l10n_inventory_filtered_prefix,
+                groupQuantity(group, unit))
             + " · "
-            + group.batches.size()
-            + "批",
+            + getString(R.string.ac_l10n_inventory_batches, group.batches.size()),
         group.batches);
   }
 
   private void requestAddFood() {
     String reason =
         !model.hasHousehold()
-            ? "冰箱库存按家庭保存。请先创建或加入家庭，再添加食材。"
+            ? getString(R.string.ac_l10n_inventory_reason_no_household)
             : model.loading
-                ? "正在读取库存，请稍候再试。"
+                ? getString(R.string.ac_l10n_inventory_reason_loading)
                 : model.recovering
-                    ? "正在核对上次的操作，请稍候再试。"
-                    : model.pending != null ? "上次操作的结果尚未确认。请先核对并重试原请求，避免重复添加。" : null;
+                    ? getString(R.string.ac_l10n_inventory_reason_recovering)
+                    : model.pending != null
+                        ? getString(R.string.ac_l10n_inventory_reason_pending)
+                        : null;
     if (reason != null) {
       var notice =
           new MaterialAlertDialogBuilder(requireContext())
-              .setTitle(!model.hasHousehold() ? "先设置家庭" : "请稍候")
+              .setTitle(
+                  !model.hasHousehold()
+                      ? R.string.ac_l10n_inventory_set_household_title
+                      : R.string.ac_l10n_please_wait)
               .setMessage(reason)
-              .setNegativeButton("取消", null);
+              .setNegativeButton(android.R.string.cancel, null);
       if (!model.hasHousehold())
         notice.setPositiveButton(
-            "前往家庭", (d, w) -> ((InventoryHost) requireActivity()).navigate(Route.HOUSEHOLD, null));
-      else notice.setPositiveButton("知道了", null);
+            R.string.ac_l10n_go_household,
+            (d, w) -> ((InventoryHost) requireActivity()).navigate(Route.HOUSEHOLD, null));
+      else notice.setPositiveButton(R.string.ac_l10n_ack, null);
       notice.show();
       return;
     }
@@ -778,7 +859,7 @@ public final class InventoryFragment extends Fragment {
     TextView key = text(label, 12);
     key.setTextColor(color(R.color.ac_fridge_muted));
     row.addView(key, new LinearLayout.LayoutParams(dp(74), -2));
-    TextView content = text(value == null ? "未知" : value, 12);
+    TextView content = text(value == null ? getString(R.string.ac_l10n_unknown) : value, 12);
     content.setGravity(Gravity.END);
     row.addView(content, new LinearLayout.LayoutParams(0, -2, 1));
     detail.addView(row);
@@ -795,7 +876,7 @@ public final class InventoryFragment extends Fragment {
   }
 
   private String displayDate(String timestamp) {
-    if (timestamp == null) return "未知";
+    if (timestamp == null) return getString(R.string.ac_l10n_unknown);
     try {
       return java.time.OffsetDateTime.parse(timestamp)
           .atZoneSameInstant(java.time.ZoneId.of(model.zoneId))
@@ -807,7 +888,7 @@ public final class InventoryFragment extends Fragment {
   }
 
   private String displayTime(String timestamp) {
-    if (timestamp == null) return "未知";
+    if (timestamp == null) return getString(R.string.ac_l10n_unknown);
     try {
       return java.time.OffsetDateTime.parse(timestamp)
           .atZoneSameInstant(java.time.ZoneId.of(model.zoneId))
@@ -841,7 +922,7 @@ public final class InventoryFragment extends Fragment {
     LinearLayout form = column();
     form.setPadding(dp(20), dp(8), dp(20), dp(8));
     TextInputLayout nameLayout = new TextInputLayout(requireContext());
-    nameLayout.setHint("Ingredient name，例如 beef");
+    nameLayout.setHint(getString(R.string.ac_l10n_inventory_ingredient_hint));
     TextInputEditText picker = new TextInputEditText(nameLayout.getContext());
     picker.setId(R.id.ac_food_name);
     picker.setSingleLine(true);
@@ -856,7 +937,12 @@ public final class InventoryFragment extends Fragment {
     LinearLayout quantityRow = new LinearLayout(requireContext());
     quantityRow.setGravity(Gravity.CENTER_VERTICAL);
     quantityRow.setOrientation(LinearLayout.HORIZONTAL);
-    TextInputEditText quantity = input(quantityRow, "剩余数量", model.draftQuantity, true);
+    TextInputEditText quantity =
+        input(
+            quantityRow,
+            getString(R.string.ac_l10n_inventory_remaining_quantity),
+            model.draftQuantity,
+            true);
     quantityRow.getChildAt(0).setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
     ChipGroup units = new ChipGroup(requireContext());
     units.setId(R.id.ac_unit_input);
@@ -890,15 +976,21 @@ public final class InventoryFragment extends Fragment {
           Unit base = InventoryPresentation.inputBaseUnit(model.draftUnitIndex);
           units.setContentDescription(
               base == null
-                  ? "尚未选择单位"
-                  : "单位："
-                      + (model.draftUnitIndex == 4
-                          ? "千克"
-                          : InventoryPresentation.unit(base, picker.getText().toString())));
+                  ? getString(R.string.ac_l10n_inventory_unit_not_chosen)
+                  : getString(
+                      R.string.ac_l10n_inventory_unit_prefix,
+                      model.draftUnitIndex == 4
+                          ? getString(R.string.ac_l10n_inventory_kilogram)
+                          : unitLabel(base, picker.getText().toString())));
         });
     quantityRow.addView(units, new LinearLayout.LayoutParams(-2, -2));
     form.addView(quantityRow, new LinearLayout.LayoutParams(-1, -2));
-    TextInputEditText expiry = input(form, "到期日期 YYYY-MM-DD（可留空）", model.draftExpiry, false);
+    TextInputEditText expiry =
+        input(
+            form,
+            getString(R.string.ac_l10n_inventory_expiry_hint),
+            model.draftExpiry,
+            false);
     quantity.setId(R.id.ac_quantity_input);
     expiry.setId(R.id.ac_expiry_input);
     Spinner location = location(form, model.draftLocation);
@@ -937,11 +1029,12 @@ public final class InventoryFragment extends Fragment {
               if (unitChoices[i] == selectedChoice) units.check(unitIds[i]);
           units.setContentDescription(
               standard == null && selectedChoice == 0
-                  ? "尚未选择单位"
-                  : "单位："
-                      + (selectedChoice == 4
-                          ? "千克"
-                          : InventoryPresentation.unit(
+                  ? getString(R.string.ac_l10n_inventory_unit_not_chosen)
+                  : getString(
+                      R.string.ac_l10n_inventory_unit_prefix,
+                      selectedChoice == 4
+                          ? getString(R.string.ac_l10n_inventory_kilogram)
+                          : unitLabel(
                               InventoryPresentation.inputBaseUnit(selectedChoice),
                               picker.getText().toString())));
         };
@@ -968,7 +1061,8 @@ public final class InventoryFragment extends Fragment {
           if (choices.exact(query) != null) return;
           List<Ingredient> results = choices.search(query);
           if (results.isEmpty()) {
-            matches.addView(plainText("新食材：在数量右侧选择单位后保存。", 12));
+            matches.addView(
+                plainText(getString(R.string.ac_l10n_inventory_new_ingredient), 12));
             return;
           }
           for (Ingredient item : results.subList(0, Math.min(3, results.size()))) {
@@ -1008,13 +1102,16 @@ public final class InventoryFragment extends Fragment {
     showMatches.run();
     watch(quantity, value -> model.draftQuantity = value);
     watch(expiry, value -> model.draftExpiry = value);
-    form.addView(plainText("每次添加为独立批次，录入日期自动记录。", 12));
+    form.addView(
+        plainText(getString(R.string.ac_l10n_inventory_batch_note), 12));
     showForm(
-        "把新鲜放进冰箱",
+        getString(R.string.ac_l10n_inventory_add_title),
         form,
         () -> {
           String typed = picker.getText().toString();
-          if (typed.trim().isEmpty()) throw new IllegalArgumentException("请输入食材名称");
+          if (typed.trim().isEmpty())
+            throw new AcValidationException(
+                AcMessage.of(R.string.ac_l10n_inventory_enter_name));
           Ingredient ingredient = selected[0];
           if (ingredient == null
               || !IngredientChoices.normalize(typed)
@@ -1041,7 +1138,8 @@ public final class InventoryFragment extends Fragment {
                   expiry.getText().toString());
           } else {
             if (ingredient.getUnit() != InventoryPresentation.inputBaseUnit(model.draftUnitIndex))
-              throw new IllegalArgumentException("所选单位与标准食材不一致，个数与重量不能直接换算");
+              throw new AcValidationException(
+                  AcMessage.of(R.string.ac_l10n_inventory_unit_mismatch));
             model.create(
                 ingredient,
                 InventoryPresentation.inputQuantity(
@@ -1058,17 +1156,34 @@ public final class InventoryFragment extends Fragment {
 
   private void quantityDialog(InventoryBatch batch, ChangeReason reason) {
     String unit =
-        InventoryPresentation.unit(
-            batch.getUnit(), InventoryPresentation.name(batch, model.ingredient(batch)));
+        unitLabel(
+            batch.getUnit(),
+            InventoryPresentation.name(getResources(), batch, model.ingredient(batch)));
     boolean correction = reason == ChangeReason.CORRECT;
-    String title = correction ? "修正库存" : reason == ChangeReason.DISCARD ? "记录丢弃" : "记录消耗";
+    String title =
+        getString(
+            correction
+                ? R.string.ac_l10n_inventory_correct_stock
+                : reason == ChangeReason.DISCARD
+                    ? R.string.ac_l10n_inventory_record_discard
+                    : R.string.ac_l10n_inventory_record_consume);
     LinearLayout form = column();
     form.setPadding(dp(20), dp(8), dp(20), dp(8));
-    form.addView(plainText("当前剩余 " + batch.getQuantity() + " " + unit + " · 此操作仅作用于当前批次", 14));
+    form.addView(
+        plainText(
+            getString(
+                R.string.ac_l10n_inventory_current_remaining, batch.getQuantity(), unit),
+            14));
     TextInputEditText amount =
-        input(form, correction ? "修正后的剩余数量（" + unit + "）" : "本次用量（" + unit + "）", "", true);
+        input(
+            form,
+            correction
+                ? getString(R.string.ac_l10n_inventory_corrected_hint, unit)
+                : getString(R.string.ac_l10n_inventory_used_hint, unit),
+            "",
+            true);
     amount.setId(R.id.ac_quantity_input);
-    TextView preview = plainText("请输入数量后核对余额", 14);
+    TextView preview = plainText(getString(R.string.ac_l10n_inventory_balance_hint), 14);
     form.addView(preview);
     watch(
         amount,
@@ -1078,14 +1193,15 @@ public final class InventoryFragment extends Fragment {
                 correction
                     ? InventoryPresentation.number(InventoryPresentation.quantity(value))
                     : InventoryPresentation.after(batch.getQuantity(), value);
-            preview.setText("确认后剩余 " + after + " " + unit);
+            preview.setText(
+                getString(R.string.ac_l10n_inventory_after_remaining, after, unit));
             amount.setError(null);
           } catch (IllegalArgumentException error) {
-            preview.setText("请输入合法数量，不能超过当前剩余量");
+            preview.setText(R.string.ac_l10n_inventory_invalid_amount);
           }
         });
     if (!correction) {
-      MaterialButton all = button("全部用完", true);
+      MaterialButton all = button(getString(R.string.ac_l10n_inventory_use_all), true);
       all.setOnClickListener(v -> amount.setText(batch.getQuantity()));
       form.addView(all);
     }
@@ -1104,32 +1220,35 @@ public final class InventoryFragment extends Fragment {
                 model.change(batch, value, reason);
                 return true;
               }
-              String name = InventoryPresentation.name(batch, model.ingredient(batch));
+              String name =
+                  InventoryPresentation.name(getResources(), batch, model.ingredient(batch));
               boolean last =
                   "ALL".equals(model.filter)
                       && !InventoryPresentation.otherBatchesRemain(batch, model.batches);
               String message =
-                  last
-                      ? "本次使用后，「" + name + "」的所有存储将全部用完。确认后将从冰箱中移除。"
-                      : "本次使用后，「" + name + "」这批存储将全部用完。确认后本批次将从冰箱中移除；其他批次如有剩余，会继续保留。";
+                  getString(
+                      last
+                          ? R.string.ac_l10n_inventory_used_up_all
+                          : R.string.ac_l10n_inventory_used_up_batch,
+                      name);
               var confirm =
                   new MaterialAlertDialogBuilder(requireContext())
-                      .setTitle("确认食材已用完")
+                      .setTitle(R.string.ac_l10n_inventory_confirm_used_up_title)
                       .setMessage(message)
                       .setNegativeButton(
-                          "返回修改用量",
+                          R.string.ac_l10n_inventory_back_to_edit,
                           (d, which) -> {
                             amount.requestFocus();
                             amount.selectAll();
                           })
                       .setPositiveButton(
-                          "确认用完",
+                          R.string.ac_l10n_inventory_confirm_used_up,
                           (d, which) -> {
                             try {
                               model.change(batch, value, reason);
                               entry[0].dismiss();
                             } catch (IllegalArgumentException error) {
-                              amount.setError(error.getMessage());
+                              amount.setError(errorMessage(error));
                             }
                           })
                       .create();
@@ -1148,7 +1267,7 @@ public final class InventoryFragment extends Fragment {
       if (InventoryPresentation.LOCATIONS[i].equals(batch.getLocation())) index = i;
     Spinner location = location(form, index < 0 ? 1 : index);
     if (index < 0) {
-      String[] options = Arrays.copyOf(InventoryPresentation.LOCATIONS, 6);
+      String[] options = Arrays.copyOf(locationLabels(), 6);
       options[5] = batch.getLocation();
       location.setAdapter(
           new ArrayAdapter<>(
@@ -1158,12 +1277,12 @@ public final class InventoryFragment extends Fragment {
     TextInputEditText expiry =
         input(
             form,
-            "到期日期 YYYY-MM-DD（可留空）",
+            getString(R.string.ac_l10n_inventory_expiry_hint),
             batch.getExpiresOn() == null ? "" : batch.getExpiresOn(),
             false);
     expiry.setId(R.id.ac_expiry_input);
     showForm(
-        "修改批次资料",
+        getString(R.string.ac_l10n_inventory_edit_batch_title),
         form,
         () ->
             model.update(
@@ -1199,8 +1318,8 @@ public final class InventoryFragment extends Fragment {
         new MaterialAlertDialogBuilder(requireContext())
             .setTitle(title)
             .setView(scroll)
-            .setNegativeButton("取消", null)
-            .setPositiveButton("确认保存", null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.ac_l10n_confirm_save, null)
             .create();
     dialogs.add(dialog);
     dialog.setOnShowListener(
@@ -1212,7 +1331,7 @@ public final class InventoryFragment extends Fragment {
                       try {
                         if (submit.getAsBoolean()) dialog.dismiss();
                       } catch (IllegalArgumentException error) {
-                        validation.setText(error.getMessage());
+                        validation.setText(errorMessage(error));
                         validation.setVisibility(View.VISIBLE);
                       }
                     }));
@@ -1241,7 +1360,7 @@ public final class InventoryFragment extends Fragment {
   }
 
   private Spinner location(LinearLayout form, int selected) {
-    form.addView(plainText("储存位置", 13));
+    form.addView(plainText(getString(R.string.ac_l10n_inventory_location_label), 13));
     Spinner spinner = new Spinner(requireContext());
     spinner.setId(R.id.ac_location_input);
     spinner.setMinimumHeight(dp(48));
@@ -1249,10 +1368,48 @@ public final class InventoryFragment extends Fragment {
         new ArrayAdapter<>(
             requireContext(),
             android.R.layout.simple_spinner_dropdown_item,
-            InventoryPresentation.LOCATIONS));
+            locationLabels()));
     spinner.setSelection(Math.max(0, selected));
     form.addView(spinner);
     return spinner;
+  }
+
+  /** Display labels for the stored location values; the values themselves never change. */
+  private String[] locationLabels() {
+    String[] labels = new String[InventoryPresentation.LOCATIONS.length];
+    for (int i = 0; i < labels.length; i++)
+      labels[i] = locationLabel(InventoryPresentation.LOCATIONS[i]);
+    return labels;
+  }
+
+  private String locationLabel(String stored) {
+    for (int i = 0; i < InventoryPresentation.LOCATIONS.length; i++)
+      if (InventoryPresentation.LOCATIONS[i].equals(stored))
+        return getString(LOCATION_LABELS[i]);
+    return stored;
+  }
+
+  private static final int[] LOCATION_LABELS = {
+    R.string.ac_l10n_location_chill_dairy,
+    R.string.ac_l10n_location_chill_veg,
+    R.string.ac_l10n_location_chill_fruit,
+    R.string.ac_l10n_location_freeze_meat,
+    R.string.ac_l10n_location_freeze_seafood
+  };
+
+  private String unitLabel(Unit unit, String name) {
+    return AcText.unit(getResources(), unit, name);
+  }
+
+  private String localized(AcMessage message) {
+    return message == null ? "" : message.format(getResources());
+  }
+
+  /** Resolves a validation error: resource-backed errors are localized, other errors pass through. */
+  private String errorMessage(IllegalArgumentException error) {
+    if (error instanceof AcValidationException localized)
+      return localized.format(getResources());
+    return error.getMessage();
   }
 
   private TextInputEditText input(LinearLayout form, String label, String value, boolean numeric) {

@@ -22,9 +22,9 @@ final class HouseholdReadService {
     MemberPage listMembers(UUID actorId, UUID householdId, int page, int size) {
         if (page < 0 || size < 1 || size > 100) throw new IllegalArgumentException("Invalid pagination");
         String query = "WITH auth AS (SELECT household_id FROM memberships WHERE user_id=? AND household_id=? AND active), "
-                + "members AS (SELECT * FROM memberships WHERE household_id=? AND active), "
+                + "members AS (SELECT m.*, u.username, u.display_name FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.household_id=? AND m.active), "
                 + "selected AS (SELECT * FROM members ORDER BY created_at DESC,id ASC LIMIT ? OFFSET ?) "
-                + "SELECT (SELECT count(*) FROM members),s.id,s.user_id,s.role,s.active,s.version,s.created_at,s.updated_at "
+                + "SELECT (SELECT count(*) FROM members),s.id,s.user_id,s.role,s.active,s.version,s.created_at,s.updated_at,s.username,s.display_name "
                 + "FROM auth LEFT JOIN selected s ON true ORDER BY s.created_at DESC,s.id ASC";
         List<Member> members = new ArrayList<>();
         long[] total = {-1};
@@ -32,7 +32,8 @@ final class HouseholdReadService {
             total[0] = rs.getLong(1);
             UUID id = rs.getObject(2, UUID.class);
             if (id != null) members.add(new Member(id, householdId, rs.getObject(3, UUID.class), rs.getString(4),
-                    rs.getBoolean(5), rs.getLong(6), rs.getTimestamp(7).toInstant(), rs.getTimestamp(8).toInstant()));
+                    rs.getBoolean(5), rs.getLong(6), rs.getTimestamp(7).toInstant(), rs.getTimestamp(8).toInstant(),
+                    rs.getString(9), rs.getString(10)));
         }, actorId, householdId, householdId, size, (long) page * size);
         if (total[0] < 0) throw denied(actorId, householdId);
         return new MemberPage(members, page, size, total[0]);
@@ -60,13 +61,15 @@ final class HouseholdReadService {
     }
     static final class Member {
         final UUID id, householdId, userId;
-        final String role;
+        final String role, username, displayName;
         final boolean active;
         final long version;
         final Instant createdAt, updatedAt;
-        Member(UUID id, UUID householdId, UUID userId, String role, boolean active, long version, Instant createdAt, Instant updatedAt) {
+        Member(UUID id, UUID householdId, UUID userId, String role, boolean active, long version, Instant createdAt,
+               Instant updatedAt, String username, String displayName) {
             this.id = id; this.householdId = householdId; this.userId = userId; this.role = role; this.active = active;
             this.version = version; this.createdAt = createdAt; this.updatedAt = updatedAt;
+            this.username = username; this.displayName = displayName;
         }
     }
     static final class MemberPage {

@@ -22,19 +22,18 @@ import edu.xjtlu.civa.api.model.SetPlanLockRequest;
 import edu.xjtlu.civa.core.data.ApiCallback;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.feature.ac.AcHost;
+import edu.xjtlu.civa.feature.ac.AcText;
 import edu.xjtlu.civa.feature.ac.R;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 /** Household meal plan: 14 days, three meals, per-slot choose/clear/lock. */
 public final class PlanFragment extends Fragment {
-    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("M月d日 EEEE", Locale.CHINA);
     private static final PlanMealType[] MEALS =
             {PlanMealType.BREAKFAST, PlanMealType.LUNCH, PlanMealType.DINNER};
     private enum Mode { PERSONAL, HOUSEHOLD }
@@ -52,6 +51,11 @@ public final class PlanFragment extends Fragment {
     private boolean loading;
 
     public PlanFragment() { super(R.layout.ac_fragment_plan); }
+
+    /** Date formats follow the app language instead of a fixed Chinese locale. */
+    private DateTimeFormatter dateFormat(int pattern) {
+        return DateTimeFormatter.ofPattern(getString(pattern), AcText.locale(getResources()));
+    }
 
     @Override public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -139,8 +143,8 @@ public final class PlanFragment extends Fragment {
                             }
                         }
                         subtitle.setText(getString(R.string.ac_plan_subtitle,
-                                start.format(DateTimeFormatter.ofPattern("M月d日", Locale.CHINA)),
-                                start.plusDays(13).format(DateTimeFormatter.ofPattern("M月d日", Locale.CHINA))));
+                                start.format(dateFormat(R.string.ac_l10n_date_day_short)),
+                                start.plusDays(13).format(dateFormat(R.string.ac_l10n_date_day_short))));
                         render();
                     }
 
@@ -180,7 +184,8 @@ public final class PlanFragment extends Fragment {
                 params.bottomMargin = dp(4);
                 row.setLayoutParams(params);
                 row.addView(text(mealLabel(meal) + " · "
-                        + (parts.isEmpty() ? getString(R.string.ac_plan_empty) : String.join("、", parts)),
+                        + (parts.isEmpty() ? getString(R.string.ac_plan_empty)
+                                : AcText.join(getResources(), parts)),
                         14, R.color.ac_catalog_ink), new LinearLayout.LayoutParams(
                         0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
                 listView.addView(row);
@@ -204,7 +209,7 @@ public final class PlanFragment extends Fragment {
     }
 
     private View dayHeader(LocalDate date) {
-        TextView view = text(date.format(DAY), 15, R.color.ac_catalog_ink);
+        TextView view = text(date.format(dateFormat(R.string.ac_l10n_date_day_week)), 15, R.color.ac_catalog_ink);
         view.setTypeface(null, android.graphics.Typeface.BOLD);
         view.setPadding(0, dp(14), 0, dp(6));
         return view;
@@ -224,6 +229,9 @@ public final class PlanFragment extends Fragment {
         row.setLayoutParams(params);
 
         String label = mealLabel(meal) + " · " + describe(slot);
+        if (slot != null && slot.getLastEditorName() != null && !slot.getLastEditorName().isBlank()) {
+            label += getString(R.string.ac_plan_edited_by, slot.getLastEditorName());
+        }
         if (slot != null && Boolean.TRUE.equals(slot.getLocked())) label = "🔒 " + label;
         TextView text = text(label, 14, R.color.ac_catalog_ink);
         text.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
@@ -250,7 +258,7 @@ public final class PlanFragment extends Fragment {
             String name = recipeNames.getOrDefault(item.getRecipeId(), getString(R.string.ac_plan_unknown_dish));
             parts.add(name + " ×" + item.getServings());
         }
-        return String.join("、", parts);
+        return AcText.join(getResources(), parts);
     }
 
     private void chooseRecipe(LocalDate date, PlanMealType meal, @Nullable PlanSlot slot) {
@@ -265,8 +273,9 @@ public final class PlanFragment extends Fragment {
         String[] names = new String[recipes.size()];
         for (int i = 0; i < recipes.size(); i++) {
             Recipe recipe = recipes.get(i);
-            names[i] = recipe.getName() + (recipe.getYieldServings() == null ? ""
-                    : "（" + recipe.getYieldServings() + " 份）");
+            names[i] = recipe.getYieldServings() == null ? recipe.getName()
+                    : getString(R.string.ac_l10n_plan_recipe_option, recipe.getName(),
+                            recipe.getYieldServings());
         }
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(getString(R.string.ac_plan_choose_title, mealLabel(meal)))

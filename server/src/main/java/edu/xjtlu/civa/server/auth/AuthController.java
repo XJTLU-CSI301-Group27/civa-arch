@@ -7,6 +7,7 @@ import edu.xjtlu.civa.server.api.model.LoginRequest;
 import edu.xjtlu.civa.server.api.model.Preference;
 import edu.xjtlu.civa.server.api.model.RegisterRequest;
 import edu.xjtlu.civa.server.api.model.UpdatePreferenceRequest;
+import edu.xjtlu.civa.server.api.model.UpdateProfileRequest;
 import edu.xjtlu.civa.server.api.model.User;
 import edu.xjtlu.civa.server.profile.PreferencesService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -51,6 +52,11 @@ class AuthController implements AuthApi, ProfileApi {
     @Override public ResponseEntity<User> getMe() {
         UUID userId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return ResponseEntity.ok(toWire(auth.findUser(userId)));
+    }
+
+    @Override public ResponseEntity<User> updateProfile(UpdateProfileRequest input) {
+        UUID userId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return ResponseEntity.ok(toWire(auth.updateDisplayName(userId, input.getDisplayName())));
     }
 
     @Override public ResponseEntity<Preference> getPreferences() {

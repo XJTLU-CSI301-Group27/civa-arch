@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -25,6 +26,7 @@ import edu.xjtlu.civa.api.model.PersonalRecipe;
 import edu.xjtlu.civa.api.model.RecipeFavorite;
 import edu.xjtlu.civa.api.model.RecipeFavoriteKind;
 import edu.xjtlu.civa.core.data.ApiCallback;
+import edu.xjtlu.civa.core.data.MediaImages;
 import edu.xjtlu.civa.core.ui.ApiError;
 import edu.xjtlu.civa.core.ui.Route;
 import edu.xjtlu.civa.feature.ac.AcHost;
@@ -168,6 +170,18 @@ public final class RecipeCatalogDetailFragment extends Fragment {
 
     private void render(View view, Object value) {
         TextView emoji = view.findViewById(R.id.ac_detail_emoji);
+        ImageView photo = view.findViewById(R.id.ac_detail_image);
+        UUID photoId = null;
+        if (value instanceof PersonalRecipe personal) photoId = personal.getImageId();
+        else if (value instanceof Recipe household) photoId = household.getImageId();
+        if (photoId != null) {
+            photo.setVisibility(View.VISIBLE);
+            emoji.setVisibility(View.GONE);
+            MediaImages.load(host.api(), host.calls(), photoId, photo);
+        } else {
+            photo.setVisibility(View.GONE);
+            emoji.setVisibility(View.VISIBLE);
+        }
         TextView name = view.findViewById(R.id.ac_detail_name);
         TextView meta = view.findViewById(R.id.ac_detail_meta);
         TextView tags = view.findViewById(R.id.ac_detail_tags);
@@ -217,8 +231,8 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         List<String> metaParts = new ArrayList<>();
         if (has(category)) metaParts.add(category);
         if (has(cuisine)) metaParts.add(cuisine);
-        if (kcal != null) metaParts.add(kcal + " kcal / 份");
-        if (minutes != null) metaParts.add(minutes + " 分钟");
+        if (kcal != null) metaParts.add(getString(R.string.ac_l10n_kcal_per_serving, kcal));
+        if (minutes != null) metaParts.add(getString(R.string.ac_l10n_minutes, minutes));
         if (has(servingSize)) metaParts.add(servingSize);
         meta.setText(String.join(" · ", metaParts));
         List<String> tagParts = new ArrayList<>(methods);
@@ -233,7 +247,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         ingredients.removeAllViews();
         if (value instanceof Recipe recipe) {
             java.util.Map<UUID, String> names = HouseholdRecipes.names(dictionary == null ? List.of() : dictionary);
-            String display = HouseholdRecipes.display(recipe, names);
+            String display = HouseholdRecipes.display(getResources(), recipe, names);
             ingredients.addView(line(display.isEmpty() ? getString(R.string.ac_catalog_missing) : display, 15,
                     R.color.ac_catalog_ink));
         } else {
@@ -606,12 +620,12 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         if (has(prefix)) parts.add(prefix);
         if (has(quantity)) parts.add(quantity);
         if (has(unit)) parts.add(unit);
-        if (has(note)) parts.add("（" + note + "）");
+        if (has(note)) parts.add(getString(R.string.ac_l10n_parenthesized, note));
         return String.join(" ", parts);
     }
 
     private TextView nutritionRow(int label, String value) {
-        return line(getString(label) + "：" + value, 15, R.color.ac_catalog_ink);
+        return line(getString(R.string.ac_l10n_label_value, getString(label), value), 15, R.color.ac_catalog_ink);
     }
 
     private TextView line(String text, int size, int color) {

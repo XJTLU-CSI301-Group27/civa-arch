@@ -103,7 +103,7 @@ public final class RealApiProvider implements ApiProvider {
     @Override public RecordsApi records() { return retrofit.create(RecordsApi.class); }
     @Override public NutritionApi nutrition() { return retrofit.create(NutritionApi.class); }
     AuthApi auth() { return retrofit.create(AuthApi.class); }
-    MediaApi media() { return retrofit.create(MediaApi.class); }
+    @Override public MediaApi media() { return retrofit.create(MediaApi.class); }
     boolean uses(SessionStore store) { return sessions == store; }
 
     private static final class BoundCall<T> implements Call<T> {

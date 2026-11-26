@@ -44,9 +44,11 @@ final class PlanningService {
         int pageNumber = page == null ? 0 : page;
         int pageSize = size == null ? 60 : size;
         if (pageNumber < 0 || pageSize < 1 || pageSize > 200) throw new PlanFault("INVALID_PLAN");
-        List<PlanSlot> slots = jdbc.query("SELECT id, household_id, date, meal_type, locked, version, created_at,"
-                        + " updated_at FROM plan_slots WHERE household_id=? AND date BETWEEN ? AND ?"
-                        + " ORDER BY date, CASE meal_type WHEN 'BREAKFAST' THEN 0 WHEN 'LUNCH' THEN 1 ELSE 2 END"
+        List<PlanSlot> slots = jdbc.query("SELECT s.id, s.household_id, s.date, s.meal_type, s.locked, s.version,"
+                        + " s.created_at, s.updated_at, s.author_id, u.display_name AS last_editor_name"
+                        + " FROM plan_slots s LEFT JOIN users u ON u.id=s.author_id"
+                        + " WHERE s.household_id=? AND s.date BETWEEN ? AND ?"
+                        + " ORDER BY s.date, CASE s.meal_type WHEN 'BREAKFAST' THEN 0 WHEN 'LUNCH' THEN 1 ELSE 2 END"
                         + " LIMIT ? OFFSET ?",
                 (rs, row) -> map(rs), home, start, end, pageSize, (long) pageNumber * pageSize);
         return new PlanSlotPage(slots, pageNumber, pageSize, (long) slots.size());
@@ -63,16 +65,17 @@ final class PlanningService {
             if (existing.isEmpty()) {
                 if (expectedVersion != 0) throw new PlanFault("VERSION_CONFLICT");
                 UUID id = UUID.randomUUID();
-                jdbc.update("INSERT INTO plan_slots(id, household_id, date, meal_type, locked) VALUES (?,?,?,?,false)",
-                        id, home, date, meal.getValue());
+                jdbc.update("INSERT INTO plan_slots(id, household_id, date, meal_type, locked, author_id)"
+                                + " VALUES (?,?,?,?,false,?)",
+                        id, home, date, meal.getValue(), actor);
                 writeItems(id, home, rows);
                 return get(home, date, meal);
             }
             PlanSlot slot = existing.get(0);
             if (slot.getLocked()) throw new PlanFault("PLAN_SLOT_LOCKED");
             if (!expectedVersion.equals(slot.getVersion())) throw new PlanFault("VERSION_CONFLICT");
-            jdbc.update("UPDATE plan_slots SET version=version+1, updated_at=CURRENT_TIMESTAMP WHERE id=?",
-                    slot.getId());
+            jdbc.update("UPDATE plan_slots SET version=version+1, updated_at=CURRENT_TIMESTAMP, author_id=?"
+                    + " WHERE id=?", actor, slot.getId());
             jdbc.update("DELETE FROM plan_items WHERE slot_id=?", slot.getId());
             writeItems(slot.getId(), home, rows);
             return get(home, date, meal);
@@ -88,14 +91,15 @@ final class PlanningService {
             if (existing.isEmpty()) {
                 if (expectedVersion != 0) throw new PlanFault("VERSION_CONFLICT");
                 UUID id = UUID.randomUUID();
-                jdbc.update("INSERT INTO plan_slots(id, household_id, date, meal_type, locked) VALUES (?,?,?,?,?)",
-                        id, home, date, meal.getValue(), locked);
+                jdbc.update("INSERT INTO plan_slots(id, household_id, date, meal_type, locked, author_id)"
+                                + " VALUES (?,?,?,?,?,?)",
+                        id, home, date, meal.getValue(), locked, actor);
                 return get(home, date, meal);
             }
             PlanSlot slot = existing.get(0);
             if (!expectedVersion.equals(slot.getVersion())) throw new PlanFault("VERSION_CONFLICT");
-            jdbc.update("UPDATE plan_slots SET locked=?, version=version+1, updated_at=CURRENT_TIMESTAMP"
-                    + " WHERE id=?", locked, slot.getId());
+            jdbc.update("UPDATE plan_slots SET locked=?, version=version+1, updated_at=CURRENT_TIMESTAMP,"
+                    + " author_id=? WHERE id=?", locked, actor, slot.getId());
             return get(home, date, meal);
         });
     }
@@ -114,7 +118,7 @@ final class PlanningService {
             List<PlanSlot> saved = transactions.execute(status -> {
                 List<PlanSlot> resultSlots = new ArrayList<>();
                 for (PlanSlotWrite write : body.getSlots()) {
-                    resultSlots.add(applyWrite(home, write));
+                    resultSlots.add(applyWrite(actor, home, write));
                 }
                 return resultSlots;
             });
@@ -123,7 +127,7 @@ final class PlanningService {
         return readJson(result.body);
     }
 
-    private PlanSlot applyWrite(UUID home, PlanSlotWrite write) {
+    private PlanSlot applyWrite(UUID actor, UUID home, PlanSlotWrite write) {
         LocalDate date = date(write.getDate());
         List<PlanItem> rows = validate(home, write.getItems());
         List<PlanSlot> existing = slotRow(home, date, write.getMealType(), true);
@@ -134,31 +138,37 @@ final class PlanningService {
         if (existing.isEmpty()) {
             if (write.getExpectedVersion() != 0) throw new PlanFault("VERSION_CONFLICT");
             UUID id = UUID.randomUUID();
-            jdbc.update("INSERT INTO plan_slots(id, household_id, date, meal_type, locked) VALUES (?,?,?,?,false)",
-                    id, home, date, write.getMealType().getValue());
+            jdbc.update("INSERT INTO plan_slots(id, household_id, date, meal_type, locked, author_id)"
+                            + " VALUES (?,?,?,?,false,?)",
+                    id, home, date, write.getMealType().getValue(), actor);
             writeItems(id, home, rows);
             return get(home, date, write.getMealType());
         }
         PlanSlot slot = existing.get(0);
         if (!write.getExpectedVersion().equals(slot.getVersion())) throw new PlanFault("VERSION_CONFLICT");
-        jdbc.update("UPDATE plan_slots SET version=version+1, updated_at=CURRENT_TIMESTAMP WHERE id=?",
-                slot.getId());
+        jdbc.update("UPDATE plan_slots SET version=version+1, updated_at=CURRENT_TIMESTAMP, author_id=?"
+                + " WHERE id=?", actor, slot.getId());
         jdbc.update("DELETE FROM plan_items WHERE slot_id=?", slot.getId());
         writeItems(slot.getId(), home, rows);
         return get(home, date, write.getMealType());
     }
 
     private PlanSlot get(UUID home, LocalDate date, PlanMealType meal) {
-        List<PlanSlot> rows = jdbc.query("SELECT id, household_id, date, meal_type, locked, version, created_at,"
-                + " updated_at FROM plan_slots WHERE household_id=? AND date=? AND meal_type=?",
+        List<PlanSlot> rows = jdbc.query("SELECT s.id, s.household_id, s.date, s.meal_type, s.locked, s.version,"
+                + " s.created_at, s.updated_at, s.author_id, u.display_name AS last_editor_name"
+                + " FROM plan_slots s LEFT JOIN users u ON u.id=s.author_id"
+                + " WHERE s.household_id=? AND s.date=? AND s.meal_type=?",
                 (rs, row) -> map(rs), home, date, meal.getValue());
         if (rows.isEmpty()) throw new PlanFault("NOT_FOUND");
         return rows.get(0);
     }
 
     private List<PlanSlot> slotRow(UUID home, LocalDate date, PlanMealType meal, boolean lock) {
-        return jdbc.query("SELECT id, household_id, date, meal_type, locked, version, created_at, updated_at"
-                        + " FROM plan_slots WHERE household_id=? AND date=? AND meal_type=?" + (lock ? " FOR UPDATE" : ""),
+        return jdbc.query("SELECT s.id, s.household_id, s.date, s.meal_type, s.locked, s.version,"
+                        + " s.created_at, s.updated_at, s.author_id, u.display_name AS last_editor_name"
+                        + " FROM plan_slots s LEFT JOIN users u ON u.id=s.author_id"
+                        + " WHERE s.household_id=? AND s.date=? AND s.meal_type=?"
+                        + (lock ? " FOR UPDATE OF s" : ""),
                 (rs, row) -> map(rs), home, date, meal.getValue());
     }
 
@@ -205,6 +215,8 @@ final class PlanningService {
         slot.setMealType(PlanMealType.fromValue(rs.getString("meal_type")));
         slot.setLocked(rs.getBoolean("locked"));
         slot.setVersion(rs.getLong("version"));
+        slot.setLastEditorId(rs.getObject("author_id", UUID.class));
+        slot.setLastEditorName(rs.getString("last_editor_name"));
         UUID slotId = slot.getId();
         List<PlanItem> items = jdbc.query("SELECT recipe_id, servings FROM plan_items WHERE slot_id=?"
                         + " ORDER BY position", (row, n) -> new PlanItem()

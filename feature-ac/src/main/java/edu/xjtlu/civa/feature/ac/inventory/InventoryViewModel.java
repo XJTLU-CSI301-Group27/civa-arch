@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModel;
 import edu.xjtlu.civa.api.model.*;
 import edu.xjtlu.civa.core.data.*;
 import edu.xjtlu.civa.core.ui.ApiError;
+import edu.xjtlu.civa.feature.ac.AcMessage;
+import edu.xjtlu.civa.feature.ac.AcValidationException;
+import edu.xjtlu.civa.feature.ac.R;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
@@ -18,8 +21,9 @@ final class InventoryViewModel extends ViewModel {
   final Map<UUID, Ingredient> ingredients = new LinkedHashMap<>();
   final List<Call<?>> requests = new ArrayList<>();
   boolean coldOpen, freezeOpen, busy, loading, closed, recovering;
-  String filter = "ALL", selectedId, message = "", zoneId;
-  private String outcome = "";
+  String filter = "ALL", selectedId, zoneId;
+  AcMessage message;
+  private AcMessage outcome;
   String draftName = "", draftQuantity = "", draftExpiry = "";
   int draftIngredient, draftUnitIndex, draftLocation = 1;
   private final ApiProvider api;
@@ -29,7 +33,7 @@ final class InventoryViewModel extends ViewModel {
   private int readGeneration;
   PendingWrite pending;
   InventoryMovement latestMovement;
-  String movementMessage = "";
+  AcMessage movementMessage;
 
   InventoryViewModel(ApiProvider api, ApiCalls calls, SessionStore sessions) {
     this.api = api;
@@ -85,7 +89,7 @@ final class InventoryViewModel extends ViewModel {
   void select(InventoryBatch batch) {
     selectedId = batch.getId().toString();
     latestMovement = null;
-    movementMessage = "";
+    movementMessage = null;
     changed();
     loadMovement();
   }
@@ -99,7 +103,7 @@ final class InventoryViewModel extends ViewModel {
     if (closed || busy) return;
     String user = sessions.currentUserId(), home = sessions.currentHouseholdId();
     if (!Objects.equals(user, userId) || !Objects.equals(home, homeId)) {
-      outcome = "";
+      outcome = null;
       batches.clear();
       ingredients.clear();
       pending = null;
@@ -110,16 +114,16 @@ final class InventoryViewModel extends ViewModel {
     homeId = home;
     cancelReads();
     latestMovement = null;
-    movementMessage = "";
+    movementMessage = null;
     int generation = ++readGeneration;
     if (userId == null || homeId == null) {
       loading = false;
-      message = "请先登录并创建或加入家庭。";
+      message = AcMessage.of(R.string.ac_l10n_inventory_need_login);
       changed();
       return;
     }
     loading = true;
-    message = "正在读取家庭库存…";
+    message = AcMessage.of(R.string.ac_l10n_inventory_loading);
     changed();
     read(
         api.household().getHousehold(UUID.fromString(homeId)),
@@ -166,10 +170,10 @@ final class InventoryViewModel extends ViewModel {
             if (!current() || generation != readGeneration || !Objects.equals(batchId, selectedId))
               return;
             if (value == null || value.getItems() == null) {
-              movementMessage = "变动记录返回异常，请刷新重试";
+              movementMessage = AcMessage.of(R.string.ac_l10n_inventory_movement_load_failed);
             } else {
               latestMovement = value.getItems().isEmpty() ? null : value.getItems().get(0);
-              movementMessage = "";
+              movementMessage = null;
             }
             changed();
           }
@@ -179,7 +183,7 @@ final class InventoryViewModel extends ViewModel {
             requests.remove(call);
             if (!current() || generation != readGeneration || !Objects.equals(batchId, selectedId))
               return;
-            movementMessage = "变动记录暂未加载，请刷新重试";
+            movementMessage = AcMessage.of(R.string.ac_l10n_inventory_movement_not_loaded);
             changed();
           }
         });
@@ -201,14 +205,11 @@ final class InventoryViewModel extends ViewModel {
             if (selected() == null) {
               selectedId = null;
               latestMovement = null;
-              movementMessage = "";
+              movementMessage = null;
             }
             loading = false;
-            message =
-                (outcome.isEmpty() ? "" : outcome + "\n")
-                    + (batches.isEmpty()
-                        ? "当前筛选下暂无库存，可以添加食材。"
-                        : "已读取 " + batches.size() + " 个库存批次");
+            // The routine "loaded N batches" summary is not shown; only an explicit write outcome is.
+            message = outcome;
             changed();
             loadMovement();
           }
@@ -249,10 +250,10 @@ final class InventoryViewModel extends ViewModel {
     ingredients.clear();
     pending = null;
     latestMovement = null;
-    movementMessage = "";
+    movementMessage = null;
     loading = false;
     busy = false;
-    message = "登录或家庭状态已改变，请重新进入库存。";
+    message = AcMessage.of(R.string.ac_l10n_inventory_login_changed);
     changed();
   }
 
@@ -283,7 +284,7 @@ final class InventoryViewModel extends ViewModel {
                           || "changeInventory".equals(value.operationId)
                           || "createIngredient".equals(value.operationId))) {
                     pending = value;
-                    message = "发现待确认操作，请核对后使用原请求重试；不会自动重复扣减。";
+                    message = AcMessage.of(R.string.ac_l10n_inventory_pending_found);
                     break;
                   }
                 changed();
@@ -298,7 +299,8 @@ final class InventoryViewModel extends ViewModel {
   }
 
   void create(Ingredient ingredient, String quantity, String location, String expiry) {
-    if (ingredient == null) throw new IllegalArgumentException("请选择标准食材");
+    if (ingredient == null)
+      throw new AcValidationException(AcMessage.of(R.string.ac_l10n_inventory_choose_ingredient));
     String amount = InventoryPresentation.positiveQuantity(quantity);
     String date = InventoryPresentation.date(expiry);
     try {
@@ -311,15 +313,16 @@ final class InventoryViewModel extends ViewModel {
               .put("expiresOn", date == null ? JSONObject.NULL : date);
       submit("createInventoryBatch", payload);
     } catch (org.json.JSONException error) {
-      throw new IllegalArgumentException("录入内容无效", error);
+      throw new AcValidationException(AcMessage.of(R.string.ac_l10n_inventory_invalid_entry), error);
     }
   }
 
   void createNamed(String name, Unit unit, String quantity, String location, String expiry) {
     String typed = name == null ? "" : name.trim();
     if (typed.isEmpty() || typed.codePointCount(0, typed.length()) > 120)
-      throw new IllegalArgumentException("请输入1–120个字符的食材名称");
-    if (unit == null) throw new IllegalArgumentException("请选择新食材的单位");
+      throw new AcValidationException(AcMessage.of(R.string.ac_l10n_inventory_name_length));
+    if (unit == null)
+      throw new AcValidationException(AcMessage.of(R.string.ac_l10n_inventory_choose_unit));
     String amount = InventoryPresentation.positiveQuantity(quantity);
     String date = InventoryPresentation.date(expiry);
     try {
@@ -332,7 +335,7 @@ final class InventoryViewModel extends ViewModel {
               .put("location", location)
               .put("expiresOn", date == null ? JSONObject.NULL : date));
     } catch (org.json.JSONException error) {
-      throw new IllegalArgumentException("录入内容无效", error);
+      throw new AcValidationException(AcMessage.of(R.string.ac_l10n_inventory_invalid_entry), error);
     }
   }
 
@@ -343,7 +346,8 @@ final class InventoryViewModel extends ViewModel {
             : InventoryPresentation.after(batch.getQuantity(), amount);
     if (reason == ChangeReason.CONSUME
         && (today() == null || InventoryPresentation.expired(batch, today())))
-      throw new IllegalArgumentException("家庭日期未知或食材已过期，不能记录消耗");
+      throw new AcValidationException(
+          AcMessage.of(R.string.ac_l10n_inventory_expired_consume));
     try {
       submit(
           "changeInventory",
@@ -353,18 +357,21 @@ final class InventoryViewModel extends ViewModel {
               .put("reason", reason.getValue())
               .put("expectedVersion", batch.getVersion()));
     } catch (org.json.JSONException error) {
-      throw new IllegalArgumentException("数量操作无效", error);
+      throw new AcValidationException(
+          AcMessage.of(R.string.ac_l10n_inventory_invalid_quantity_op), error);
     }
   }
 
   private void submit(String operation, JSONObject payload) {
-    if (busy || recovering) throw new IllegalArgumentException("正在处理，请稍候");
-    if (pending != null) throw new IllegalArgumentException("请先处理待确认请求，避免重复操作");
+    if (busy || recovering)
+      throw new AcValidationException(AcMessage.of(R.string.ac_l10n_inventory_processing));
+    if (pending != null)
+      throw new AcValidationException(AcMessage.of(R.string.ac_l10n_inventory_pending_first));
     if (!current() || userId == null || homeId == null)
-      throw new IllegalArgumentException("请先进入有效家庭");
+      throw new AcValidationException(AcMessage.of(R.string.ac_l10n_inventory_no_household));
     busy = true;
-    outcome = "";
-    message = "正在提交…";
+    outcome = null;
+    message = AcMessage.of(R.string.ac_l10n_inventory_submitting);
     changed();
     String key = UUID.randomUUID().toString();
     String owner = userId, home = homeId;
@@ -422,7 +429,7 @@ final class InventoryViewModel extends ViewModel {
   void retry() {
     if (pending == null || busy || !current()) return;
     busy = true;
-    message = "正在用原请求核对结果…";
+    message = AcMessage.of(R.string.ac_l10n_inventory_checking);
     changed();
     dispatch();
   }
@@ -470,7 +477,7 @@ final class InventoryViewModel extends ViewModel {
       send(call, write);
     } catch (RuntimeException | org.json.JSONException error) {
       busy = false;
-      message = "待确认记录格式无效，请核对服务器后手动结束此记录。";
+      message = AcMessage.of(R.string.ac_l10n_inventory_pending_invalid);
       changed();
     }
   }
@@ -497,7 +504,7 @@ final class InventoryViewModel extends ViewModel {
               if (shelf >= 0 && shelf < 3) coldOpen = true;
               else if (shelf >= 3) freezeOpen = true;
             }
-            finish(write, "操作已保存");
+            finish(write, false, null);
           }
 
           @Override
@@ -516,24 +523,30 @@ final class InventoryViewModel extends ViewModel {
                     "INTERNAL_ERROR")
                 .contains(error.code)) {
               busy = false;
-              message = errorText(error.code) + "。结果尚未确认，请核对后重试原操作，避免重复扣减。";
+              message =
+                  AcMessage.of(
+                      R.string.ac_l10n_inventory_unconfirmed_retry,
+                      AcMessage.of(errorText(error.code)));
               changed();
-            } else finish(write, error.code);
+            } else finish(write, false, error.code);
           }
         });
   }
 
-  private void finish(PendingWrite write, String result) {
+  /**
+   * Ends a pending write. {@code abandoned} marks a user-confirmed end; {@code errorCode} is null
+   * on success. Both decisions are explicit so no localized text is ever used as a control value.
+   */
+  private void finish(PendingWrite write, boolean abandoned, String errorCode) {
     List<String> keys = new ArrayList<>();
     try {
       JSONObject p = new JSONObject(write.canonicalPayload);
       if (p.has("ingredientRequestKey")) keys.add(p.getString("ingredientRequestKey"));
-      if ("createIngredient".equals(write.operationId) && result.startsWith("已结束"))
-        keys.add(childKey(write.key));
+      if ("createIngredient".equals(write.operationId) && abandoned) keys.add(childKey(write.key));
     } catch (org.json.JSONException invalid) {
-      if (!result.startsWith("已结束")) {
+      if (!abandoned) {
         busy = false;
-        message = "待确认记录无效，请核对库存后结束记录";
+        message = AcMessage.of(R.string.ac_l10n_inventory_pending_invalid_end);
         changed();
         return;
       }
@@ -547,7 +560,12 @@ final class InventoryViewModel extends ViewModel {
           pending = null;
           busy = false;
           load();
-          outcome = "操作已保存".equals(result) || result.startsWith("已结束") ? result : errorText(result);
+          outcome =
+              abandoned
+                  ? AcMessage.of(R.string.ac_l10n_inventory_pending_ended)
+                  : errorCode == null
+                      ? AcMessage.of(R.string.ac_l10n_inventory_operation_saved)
+                      : AcMessage.of(errorText(errorCode));
           message = outcome;
           changed();
         });
@@ -571,7 +589,7 @@ final class InventoryViewModel extends ViewModel {
               .put("expiresOn", p.isNull("expiresOn") ? JSONObject.NULL : p.getString("expiresOn"))
               .put("ingredientRequestKey", parent.key);
       String child = childKey(parent.key);
-      message = "食材已建立，正在保存库存…";
+      message = AcMessage.of(R.string.ac_l10n_inventory_ingredient_created);
       changed();
       calls
           .pendingWrites()
@@ -650,7 +668,7 @@ final class InventoryViewModel extends ViewModel {
 
   private void childFailure() {
     busy = false;
-    message = "食材资料已保存，库存尚待确认。请使用原请求重试。";
+    message = AcMessage.of(R.string.ac_l10n_inventory_ingredient_pending);
     changed();
   }
 
@@ -675,7 +693,7 @@ final class InventoryViewModel extends ViewModel {
               public void onError(ApiError error) {
                 if (!current()) return;
                 busy = false;
-                message = "本地确认未完成，请用原请求核对。";
+                message = AcMessage.of(R.string.ac_l10n_inventory_local_confirm_failed);
                 changed();
               }
             });
@@ -683,11 +701,12 @@ final class InventoryViewModel extends ViewModel {
 
   void abandon() {
     if (pending == null || busy || !current()) return;
-    finish(pending, "已结束待确认记录，请核对最新库存");
+    finish(pending, true, null);
   }
 
   void update(InventoryBatch batch, String location, String expiry) {
-    if (busy || pending != null) throw new IllegalArgumentException("请先处理当前操作");
+    if (busy || pending != null)
+      throw new AcValidationException(AcMessage.of(R.string.ac_l10n_inventory_handle_current));
     String date = InventoryPresentation.date(expiry);
     busy = true;
     changed();
@@ -721,7 +740,9 @@ final class InventoryViewModel extends ViewModel {
             }
             busy = false;
             load();
-            outcome = errorText(error.code) + "；请刷新核对后再修改。";
+            outcome =
+                AcMessage.of(
+                    R.string.ac_l10n_inventory_update_failed, AcMessage.of(errorText(error.code)));
             message = outcome;
             changed();
           }
@@ -730,22 +751,22 @@ final class InventoryViewModel extends ViewModel {
 
   private void fail(String code) {
     loading = false;
-    message = errorText(code);
+    message = AcMessage.of(errorText(code));
     changed();
   }
 
-  static String errorText(String code) {
+  static int errorText(String code) {
     return switch (code) {
-      case "VERSION_CONFLICT" -> "库存已被其他成员修改，请以最新数量重新操作";
-      case "NETWORK_ERROR", "TIMEOUT" -> "连接失败，请检查网络后重试";
-      case "LOCAL_STORAGE_ERROR" -> "本地记录不可用，本次没有继续提交";
-      case "HOUSEHOLD_ACCESS_REVOKED" -> "你已失去该家庭的访问权限";
-      case "HOUSEHOLD_REQUIRED" -> "请先创建或加入家庭";
-      case "UNIT_CONFLICT" -> "该食材已有不同的标准单位，请刷新并核对单位";
-      case "INGREDIENT_INACTIVE" -> "该食材已停用，请维护食材资料后再录入";
-      case "NAME_CONFLICT" -> "食材名称已被其他成员录入，请刷新后重试";
-      case "VALIDATION_ERROR" -> "输入未通过服务器校验";
-      default -> "操作未完成，请稍后重试";
+      case "VERSION_CONFLICT" -> R.string.ac_l10n_error_version_conflict;
+      case "NETWORK_ERROR", "TIMEOUT" -> R.string.ac_l10n_error_network;
+      case "LOCAL_STORAGE_ERROR" -> R.string.ac_l10n_error_local_storage;
+      case "HOUSEHOLD_ACCESS_REVOKED" -> R.string.ac_l10n_error_access_revoked;
+      case "HOUSEHOLD_REQUIRED" -> R.string.ac_l10n_error_household_required;
+      case "UNIT_CONFLICT" -> R.string.ac_l10n_error_unit_conflict;
+      case "INGREDIENT_INACTIVE" -> R.string.ac_l10n_error_ingredient_inactive;
+      case "NAME_CONFLICT" -> R.string.ac_l10n_error_name_conflict;
+      case "VALIDATION_ERROR" -> R.string.ac_l10n_error_validation;
+      default -> R.string.ac_l10n_error_generic;
     };
   }
 

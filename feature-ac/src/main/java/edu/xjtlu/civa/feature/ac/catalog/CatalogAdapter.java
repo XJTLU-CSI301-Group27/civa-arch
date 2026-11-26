@@ -38,8 +38,8 @@ final class CatalogAdapter extends RecyclerView.Adapter<CatalogAdapter.Holder> {
         RecipeCard card = items.get(position);
         holder.emoji.setText(card.emoji() == null ? "🍽️" : card.emoji());
         holder.name.setText(card.name());
-        holder.meta.setText(card.meta());
-        String tags = card.tags() == null ? "" : card.tags();
+        holder.meta.setText(card.metaText(holder.itemView.getResources()));
+        String tags = card.tagsText(holder.itemView.getResources());
         holder.tags.setText(tags);
         holder.tags.setVisibility(tags.isEmpty() ? View.GONE : View.VISIBLE);
         holder.itemView.setOnClickListener(ignored -> onPick.open(card));

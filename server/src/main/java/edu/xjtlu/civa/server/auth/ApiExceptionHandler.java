@@ -24,6 +24,7 @@ public class ApiExceptionHandler {
         int status = switch (error.code) {
             case "INVALID_CREDENTIALS" -> 401;
             case "USERNAME_TAKEN" -> 409;
+            case "INVALID_DISPLAY_NAME", "NOT_FOUND" -> 400;
             case "RATE_LIMITED" -> 429;
             default -> 500;
         };

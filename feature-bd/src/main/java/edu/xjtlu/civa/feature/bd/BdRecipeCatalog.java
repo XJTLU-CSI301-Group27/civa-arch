@@ -98,6 +98,7 @@ final class BdRecipeCatalog {
             recipe.image = row.getImageKey() == null ? null : "asset:" + row.getImageKey();
             for (CatalogRecipeIngredient item : row.getIngredients()) recipe.ingredients.add(display(item));
             recipe.steps.addAll(row.getSteps());
+            // i18n: non-UI — these match the Chinese flavour words in the server catalogue data; never displayed.
             recipe.spicy = contains(row.getFlavors(), "辣") || safe(row.getName()).contains("辣")
                     || safe(row.getName()).contains("麻");
             recipe.meat = looksMeat(row.getName(), recipe.ingredients);
@@ -124,6 +125,7 @@ final class BdRecipeCatalog {
 
     private static boolean looksMeat(String name, List<String> ingredients) {
         String text = safe(name) + " " + String.join(" ", ingredients);
+        // i18n: non-UI — Chinese ingredient keywords used for meat detection; never displayed.
         for (String word : new String[]{"肉", "鸡", "牛", "猪", "羊", "鱼", "虾", "蟹", "贝", "排骨", "火腿", "培根"}) {
             if (text.contains(word)) return true;
         }

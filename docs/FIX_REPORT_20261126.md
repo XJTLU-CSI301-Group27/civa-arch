@@ -9,19 +9,24 @@
 | 2 | 创建菜谱返回后标签与内容不一致 | ✅ | 菜谱页把「来源 / 搜索 / 分类 / 高蛋白」保存在静态状态中，页面重建（返回、旋转、navigator 替换 Fragment）后恢复；加载始终使用恢复后的分类，不再回落到「公共」。 |
 | 3 | 公共菜谱加入个人菜谱并可独立修改 | ✅ | 「保存到我的菜谱」保持原入口；新增重名处理：已在「我的菜谱」时弹窗提示可直接打开编辑，避免重复；个人版本编辑互不影响公共数据。 |
 | 4 | 横竖屏导航状态与横屏视觉 | ✅ | Activity 保存/恢复当前 Tab（`app.tab`），主页面 Fragment 类型映射到对应导航项；非主页面（详情/编辑）保留来源 Tab。横屏 NavigationRail 改用专用选中指示器（44×28dp）、独立圆角背景、外边距与垂直内边距，避免竖屏底栏样式被拉伸。 |
-| 5 | 加入家庭测试、成员姓名、菜品添加者 | ⚠️ 受限 | 加入家庭流程本身可用（邀请码 → 加入 → 成员共享），但：① 家庭成员接口 `Membership` 不包含 displayName/username，无法展示成员姓名；② 契约没有“修改个人资料”操作（显示名只存在本机 `LocalProfileStore`），其他成员看不到；③ `PlanSlot` 没有添加者字段，无法展示“谁加的菜”。需要新增契约（见下文“需要的契约变更”），本轮未改契约以免破坏已冻结接口。 |
+| 5 | 加入家庭测试、成员姓名、菜品添加者 | ✅（已改契约） | 加入家庭流程本身可用（邀请码 → 加入 → 成员共享），但：① 家庭成员接口 `Membership` 不包含 displayName/username，无法展示成员姓名；② 契约没有“修改个人资料”操作（显示名只存在本机 `LocalProfileStore`），其他成员看不到；③ `PlanSlot` 没有添加者字段，无法展示“谁加的菜”。用户已授权修改契约（IC-20261126-PROFILE-IMAGE-AUTHOR）：新增 `PUT /me/profile`，`Membership` 增加 displayName/username，`PlanSlot` 增加 lastEditorId/lastEditorName，服务端记录 author_id 并返回显示名。个人中心新增家庭成员列表（显示姓名），计划页显示“由 X 添加”；模拟器已验证：改显示名后服务端/成员列表同步更新，计划行显示添加者。 |
 | 6 | 个人/家庭计划滑块式切换 | ✅（个人只读） | 家庭计划页新增「个人 / 家庭」切换；家庭模式沿用服务端共享计划（选菜/锁定/冲突刷新），个人模式按账号读取本机「今天」计划并只读展示（底部提示“在「今天」页编辑”），两种模式布局一致、数据来源严格分开。 |
-| 7 | 中英文界面切换 | ⚠️ 部分 | 语言选择已真正生效：`LocalePrefs` + `AppCompatDelegate.setApplicationLocales`，选择持久化并在启动时应用；已提供 `values-en` 的 App 外壳文案（导航、页面标题等）。业务页面（登录/菜谱/食记/计划/冰箱/我的）的大部分字符串仍是中文默认资源，尚未提供英文翻译，切换后会出现中英混排。 |
-| 8 | 创建菜谱时的图片选择 | ⏳ 未完成 | 服务端媒体接口已完成（上传/读取 + 测试），但：① `PersonalRecipe` 契约没有 imageId 字段，个人菜谱无法保存图片；② 家庭菜谱契约有 imageId，但编辑器尚未接入系统图片选择/预览。需要先补个人菜谱图片字段（契约 + IC），再做选择器与展示。 |
+| 7 | 中英文界面切换 | ✅（已补全） | 语言选择真正生效并持久化（`LocalePrefs` + `AppCompatDelegate.setApplicationLocales`，启动时应用）。已补齐 `values-en`：app/core-ui/feature-ac/feature-bd/feature-ef 共 368+ 条资源全部有英文；并把各模块 Java 中残留的硬编码中文界面文案迁移到字符串资源（中英各一份）。模拟器验证：切换英文后登录页、导航、我的/家庭成员、计划等均为英文；force-stop 重启后仍保持英文。 |
+| 8 | 创建菜谱时的图片选择 | ✅（已改契约） | 个人菜谱/创建/更新请求新增 `imageId`（媒体复用 `/media`）；个人与家庭菜谱编辑器加入“选择图片/移除图片”入口，上传后保存 imageId；详情页显示菜谱图片。已用真实上传 + 服务端返回 imageId 的个人菜谱在模拟器验证图片展示（见 review/personal-photo.png）；选择器走系统图片选择器，需真机/模拟器相册手动验收。 |
 | 9 | 「我的」页面偏好设置入口 | ✅ | 新增「偏好设置」入口与页面：读取/保存喜欢的口味标签与忌口食材（多选），带版本冲突重载；复用现有 `/me/preferences` 接口。 |
 
-## 需要的契约变更（第 5、8 项）
+## 契约变更（已授权并完成）
 
 1. `PUT /api/v1/me/profile`（更新 displayName）或 `PATCH /api/v1/me`；`Membership` 增加 `displayName`/`username`，家庭计划 `PlanSlot` 增加 `lastEditorId`/`lastEditorName`（nullable）。
 2. `PersonalRecipe` 与 `Create/UpdatePersonalRecipeRequest` 增加 `imageId`（nullable），媒体上传复用现有 `/media`。
-3. 以上属于公共契约变更，按团队流程需要 IC + digest 复审（当前基线 `ae60b66`），本轮未擅自修改。
+3. 已按流程新增 IC `contracts/changes/IC-20261126-PROFILE-IMAGE-AUTHOR.md`（base `88f4b2d`），`contract_guard check` 对新改动的授权结果为 authorized=21 / unauthorized=0；其余 5 条 digest 违约来自此前已接受的旧 IC，不是本轮引入。
 
 ## 本轮改动文件（摘要）
+
+- 契约/服务端：`contracts/openapi.json`（updateProfile + Membership/PlanSlot/PersonalRecipe 字段）、IC、Flyway `V20261126213000__profile_images_and_plan_author.sql`、AuthService/AuthController、HouseholdReadService/Controller、PlanningService、PersonalRecipeService、`docs/DATA_CONTRACT.md`；新增 3 个服务端集成测试（profile/member names、plan author、personal recipe image）。
+- 客户端媒体/作者/姓名：core-data `ApiProvider.media()`、`MediaImages`；个人/家庭菜谱编辑器图片选择与预览；详情页图片；计划页“由 X 添加”；个人中心家庭成员列表；`ProfileEditDialog` 调用 `/me/profile`。
+- 英文资源：`app/core-ui/feature-ac/feature-bd/feature-ef/src/main/res/values-en/`；Java 硬编码界面文案迁移（各模块 `*_l10n_*` 资源）。
+
 
 - 客户端：`RecipeCatalogFragment`（状态保持）、`RecipeCatalogDetailFragment`（重名处理）、`RecipeCatalogDetailFragment`/`HouseholdRecipeEditorFragment`/`HouseholdRecipes`（未登记食材自动登记）、`MainActivity`（Tab 恢复、横屏 rail 状态）、`app_activity_main.xml` + `civa_styles.xml` + `civa_rail_background`（rail 视觉）、`PlanFragment` + 布局/字符串（个人/家庭切换）、`PreferencesFragment` + 布局/字符串（偏好页）、`ProfileFragment`/`ProfileHost`/profile 布局（偏好入口、语言真正生效）、`LocalePrefs`、`CivaApplication`、`values-en/app_strings.xml`、`values-en/app_bakery_strings.xml`、`AppNavigator`、`AppWiringTest`、`public-surface.draft.json`。
 - 未改服务端/契约；服务端测试保持 66/66。
