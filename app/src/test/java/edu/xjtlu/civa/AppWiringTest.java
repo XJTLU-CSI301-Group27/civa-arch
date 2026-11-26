@@ -21,6 +21,10 @@ public class AppWiringTest {
         assertNavigatorDependsOn("edu.xjtlu.civa.feature.ac.catalog.PersonalRecipeEditorFragment");
     }
 
+    @Test public void diaryRouteIsWiredToTheDiaryFragment() {
+        assertNavigatorDependsOn("edu.xjtlu.civa.feature.ac.diary.DiaryFragment");
+    }
+
     @Test public void profileRouteIsWiredToTheProfileFragment() {
         assertNavigatorDependsOn("edu.xjtlu.civa.feature.ef.ProfileFragment");
     }

@@ -16,7 +16,6 @@ import edu.xjtlu.civa.server.api.model.PeriodSummary;
 import edu.xjtlu.civa.server.api.model.UpdateMealEntryRequest;
 import edu.xjtlu.civa.server.application.CanonicalRequestDigest;
 import edu.xjtlu.civa.server.application.IdempotencyExecutor;
-import edu.xjtlu.civa.server.web.NotImplementedException;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -27,12 +26,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class MealEntryController implements RecordsApi {
     private final MealEntryService entries;
+    private final CookingEventService cooking;
     private final CanonicalRequestDigest digest;
     private final ObjectMapper json;
     private final JsonNode schemas;
 
-    MealEntryController(MealEntryService entries, CanonicalRequestDigest digest, ObjectMapper json, JsonNode schemas) {
+    MealEntryController(MealEntryService entries, CookingEventService cooking, CanonicalRequestDigest digest,
+                        ObjectMapper json, JsonNode schemas) {
         this.entries = entries;
+        this.cooking = cooking;
         this.digest = digest;
         this.json = json;
         this.schemas = schemas;
@@ -67,16 +69,22 @@ class MealEntryController implements RecordsApi {
 
     @Override public ResponseEntity<CookingEventPage> listCookingEvents(UUID householdId, UUID recipeId, String from,
             String to, Integer page, Integer size) {
-        throw new NotImplementedException();
+        return ResponseEntity.ok(cooking.list(actor(), householdId, recipeId, from, to, page, size));
     }
 
     @Override public ResponseEntity<CookingPreview> previewCooking(UUID householdId, CookingPreviewRequest body) {
-        throw new NotImplementedException();
+        return ResponseEntity.ok(cooking.preview(actor(), householdId, body));
     }
 
     @Override public ResponseEntity<CookingEvent> confirmCooking(UUID householdId, UUID key,
             ConfirmCookingRequest body) {
-        throw new NotImplementedException();
+        IdempotencyExecutor.Result result = cooking.confirm(actor(), householdId, key,
+                hash("/api/v1/households/" + householdId + "/cooking-events", body, "ConfirmCookingRequest"), body);
+        try {
+            return ResponseEntity.status(result.status).body(json.readValue(result.body, CookingEvent.class));
+        } catch (JsonProcessingException invalid) {
+            throw new IllegalStateException("Invalid stored cooking event", invalid);
+        }
     }
 
     private byte[] hash(String path, Object body, String schema) {

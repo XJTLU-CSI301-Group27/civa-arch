@@ -187,7 +187,7 @@ final class InventoryService {
     return reads.execute(
         tx -> {
           LocalDate today = today(authorize(actor, home, false));
-          StringBuilder filter = new StringBuilder(" FROM inventory_batches WHERE household_id=?");
+          StringBuilder filter = new StringBuilder(" FROM inventory_batches WHERE household_id=? AND quantity>0");
           List<Object> args = new ArrayList<>();
           args.add(home);
           if (ingredient != null) {

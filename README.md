@@ -20,6 +20,7 @@ CSI301 小组项目：Android（Java + Views，7 个模块）与 Spring Boot 3 �
 | ![菜谱](docs/screenshots/catalog.png) | ![菜谱详情](docs/screenshots/catalog-detail.png) | |
 | ![我的菜谱](docs/screenshots/recipes-mine.png) | ![想吃](docs/screenshots/recipes-favorites.png) | |
 | ![我的](docs/screenshots/profile.png) | | |
+| ![食记](docs/screenshots/diary.png) | | |
 
 截图来自真实运行的 debug 包（Android 模拟器）。
 
@@ -38,7 +39,7 @@ CSI301 小组项目：Android（Java + Views，7 个模块）与 Spring Boot 3 �
 | 菜谱：公共目录（1307 道，搜索/筛选/缓存）+ 我的菜谱（新建/编辑/删除/归档）+ 想吃 | ✅ 公共只读 + 个人菜谱 + 统一收藏 |
 | 家庭菜谱：菜谱 Tab「家庭」来源、详情、收藏、从公共/私人「加入家庭」+ 双写 | ✅ 服务端 + 客户端 |
 | 我的：账号、家庭名称与 ID、家庭设置、退出登录 | ✅ 可修改家庭名；全员可退出，最后一人退出注销家庭 |
-| 食记 | ⏳ 占位页（EF 组范围） |
+| 食记：月历、当日四餐、热量汇总、做饭历史，可记/改/删一餐（未知热量不算 0） | ✅ |
 
 首页草稿是**个人本地数据**：按账号 + 家庭做 SHA-256 作用域隔离，不产生做饭记录、
 不扣库存、不写共享排餐。详见 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md)。

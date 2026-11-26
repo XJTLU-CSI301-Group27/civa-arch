@@ -69,6 +69,51 @@
     <string name="ac_catalog_empty_mine">这里还空着，放进你的第一道拿手菜吧</string>
     <string name="ac_catalog_empty_favorites">这里还空着，快加入你最想吃的菜吧</string>
     <string name="ac_catalog_join_first">先加入家庭，再和家人分享菜谱吧</string>
+    <!-- Food diary -->
+    <string name="ac_diary_previous">‹</string>
+    <string name="ac_diary_next">›</string>
+    <string name="ac_diary_today">回到今天</string>
+    <string name="ac_diary_month_summary">本月已记录 %1$s kcal · 另有 %2$d 条未估算</string>
+    <string name="ac_diary_day_summary">当日 %1$s kcal · 另有 %2$d 条未估算</string>
+    <string name="ac_diary_no_records">这一天还没有记录</string>
+    <string name="ac_diary_empty">这天还没有记录，点下面的按钮记一餐吧～</string>
+    <string name="ac_diary_entry_detail">%1$s %2$s %3$s</string>
+    <string name="ac_diary_unknown">未估算</string>
+    <string name="ac_diary_kcal">%1$s kcal</string>
+    <string name="ac_diary_name_hint">吃了什么</string>
+    <string name="ac_diary_amount_hint">份量</string>
+    <string name="ac_diary_kcal_hint">热量 kcal（未知可留空）</string>
+    <string name="ac_diary_note_hint">备注（可选）</string>
+    <string name="ac_diary_new">记一餐</string>
+    <string name="ac_diary_edit">修改记录</string>
+    <string name="ac_diary_save">保存</string>
+    <string name="ac_diary_delete">删除</string>
+    <string name="ac_diary_delete_confirm">删除这条记录？不会影响库存。</string>
+    <string name="ac_diary_deleted">已删除</string>
+    <string name="ac_diary_saved">已保存</string>
+    <string name="ac_diary_invalid">请填写名称和有效份量</string>
+    <string name="ac_diary_manual_one">手填热量按整份记，份量请填 1</string>
+    <string name="ac_diary_load_error">加载失败，请重试</string>
+    <string name="ac_diary_add">记一餐</string>
+    <string name="ac_diary_breakfast">早餐</string>
+    <string name="ac_diary_lunch">午餐</string>
+    <string name="ac_diary_dinner">晚餐</string>
+    <string name="ac_diary_snack">加餐</string>
+    <string name="ac_diary_basis_serving">按份</string>
+    <string name="ac_diary_basis_gram">按克</string>
+    <string name="ac_diary_basis_manual">手填整份</string>
+    <string name="ac_diary_basis_unknown">未知</string>
+    <string name="ac_diary_cooking_title">家里最近做的菜</string>
+    <string name="ac_diary_cooking_no_home">加入家庭后可查看做饭历史</string>
+    <string name="ac_diary_cooking_empty">还没有做饭记录</string>
+    <string name="ac_diary_cooking_row">%1$s · %2$s · %3$s 份</string>
+    <!-- Cooking confirmation -->
+    <string name="ac_detail_cook">确认做饭</string>
+    <string name="ac_detail_cook_title">确认做了这道菜</string>
+    <string name="ac_detail_cook_message">按这份菜谱的食材用量从冰箱扣减，并记录一次做饭历史。</string>
+    <string name="ac_detail_cook_servings">做了几份（默认按菜谱份数）</string>
+    <string name="ac_detail_cook_shortage">冰箱里还差一些食材，先补货再确认吧～</string>
+    <string name="ac_detail_cook_done">已确认做饭，冰箱库存已扣减</string>
 </resources>
 
 

@@ -118,6 +118,20 @@ M0（基线，可并行）
 
 ## 5. 进度记录（倒序）
 
+### 2026-11-26（第三轮）
+
+- ✅ M1-2 做饭确认：previewCooking + confirmCooking + listCookingEvents 实现在 CookingEventService。
+  预览复用 InventoryMatchingService（按份计算需求 + 到期批次优先分配 + 缺口）；确认在事务内写
+  cooking_events（菜谱快照）→ 按分配更新 inventory_batches（版本校验、禁止扣成负数）→
+  写 inventory_movements(reason=COOK, cooking_event_id, request_id)；Idempotency-Key 重放不重复扣减。
+  扣到 0 的批次从冰箱列表隐藏（quantity>0），但保留行与台账供历史追溯。
+- ✅ M1-3~5 食记客户端：新增 DiaryFragment（月历、回到今天、上月/下月、有记录标记、当日四餐列表、
+  月/日热量汇总、家里最近做的菜）+ 记一餐/修改/删除对话框（热量基准按份/按克/手填整份/未知，
+  未知热量不按 0）；家庭菜谱详情新增 **确认做饭**（默认按菜谱份数，先预览缺口再确认）。
+- ✅ 验证：模拟器实测做饭确认后冰箱批次 500g→300g，做饭历史与 inventory_movements 各 1 条；
+  食记显示当日 350 kcal 与「11/26 · 联动测试菜 · 2 份」。
+- 契约进度：**51 / 57** 已实现，剩余 planning 4、media 2（共 6）。
+
 ### 2026-11-26（第二轮）
 
 - ✅ M5-1 宽窗口导航：NavigationMode（<600dp 底部导航，≥600dp 左侧 NavigationRail）接入

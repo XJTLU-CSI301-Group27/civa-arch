@@ -15,6 +15,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import edu.xjtlu.civa.api.model.CatalogRecipe;
 import edu.xjtlu.civa.api.model.CatalogRecipeIngredient;
 import edu.xjtlu.civa.api.model.CreatePersonalRecipeRequest;
+import edu.xjtlu.civa.api.model.ConfirmCookingRequest;
+import edu.xjtlu.civa.api.model.CookingPreview;
+import edu.xjtlu.civa.api.model.CookingPreviewRequest;
 import edu.xjtlu.civa.api.model.CreateRecipeRequest;
 import edu.xjtlu.civa.api.model.Ingredient;
 import edu.xjtlu.civa.api.model.Recipe;
@@ -269,9 +272,12 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         MaterialButton archive = view.findViewById(R.id.ac_detail_archive);
         MaterialButton delete = view.findViewById(R.id.ac_detail_delete);
         MaterialButton addHome = view.findViewById(R.id.ac_detail_add_home);
+        MaterialButton cook = view.findViewById(R.id.ac_detail_cook);
         favoriteButton.setOnClickListener(ignored -> toggleFavorite(view));
         save.setVisibility((personal || household) ? View.GONE : View.VISIBLE);
         addHome.setVisibility(household ? View.GONE : View.VISIBLE);
+        cook.setVisibility(household ? View.VISIBLE : View.GONE);
+        cook.setOnClickListener(ignored -> confirmCooking());
         addHome.setOnClickListener(ignored -> addToHousehold());
         edit.setVisibility(personal || household ? View.VISIBLE : View.GONE);
         archive.setVisibility(personal || household ? View.VISIBLE : View.GONE);
@@ -373,6 +379,73 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                     .note(item.getNote()));
         }
         return result;
+    }
+
+    private void confirmCooking() {
+        if (householdRecipe == null || host.sessions() == null) return;
+        java.util.UUID home = uuidOrNull(host.sessions().currentHouseholdId());
+        if (home == null) { toast(R.string.ac_catalog_home_missing); return; }
+        android.widget.EditText servings = new android.widget.EditText(requireContext());
+        servings.setText(householdRecipe.getYieldServings() == null ? "2" : householdRecipe.getYieldServings());
+        servings.setHint(R.string.ac_detail_cook_servings);
+        servings.setTextSize(15);
+        servings.setInputType(android.text.InputType.TYPE_CLASS_NUMBER
+                | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        int pad = Math.round(20 * getResources().getDisplayMetrics().density);
+        servings.setPadding(pad, pad / 2, pad, pad / 2);
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.ac_detail_cook_title)
+                .setMessage(R.string.ac_detail_cook_message)
+                .setView(servings)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.ac_detail_cook, (dialog, which) -> {
+                    String amount = servings.getText().toString().trim();
+                    if (amount.isEmpty() || new java.math.BigDecimal(amount).signum() <= 0) {
+                        toast(R.string.ac_detail_cook_shortage);
+                        return;
+                    }
+                    CookingPreviewRequest request = new CookingPreviewRequest()
+                            .recipeId(householdRecipe.getId()).servings(amount);
+                    host.calls().enqueue(host.api().records().previewCooking(home, request),
+                            new ApiCallback<CookingPreview>() {
+                                @Override public void onSuccess(@Nullable CookingPreview preview) {
+                                    if (!isAdded()) return;
+                                    if (preview == null || preview.getShortages() == null
+                                            || !preview.getShortages().isEmpty()) {
+                                        toast(R.string.ac_detail_cook_shortage);
+                                        return;
+                                    }
+                                    ConfirmCookingRequest confirm = new ConfirmCookingRequest()
+                                            .recipeId(householdRecipe.getId())
+                                            .recipeVersion(preview.getRecipeVersion())
+                                            .servings(preview.getServings())
+                                            .allocations(preview.getAllocations())
+                                            .cookedAt(java.time.format.DateTimeFormatter
+                                                    .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+                                                    .withZone(java.time.ZoneOffset.UTC)
+                                                    .format(java.time.Instant.now()));
+                                    host.calls().enqueue(host.api().records().confirmCooking(home,
+                                                    java.util.UUID.randomUUID(), confirm),
+                                            new ApiCallback<edu.xjtlu.civa.api.model.CookingEvent>() {
+                                                @Override public void onSuccess(@Nullable edu.xjtlu.civa.api.model.CookingEvent value) {
+                                                    if (!isAdded()) return;
+                                                    toast(R.string.ac_detail_cook_done);
+                                                }
+
+                                                @Override public void onError(ApiError error) {
+                                                    if (!isAdded()) return;
+                                                    toast(R.string.ac_catalog_error);
+                                                }
+                                            });
+                                }
+
+                                @Override public void onError(ApiError error) {
+                                    if (!isAdded()) return;
+                                    toast(R.string.ac_catalog_error);
+                                }
+                            });
+                })
+                .show();
     }
 
     private void addToHousehold() {

@@ -1,0 +1,566 @@
+package edu.xjtlu.civa.feature.ac.diary;
+
+import android.os.Bundle;
+import android.text.InputType;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import edu.xjtlu.civa.api.model.CookingEvent;
+import edu.xjtlu.civa.api.model.CookingEventPage;
+import edu.xjtlu.civa.api.model.CreateMealEntryRequest;
+import edu.xjtlu.civa.api.model.DaySummary;
+import edu.xjtlu.civa.api.model.EntryMealType;
+import edu.xjtlu.civa.api.model.KcalBasis;
+import edu.xjtlu.civa.api.model.MealEntry;
+import edu.xjtlu.civa.api.model.MealEntryPage;
+import edu.xjtlu.civa.api.model.PeriodSummary;
+import edu.xjtlu.civa.api.model.UpdateMealEntryRequest;
+import edu.xjtlu.civa.core.data.ApiCallback;
+import edu.xjtlu.civa.core.ui.ApiError;
+import edu.xjtlu.civa.feature.ac.AcHost;
+import edu.xjtlu.civa.feature.ac.R;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+
+/** Food diary: month calendar of actual intake, per-day entries and household cooking history. */
+public final class DiaryFragment extends Fragment {
+    private static final DateTimeFormatter MONTH_TITLE = DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA);
+    private static final DateTimeFormatter DAY_TITLE = DateTimeFormatter.ofPattern("M月d日 EEEE", Locale.CHINA);
+    private static final String[] WEEK = {"一", "二", "三", "四", "五", "六", "日"};
+
+    private AcHost host;
+    private YearMonth month = YearMonth.now();
+    private LocalDate selected = LocalDate.now();
+    private final Map<String, DaySummary> marker = new LinkedHashMap<>();
+    private final Map<EntryMealType, List<MealEntry>> entries = new LinkedHashMap<>();
+    private LinearLayout calendar, entryList, cookingList;
+    private TextView monthLabel, monthSummary, dayTitle, daySummary;
+    private boolean loading;
+
+    public DiaryFragment() { super(R.layout.ac_fragment_diary); }
+
+    @Override public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        host = (AcHost) requireActivity();
+        calendar = view.findViewById(R.id.ac_diary_calendar);
+        entryList = view.findViewById(R.id.ac_diary_entries);
+        cookingList = view.findViewById(R.id.ac_diary_cooking);
+        monthLabel = view.findViewById(R.id.ac_diary_month);
+        monthSummary = view.findViewById(R.id.ac_diary_month_summary);
+        dayTitle = view.findViewById(R.id.ac_diary_day_title);
+        daySummary = view.findViewById(R.id.ac_diary_day_summary);
+        view.findViewById(R.id.ac_diary_previous).setOnClickListener(ignored -> shiftMonth(-1));
+        view.findViewById(R.id.ac_diary_next).setOnClickListener(ignored -> shiftMonth(1));
+        view.findViewById(R.id.ac_diary_today).setOnClickListener(ignored -> {
+            month = YearMonth.from(LocalDate.now());
+            selected = LocalDate.now();
+            loadMonth();
+        });
+        view.findViewById(R.id.ac_diary_add).setOnClickListener(ignored -> editEntry(null, null));
+        loadMonth();
+        loadCooking();
+    }
+
+    private void shiftMonth(int delta) {
+        month = month.plusMonths(delta);
+        selected = month.atDay(Math.min(selected.getDayOfMonth(), month.lengthOfMonth()));
+        loadMonth();
+    }
+
+    private void loadMonth() {
+        if (!isAdded()) return;
+        loading = true;
+        renderCalendar();
+        monthLabel.setText(MONTH_TITLE.format(month));
+        dayTitle.setText(DAY_TITLE.format(selected));
+        daySummary.setText("");
+        host.calls().enqueue(host.api().records().getMealSummary(month.atDay(1).toString(),
+                        month.atEndOfMonth().toString()),
+                new ApiCallback<PeriodSummary>() {
+                    @Override public void onSuccess(@Nullable PeriodSummary value) {
+                        if (!isAdded()) return;
+                        loading = false;
+                        marker.clear();
+                        if (value != null && value.getDays() != null) {
+                            for (DaySummary day : value.getDays()) marker.put(day.getDate(), day);
+                        }
+                        String known = value == null ? "0" : value.getKnownKcal();
+                        int unknown = value == null || value.getUnknownCount() == null ? 0 : value.getUnknownCount();
+                        monthSummary.setText(getString(R.string.ac_diary_month_summary, known, unknown));
+                        renderCalendar();
+                        loadDay();
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        loading = false;
+                        monthSummary.setText(R.string.ac_diary_load_error);
+                        loadDay();
+                    }
+                });
+    }
+
+    private void loadDay() {
+        if (!isAdded()) return;
+        String day = selected.toString();
+        DaySummary summary = marker.get(day);
+        dayTitle.setText(DAY_TITLE.format(selected));
+        daySummary.setText(summary == null ? getString(R.string.ac_diary_no_records)
+                : getString(R.string.ac_diary_day_summary, summary.getKnownKcal(),
+                        summary.getUnknownCount() == null ? 0 : summary.getUnknownCount()));
+        host.calls().enqueue(host.api().records().listMealEntries(day, day, 0, 100),
+                new ApiCallback<MealEntryPage>() {
+                    @Override public void onSuccess(@Nullable MealEntryPage value) {
+                        if (!isAdded()) return;
+                        entries.clear();
+                        if (value != null && value.getItems() != null) {
+                            for (MealEntry entry : value.getItems()) {
+                                entries.computeIfAbsent(entry.getMealType(), k -> new ArrayList<>()).add(entry);
+                            }
+                        }
+                        renderEntries();
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        entries.clear();
+                        renderEntries();
+                    }
+                });
+    }
+
+    private void loadCooking() {
+        if (!isAdded()) return;
+        String home = host.sessions() == null ? null : host.sessions().currentHouseholdId();
+        if (home == null) {
+            cookingList.removeAllViews();
+            cookingList.addView(line(getString(R.string.ac_diary_cooking_no_home), 13, R.color.ac_catalog_muted));
+            return;
+        }
+        host.calls().enqueue(host.api().records().listCookingEvents(UUID.fromString(home), null, null, null, 0, 8),
+                new ApiCallback<CookingEventPage>() {
+                    @Override public void onSuccess(@Nullable CookingEventPage value) {
+                        if (!isAdded()) return;
+                        cookingList.removeAllViews();
+                        List<CookingEvent> events = value == null || value.getItems() == null
+                                ? List.of() : value.getItems();
+                        if (events.isEmpty()) {
+                            cookingList.addView(line(getString(R.string.ac_diary_cooking_empty), 13,
+                                    R.color.ac_catalog_muted));
+                            return;
+                        }
+                        for (CookingEvent event : events) cookingList.addView(cookingRow(event));
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (!isAdded()) return;
+                        cookingList.removeAllViews();
+                        cookingList.addView(line(getString(R.string.ac_diary_load_error), 13,
+                                R.color.ac_catalog_muted));
+                    }
+                });
+    }
+
+    private View cookingRow(CookingEvent event) {
+        String name = event.getRecipe() == null ? "?" : event.getRecipe().getRecipeName();
+        String date = event.getCookedAt() == null ? "" : event.getCookedAt().substring(5, 10).replace('-', '/');
+        TextView row = line(getString(R.string.ac_diary_cooking_row, date, name, event.getServings()), 14,
+                R.color.ac_catalog_ink);
+        row.setPadding(0, dp(8), 0, dp(8));
+        row.setOnClickListener(ignored -> editEntry(null, event));
+        return row;
+    }
+
+    private void renderCalendar() {
+        if (calendar == null) return;
+        calendar.removeAllViews();
+        LinearLayout header = new LinearLayout(requireContext());
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        for (String label : WEEK) header.addView(cell(label, false, false, false, 0));
+        calendar.addView(header);
+        int offset = month.atDay(1).getDayOfWeek().getValue() - 1;
+        LinearLayout week = newWeek();
+        for (int i = 0; i < offset; i++) week.addView(cell("", false, false, false, 0));
+        for (int day = 1; day <= month.lengthOfMonth(); day++) {
+            LocalDate date = month.atDay(day);
+            boolean selectedDay = date.equals(selected);
+            boolean recorded = marker.containsKey(date.toString());
+            week.addView(cell(Integer.toString(day), true, selectedDay, recorded, day));
+            if (week.getChildCount() == 7) {
+                calendar.addView(week);
+                week = newWeek();
+            }
+        }
+        while (week.getChildCount() > 0 && week.getChildCount() < 7) week.addView(cell("", false, false, false, 0));
+        if (week.getChildCount() > 0) calendar.addView(week);
+    }
+
+    private LinearLayout newWeek() {
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        return row;
+    }
+
+    private TextView cell(String text, boolean active, boolean selectedDay, boolean recorded, int day) {
+        TextView view = new TextView(requireContext());
+        view.setText(recorded && active && !selectedDay ? "· " + text + " ·" : text);
+        view.setGravity(android.view.Gravity.CENTER);
+        view.setTextSize(14);
+        view.setPadding(0, dp(10), 0, dp(10));
+        view.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        view.setTextColor(requireContext().getColor(selectedDay ? R.color.ac_catalog_ink : R.color.ac_catalog_ink));
+        if (selectedDay) view.setBackgroundResource(R.drawable.ac_catalog_card);
+        view.setTypeface(null, recorded ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+        if (active && day > 0) {
+            final LocalDate date = month.atDay(day);
+            view.setOnClickListener(ignored -> {
+                selected = date;
+                renderCalendar();
+                loadDay();
+            });
+        }
+        return view;
+    }
+
+    private void renderEntries() {
+        if (entryList == null) return;
+        entryList.removeAllViews();
+        if (entries.isEmpty()) {
+            entryList.addView(line(getString(R.string.ac_diary_empty), 14, R.color.ac_catalog_muted));
+            return;
+        }
+        for (EntryMealType meal : EntryMealType.values()) {
+            List<MealEntry> rows = entries.get(meal);
+            if (rows == null || rows.isEmpty()) continue;
+            entryList.addView(section(mealLabel(meal)));
+            for (MealEntry entry : rows) entryList.addView(entryRow(entry));
+        }
+    }
+
+    private View entryRow(MealEntry entry) {
+        LinearLayout row = new LinearLayout(requireContext());
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(dp(12), dp(10), dp(12), dp(10));
+        row.setBackgroundResource(R.drawable.ac_catalog_card);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.bottomMargin = dp(6);
+        row.setLayoutParams(params);
+        row.setClickable(true);
+        row.setFocusable(true);
+        LinearLayout left = new LinearLayout(requireContext());
+        left.setOrientation(LinearLayout.VERTICAL);
+        left.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        TextView name = new TextView(requireContext());
+        name.setText(entry.getName());
+        name.setTextSize(15);
+        name.setTextColor(requireContext().getColor(R.color.ac_catalog_ink));
+        name.setTypeface(null, android.graphics.Typeface.BOLD);
+        left.addView(name);
+        TextView detail = new TextView(requireContext());
+        String amount = entry.getAmount() == null ? "" : entry.getAmount();
+        detail.setText(getString(R.string.ac_diary_entry_detail, amount, basisLabel(entry.getBasis()),
+                entry.getNote() == null || entry.getNote().isEmpty() ? "" : "· " + entry.getNote()));
+        detail.setTextSize(12);
+        detail.setTextColor(requireContext().getColor(R.color.ac_catalog_muted));
+        left.addView(detail);
+        row.addView(left);
+        TextView kcal = new TextView(requireContext());
+        kcal.setText(entry.getTotalKcal() == null ? getString(R.string.ac_diary_unknown)
+                : getString(R.string.ac_diary_kcal, entry.getTotalKcal()));
+        kcal.setTextSize(14);
+        kcal.setTextColor(requireContext().getColor(R.color.ac_catalog_accent));
+        kcal.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.addView(kcal);
+        row.setOnClickListener(ignored -> editEntry(entry, null));
+        return row;
+    }
+
+    private void editEntry(@Nullable MealEntry entry, @Nullable CookingEvent prefill) {
+        if (!isAdded()) return;
+        boolean editing = entry != null;
+        LinearLayout body = new LinearLayout(requireContext());
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(dp(20), dp(8), dp(20), dp(8));
+
+        EntryMealType[] meals = EntryMealType.values();
+        Map<EntryMealType, MaterialButton> mealButtons = new LinkedHashMap<>();
+        LinearLayout mealRow = new LinearLayout(requireContext());
+        mealRow.setOrientation(LinearLayout.HORIZONTAL);
+        EntryMealType initialMeal = editing ? entry.getMealType() : EntryMealType.LUNCH;
+        for (EntryMealType meal : meals) {
+            MaterialButton button = new MaterialButton(requireContext(), null,
+                    com.google.android.material.R.attr.materialButtonOutlinedStyle);
+            button.setText(mealLabel(meal));
+            button.setTextSize(12);
+            button.setInsetTop(0);
+            button.setInsetBottom(0);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            params.setMarginEnd(dp(4));
+            mealRow.addView(button, params);
+            mealButtons.put(meal, button);
+            button.setOnClickListener(ignored -> select(mealButtons, meal));
+        }
+        select(mealButtons, initialMeal);
+        body.addView(mealRow);
+
+        EditText name = field(getString(R.string.ac_diary_name_hint));
+        if (editing) name.setText(entry.getName());
+        else if (prefill != null && prefill.getRecipe() != null) name.setText(prefill.getRecipe().getRecipeName());
+        body.addView(name);
+
+        EditText amount = field(getString(R.string.ac_diary_amount_hint));
+        amount.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        amount.setText(editing ? entry.getAmount() : "1");
+        body.addView(amount);
+
+        KcalBasis[] bases = {KcalBasis.SERVING, KcalBasis.GRAM, KcalBasis.MANUAL, KcalBasis.UNKNOWN};
+        Map<KcalBasis, MaterialButton> basisButtons = new LinkedHashMap<>();
+        LinearLayout basisRow = new LinearLayout(requireContext());
+        basisRow.setOrientation(LinearLayout.HORIZONTAL);
+        KcalBasis initialBasis = editing ? entry.getBasis()
+                : (prefill != null && prefill.getRecipe() != null
+                        && prefill.getRecipe().getTotalKcal() != null ? KcalBasis.SERVING : KcalBasis.UNKNOWN);
+        for (KcalBasis basis : bases) {
+            MaterialButton button = new MaterialButton(requireContext(), null,
+                    com.google.android.material.R.attr.materialButtonOutlinedStyle);
+            button.setText(basisLabel(basis));
+            button.setTextSize(12);
+            button.setInsetTop(0);
+            button.setInsetBottom(0);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            params.setMarginEnd(dp(4));
+            basisRow.addView(button, params);
+            basisButtons.put(basis, button);
+            button.setOnClickListener(ignored -> select(basisButtons, basis));
+        }
+        select(basisButtons, initialBasis);
+        body.addView(basisRow);
+
+        EditText kcal = field(getString(R.string.ac_diary_kcal_hint));
+        kcal.setSingleLine(true);
+        kcal.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        kcal.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        if (editing && entry.getBasisKcal() != null) kcal.setText(entry.getBasisKcal());
+        body.addView(kcal);
+
+        EditText note = field(getString(R.string.ac_diary_note_hint));
+        if (editing && entry.getNote() != null) note.setText(entry.getNote());
+        body.addView(note);
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(requireContext());
+        scroll.addView(body);
+
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(editing ? R.string.ac_diary_edit : R.string.ac_diary_new)
+                .setView(scroll)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.ac_diary_save, null);
+        if (editing) builder.setNeutralButton(R.string.ac_diary_delete, null);
+        final androidx.appcompat.app.AlertDialog dialog = builder.create();
+        Runnable save = () -> submit(mealButtons, meals, basisButtons, bases, name, amount, kcal, note,
+                entry, prefill, dialog::dismiss);
+        kcal.setOnEditorActionListener((view, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                save.run();
+                return true;
+            }
+            return false;
+        });
+        dialog.setOnShowListener(ignored -> {
+            dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener(view -> save.run());
+            if (editing) {
+                dialog.getButton(android.content.DialogInterface.BUTTON_NEUTRAL).setOnClickListener(view ->
+                        new MaterialAlertDialogBuilder(requireContext())
+                                .setMessage(R.string.ac_diary_delete_confirm)
+                                .setNegativeButton(android.R.string.cancel, null)
+                                .setPositiveButton(R.string.ac_diary_delete, (dialog2, which) ->
+                                        host.calls().enqueue(host.api().records().deleteMealEntry(
+                                                entry.getId(), entry.getVersion()), new ApiCallback<Void>() {
+                                            @Override public void onSuccess(@Nullable Void value) {
+                                                if (!isAdded()) return;
+                                                dialog.dismiss();
+                                                loadMonth();
+                                                toast(R.string.ac_diary_deleted);
+                                            }
+
+                                            @Override public void onError(ApiError error) {
+                                                if (!isAdded()) return;
+                                                toast(R.string.ac_diary_load_error);
+                                            }
+                                        }))
+                                .show());
+            }
+        });
+        dialog.show();
+    }
+
+    private void submit(Map<EntryMealType, MaterialButton> mealButtons, EntryMealType[] meals,
+                        Map<KcalBasis, MaterialButton> basisButtons, KcalBasis[] bases,
+                        EditText name, EditText amount, EditText kcal, EditText note,
+                        @Nullable MealEntry entry, @Nullable CookingEvent prefill, @Nullable Runnable afterSave) {
+        if (!isAdded()) return;
+        EntryMealType meal = selected(mealButtons, meals);
+        KcalBasis basis = selected(basisButtons, bases);
+        String title = name.getText().toString().trim();
+        BigDecimal amountValue = decimal(amount.getText().toString());
+        if (title.isEmpty() || amountValue == null || amountValue.signum() <= 0) {
+            toast(R.string.ac_diary_invalid);
+            return;
+        }
+        if (basis == KcalBasis.MANUAL && amountValue.compareTo(BigDecimal.ONE) != 0) {
+            toast(R.string.ac_diary_manual_one);
+            return;
+        }
+        BigDecimal basisKcal = decimal(kcal.getText().toString());
+        if (basis != KcalBasis.UNKNOWN && (basisKcal == null || basisKcal.signum() < 0)) {
+            toast(R.string.ac_diary_invalid);
+            return;
+        }
+        String kcalText = basis == KcalBasis.UNKNOWN ? null : plain(basisKcal);
+        ApiCallback<MealEntry> saved = savedCallback();
+        if (entry != null) {
+            UpdateMealEntryRequest request = new UpdateMealEntryRequest()
+                    .date(selected.toString()).mealType(meal).name(title)
+                    .amount(plain(amountValue)).basis(basis).basisKcal(kcalText)
+                    .note(note.getText().toString()).expectedVersion(entry.getVersion());
+            host.calls().enqueue(host.api().records().updateMealEntry(entry.getId(), request), saved);
+        } else {
+            CreateMealEntryRequest request = new CreateMealEntryRequest()
+                    .date(selected.toString()).mealType(meal).name(title)
+                    .amount(plain(amountValue)).basis(basis).basisKcal(kcalText)
+                    .note(note.getText().toString())
+                    .cookingEventId(prefill == null ? null : prefill.getId());
+            host.calls().enqueue(host.api().records().createMealEntry(UUID.randomUUID(), request), saved);
+        }
+        if (afterSave != null) afterSave.run();
+    }
+
+    private ApiCallback<MealEntry> savedCallback() {
+        return new ApiCallback<MealEntry>() {
+            @Override public void onSuccess(@Nullable MealEntry value) {
+                if (!isAdded()) return;
+                toast(R.string.ac_diary_saved);
+                loadMonth();
+            }
+
+            @Override public void onError(ApiError error) {
+                if (!isAdded()) return;
+                toast(R.string.ac_diary_load_error);
+            }
+        };
+    }
+
+    private <T> T selected(Map<T, MaterialButton> buttons, T[] order) {
+        for (T key : order) {
+            MaterialButton button = buttons.get(key);
+            if (button != null && button.getTag() != null && Boolean.TRUE.equals(button.getTag())) return key;
+        }
+        return order[0];
+    }
+
+    private <T> void selectMeal(Map<T, MaterialButton> buttons, T selected) {
+        select(buttons, selected);
+    }
+
+    private <T> void selectBasis(Map<T, MaterialButton> buttons, T selected) {
+        select(buttons, selected);
+    }
+
+    private <T> void select(Map<T, MaterialButton> buttons, T selected) {
+        for (Map.Entry<T, MaterialButton> entry : buttons.entrySet()) {
+            boolean active = entry.getKey() == selected;
+            entry.getValue().setTag(active);
+            entry.getValue().setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                    requireContext().getColor(active ? R.color.ac_catalog_accent : android.R.color.transparent)));
+            entry.getValue().setTextColor(requireContext().getColor(
+                    active ? android.R.color.white : R.color.ac_catalog_ink));
+        }
+    }
+
+    private EditText field(String hint) {
+        EditText field = new EditText(requireContext());
+        field.setHint(hint);
+        field.setTextSize(15);
+        field.setBackgroundResource(R.drawable.ac_catalog_search);
+        field.setPadding(dp(14), dp(10), dp(14), dp(10));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.topMargin = dp(8);
+        field.setLayoutParams(params);
+        return field;
+    }
+
+    private TextView section(String text) {
+        TextView view = line(text, 13, R.color.ac_catalog_muted);
+        view.setTypeface(null, android.graphics.Typeface.BOLD);
+        view.setPadding(0, dp(10), 0, dp(4));
+        return view;
+    }
+
+    private TextView line(String text, int size, int color) {
+        TextView view = new TextView(requireContext());
+        view.setText(text);
+        view.setTextSize(size);
+        view.setTextColor(requireContext().getColor(color));
+        view.setLineSpacing(0f, 1.2f);
+        return view;
+    }
+
+    private String mealLabel(EntryMealType meal) {
+        return switch (meal) {
+            case BREAKFAST -> getString(R.string.ac_diary_breakfast);
+            case LUNCH -> getString(R.string.ac_diary_lunch);
+            case DINNER -> getString(R.string.ac_diary_dinner);
+            case SNACK -> getString(R.string.ac_diary_snack);
+        };
+    }
+
+    private String basisLabel(KcalBasis basis) {
+        return switch (basis) {
+            case SERVING -> getString(R.string.ac_diary_basis_serving);
+            case GRAM -> getString(R.string.ac_diary_basis_gram);
+            case MANUAL -> getString(R.string.ac_diary_basis_manual);
+            case UNKNOWN -> getString(R.string.ac_diary_basis_unknown);
+        };
+    }
+
+    private static BigDecimal decimal(String value) {
+        try {
+            return value == null || value.trim().isEmpty() ? null : new BigDecimal(value.trim());
+        } catch (NumberFormatException invalid) {
+            return null;
+        }
+    }
+
+    private static String plain(BigDecimal value) {
+        return value.setScale(3, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+    }
+
+    private void toast(int text) {
+        Toast.makeText(requireContext(), text, Toast.LENGTH_SHORT).show();
+    }
+
+    private int dp(float value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+}

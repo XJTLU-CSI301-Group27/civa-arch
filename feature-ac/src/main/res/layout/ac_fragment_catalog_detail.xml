@@ -119,6 +119,15 @@
             android:text="@string/ac_catalog_save_to_mine" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_detail_cook"
+            style="@style/CivaWidget.SecondaryButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/ac_detail_cook"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/ac_detail_add_home"
             style="@style/CivaWidget.TextButton"
             android:layout_width="match_parent"

@@ -6,6 +6,7 @@ import edu.xjtlu.civa.core.ui.Route;
 import edu.xjtlu.civa.core.data.SessionStore;
 import edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogDetailFragment;
 import edu.xjtlu.civa.feature.ac.catalog.HouseholdRecipeEditorFragment;
+import edu.xjtlu.civa.feature.ac.diary.DiaryFragment;
 import edu.xjtlu.civa.feature.ac.catalog.PersonalRecipeEditorFragment;
 import edu.xjtlu.civa.feature.ac.catalog.RecipeCatalogFragment;
 import edu.xjtlu.civa.feature.ac.inventory.InventoryFragment;
@@ -56,6 +57,7 @@ final class AppNavigator implements NavHost {
                 : route == Route.RECIPE_EDIT ? (entityId != null && (entityId.equals("hnew") || entityId.startsWith("h:"))
                         ? HouseholdRecipeEditorFragment.create(entityId)
                         : PersonalRecipeEditorFragment.create(entityId))
+                : route == Route.DIARY ? new DiaryFragment()
                 : route == Route.PROFILE ? new ProfileFragment()
                 : route == Route.INVENTORY ? new InventoryFragment()
                 : PlaceholderFragment.create(title, entityId);

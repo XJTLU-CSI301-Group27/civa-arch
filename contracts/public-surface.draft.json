@@ -65,6 +65,18 @@
   ],
   "symbols": [
     {
+      "type": "edu.xjtlu.civa.feature.ac.diary.DiaryFragment",
+      "kind": "class",
+      "owner": "A",
+      "consumers": [
+        "app"
+      ],
+      "thread": "main",
+      "members": [
+        "DiaryFragment()"
+      ]
+    },
+    {
       "type": "edu.xjtlu.civa.feature.ef.ProfileHost",
       "kind": "interface",
       "owner": "EF/F",

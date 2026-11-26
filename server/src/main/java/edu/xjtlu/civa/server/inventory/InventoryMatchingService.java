@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 /** Internal read-only matching/allocation, in one consistent database snapshot. */
-final class InventoryMatchingService {
+public final class InventoryMatchingService {
   private final InventoryService inventory;
 
   InventoryMatchingService(InventoryService inventory) {
@@ -47,7 +47,7 @@ final class InventoryMatchingService {
   }
 
   // Internal candidate seam only. No cooking write is performed, and no new public API is exported.
-  CookingPreview preview(UUID actor, UUID home, UUID recipe, String servings) {
+  public CookingPreview preview(UUID actor, UUID home, UUID recipe, String servings) {
     InventoryRules.positive(servings);
     return inventory.snapshot(
         () -> {
