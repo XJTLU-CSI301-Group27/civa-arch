@@ -74,6 +74,9 @@ public final class HouseholdFragment extends Fragment {
         model.household.observe(getViewLifecycleOwner(), value -> { paintOwner(); paintTransfer(); });
         model.members.observe(getViewLifecycleOwner(), value -> { paintOwner(); paintTransfer(); });
         model.transfer.observe(getViewLifecycleOwner(), value -> paintTransfer());
+        model.transferRecovery.observe(getViewLifecycleOwner(), operation -> {
+            if (operation != null) showTransferRecovery();
+        });
         model.leaveBlocked.observe(getViewLifecycleOwner(), code -> {
             if (code == null) return;
             model.leaveBlocked.setValue(null);
@@ -125,6 +128,18 @@ public final class HouseholdFragment extends Fragment {
         model.ready.observe(getViewLifecycleOwner(), value -> {
             if (Boolean.TRUE.equals(value) && isResumed()) close();
         });
+    }
+
+    private void showTransferRecovery() {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.ef_transfer_recovery_title)
+                .setMessage(R.string.ef_transfer_recovery_message)
+                .setCancelable(false)
+                .setNegativeButton(R.string.ef_transfer_recovery_discard,
+                        (dialog, which) -> model.abandonRecoveredTransfer())
+                .setPositiveButton(R.string.ef_transfer_recovery_continue,
+                        (dialog, which) -> model.continueRecoveredTransfer())
+                .show();
     }
 
     private void paintOwner() {
@@ -354,6 +369,7 @@ public final class HouseholdFragment extends Fragment {
             case "LOCAL_STORAGE_ERROR" -> R.string.ef_generic_error;
             case "NETWORK_ERROR", "TIMEOUT" -> R.string.ef_network_error;
             case "TRANSFER_UPDATED" -> R.string.ef_transfer_completed;
+            case "TRANSFER_RECOVERY_DISCARDED" -> R.string.ef_transfer_recovery_discarded;
             case "TRANSFER_ALREADY_PENDING" -> R.string.ef_transfer_already_pending;
             case "TRANSFER_NOT_PENDING" -> R.string.ef_transfer_not_pending;
             case "TRANSFER_REQUEST_NOT_FOUND" -> R.string.ef_transfer_missing;

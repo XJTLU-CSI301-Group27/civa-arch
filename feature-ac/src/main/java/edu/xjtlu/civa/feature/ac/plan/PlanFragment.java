@@ -64,6 +64,7 @@ public final class PlanFragment extends Fragment {
     private boolean loading;
     private boolean sending;
     private boolean resumedOnce;
+    private int loadGeneration;
 
     public PlanFragment() { super(R.layout.ac_fragment_plan); }
 
@@ -124,9 +125,11 @@ public final class PlanFragment extends Fragment {
     private void load() {
         if (!isAdded()) return;
         if (mode == Mode.PERSONAL) {
+            loadGeneration++;
             renderPersonal();
             return;
         }
+        int generation = ++loadGeneration;
         String homeText = host.sessions() == null ? null : host.sessions().currentHouseholdId();
         if (homeText == null) {
             home = null;
@@ -141,13 +144,13 @@ public final class PlanFragment extends Fragment {
         subtitle.setText(R.string.ac_plan_loading);
         host.calls().enqueue(host.api().household().getHousehold(home), new ApiCallback<Household>() {
             @Override public void onSuccess(@Nullable Household value) {
-                if (!isAdded()) return;
+                if (generation != loadGeneration || !isAdded()) return;
                 ownerUserId = value == null ? null : value.getOwnerUserId();
-                loadRecipes();
+                loadRecipes(generation);
             }
 
             @Override public void onError(ApiError error) {
-                if (!isAdded()) return;
+                if (generation != loadGeneration || !isAdded()) return;
                 loading = false;
                 ownerUserId = null;
                 subtitle.setText(R.string.ac_plan_error);
@@ -156,11 +159,11 @@ public final class PlanFragment extends Fragment {
         });
     }
 
-    private void loadRecipes() {
+    private void loadRecipes(int generation) {
         host.calls().enqueue(host.api().recipe().listRecipes(home, null, null, null, false, 0, 100),
                 new ApiCallback<RecipePage>() {
                     @Override public void onSuccess(@Nullable RecipePage value) {
-                        if (!isAdded()) return;
+                        if (generation != loadGeneration || !isAdded()) return;
                         recipes.clear();
                         recipeNames.clear();
                         if (value != null && value.getItems() != null) {
@@ -170,24 +173,24 @@ public final class PlanFragment extends Fragment {
                                 recipeNames.put(recipe.getId(), recipe.getName());
                             }
                         }
-                        loadSlots();
+                        loadSlots(generation);
                     }
 
                     @Override public void onError(ApiError error) {
-                        if (!isAdded()) return;
+                        if (generation != loadGeneration || !isAdded()) return;
                         loading = false;
                         subtitle.setText(R.string.ac_plan_error);
                     }
                 });
     }
 
-    private void loadSlots() {
+    private void loadSlots(int generation) {
         String from = start.toString();
         String to = start.plusDays(13).toString();
         host.calls().enqueue(host.api().planning().listPlanSlots(home, from, to, 0, 100),
                 new ApiCallback<PlanSlotPage>() {
                     @Override public void onSuccess(@Nullable PlanSlotPage value) {
-                        if (!isAdded()) return;
+                        if (generation != loadGeneration || !isAdded()) return;
                         loading = false;
                         slots.clear();
                         if (value != null && value.getItems() != null) {
@@ -202,11 +205,15 @@ public final class PlanFragment extends Fragment {
                     }
 
                     @Override public void onError(ApiError error) {
-                        if (!isAdded()) return;
+                        if (generation != loadGeneration || !isAdded()) return;
                         loading = false;
                         subtitle.setText(R.string.ac_plan_error);
                     }
                 });
+    }
+
+    private void refreshSlots() {
+        if (home != null) loadSlots(++loadGeneration);
     }
 
     private boolean isOwner() {
@@ -482,7 +489,7 @@ public final class PlanFragment extends Fragment {
                         if (!isAdded()) return;
                         sending = false;
                         toast(R.string.ac_plan_saved);
-                        loadSlots();
+                        refreshSlots();
                     }
 
                     @Override public void onError(ApiError error) {
@@ -509,7 +516,7 @@ public final class PlanFragment extends Fragment {
                         if (!isAdded()) return;
                         sending = false;
                         Haptics.tap(requireView());
-                        loadSlots();
+                        refreshSlots();
                     }
 
                     @Override public void onError(ApiError error) {
@@ -533,7 +540,7 @@ public final class PlanFragment extends Fragment {
             }
             case "PLAN_SLOT_LOCKED", "PLAN_LOCKED" -> {
                 toast(R.string.ac_plan_locked);
-                loadSlots();
+                refreshSlots();
             }
             case "NOT_FOUND" -> {
                 toast(R.string.ac_plan_error);
@@ -544,26 +551,28 @@ public final class PlanFragment extends Fragment {
     }
 
     private MaterialButton smallButton(int text) {
-        MaterialButton button = new MaterialButton(requireContext(), null,
-                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        MaterialButton button = compactButton();
         button.setText(text);
         button.setTextSize(11);
-        button.setInsetTop(0);
-        button.setInsetBottom(0);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.setMarginStart(dp(4));
-        button.setLayoutParams(params);
         return button;
     }
 
     private MaterialButton smallButtonText(String value) {
-        MaterialButton button = new MaterialButton(requireContext(), null,
-                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        MaterialButton button = compactButton();
         button.setText(value);
         button.setTextSize(13);
+        return button;
+    }
+
+    /** Three per-row actions must not squeeze the dish label into a vertical column on 360dp. */
+    private MaterialButton compactButton() {
+        MaterialButton button = new MaterialButton(requireContext(), null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        button.setMinWidth(0);
+        button.setMinimumWidth(0);
         button.setInsetTop(0);
         button.setInsetBottom(0);
+        button.setPadding(dp(6), 0, dp(6), 0);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.setMarginStart(dp(4));

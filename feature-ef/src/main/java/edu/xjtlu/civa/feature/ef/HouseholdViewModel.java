@@ -35,6 +35,7 @@ final class HouseholdViewModel extends ViewModel {
     final MutableLiveData<List<Membership>> members=new MutableLiveData<>(List.of());
     final MutableLiveData<OwnershipTransferRequest> transfer=new MutableLiveData<>();
     final MutableLiveData<String> leaveBlocked=new MutableLiveData<>();
+    final MutableLiveData<String> transferRecovery=new MutableLiveData<>();
     final boolean joined;
     private final ApiProvider api;private final ApiCalls calls;private final AuthRepository auth;private final SessionStore sessions;
     private final String user,home;
@@ -42,7 +43,9 @@ final class HouseholdViewModel extends ViewModel {
     private Long householdVersion;
     private boolean nameEdited;
     private boolean closed,pending,detailsLoading;
-    private String pendingKey,pendingOperation;
+    private String pendingKey,pendingOperation,pendingPayload;
+    private PendingWrite recoveredWrite;
+    private int householdGeneration;
     HouseholdViewModel(ApiProvider api,ApiCalls calls,AuthRepository auth,SessionStore sessions) {
         this.api=api;this.calls=calls;this.auth=auth;this.sessions=sessions;
         user=sessions.currentUserId();home=sessions.currentHouseholdId();joined=home!=null;
@@ -57,16 +60,17 @@ final class HouseholdViewModel extends ViewModel {
 
     private void loadHousehold() {
         if(!joined||!current())return;
+        int generation=++householdGeneration;
         calls.enqueue(api.household().getHousehold(homeId()),new ApiCallback<Household>() {
             @Override public void onSuccess(Household value){
-                if(!current()||value==null)return;
+                if(generation!=householdGeneration||!current()||value==null)return;
                 householdVersion=value.getVersion();household.setValue(value);
                 if(!nameEdited)editedName=value.getName();
                 householdName.setValue(value.getName());
-                loadMembers();
-                loadTransfer();
+                loadMembers(generation);
+                loadTransfer(generation);
             }
-            @Override public void onError(ApiError error){if(current())message.setValue(error.code);}
+            @Override public void onError(ApiError error){if(generation==householdGeneration&&current())message.setValue(error.code);}
         });
     }
 
@@ -83,24 +87,24 @@ final class HouseholdViewModel extends ViewModel {
         });
     }
 
-    private void loadMembers() {
+    private void loadMembers(int generation) {
         calls.enqueue(api.household().listMembers(homeId(),0,50),new ApiCallback<MembershipPage>() {
             @Override public void onSuccess(MembershipPage value){
-                if(current()&&value!=null&&value.getItems()!=null)members.setValue(value.getItems());
+                if(generation==householdGeneration&&current()&&value!=null&&value.getItems()!=null)members.setValue(value.getItems());
             }
             @Override public void onError(ApiError error){ }
         });
     }
 
-    private void loadTransfer() {
+    private void loadTransfer(int generation) {
         calls.enqueue(api.household().listOwnershipTransferRequests(homeId(),TransferStatus.PENDING,0,10),
                 new ApiCallback<OwnershipTransferRequestPage>() {
             @Override public void onSuccess(OwnershipTransferRequestPage value){
-                if(!current())return;
+                if(generation!=householdGeneration||!current())return;
                 transfer.setValue(value==null||value.getItems()==null||value.getItems().isEmpty()?null:value.getItems().get(0));
             }
             @Override public void onError(ApiError error){
-                if(current())transfer.setValue(null);
+                if(generation==householdGeneration&&current())transfer.setValue(null);
             }
         });
     }
@@ -169,13 +173,15 @@ final class HouseholdViewModel extends ViewModel {
 
     private void withIntent(String operation,String payload,Runnable send) {
         if(pending||!current())return;
-        if(pendingKey!=null&&!operation.equals(pendingOperation)){message.setValue("RETRY_SAME_OPERATION");return;}
+        if(pendingKey!=null&&!HouseholdTransferPolicy.sameIntent(pendingOperation,pendingPayload,operation,payload)){
+            message.setValue("RETRY_SAME_OPERATION");return;
+        }
         pending=true;loading.setValue(true);message.setValue("");
         if(pendingKey!=null){send.run();return;}
-        pendingKey=UUID.randomUUID().toString();pendingOperation=operation;
+        pendingKey=UUID.randomUUID().toString();pendingOperation=operation;pendingPayload=payload;
         calls.pendingWrites().record(pendingKey,user,home,operation,payload,null,null,new ApiCallback<Void>() {
             @Override public void onSuccess(Void ignored){if(current())send.run();}
-            @Override public void onError(ApiError error){if(current()){pendingKey=null;pendingOperation=null;finishError(error.code);}}
+            @Override public void onError(ApiError error){if(current()){pendingKey=null;pendingOperation=null;pendingPayload=null;finishError(error.code);}}
         });
     }
 
@@ -195,7 +201,8 @@ final class HouseholdViewModel extends ViewModel {
     }
 
     private void finishTransfer(boolean close) {
-        pendingKey=null;pendingOperation=null;pending=false;loading.setValue(false);recovering.setValue(null);
+        pendingKey=null;pendingOperation=null;pendingPayload=null;recoveredWrite=null;
+        pending=false;loading.setValue(false);recovering.setValue(null);transferRecovery.setValue(null);
         if(close){
             // Dissolve revokes the session household before this callback, so the page must close
             // based on the still-signed-in user rather than the now-null household id.
@@ -218,7 +225,8 @@ final class HouseholdViewModel extends ViewModel {
 
     private void finishTransferError(String code) {
         if(!current())return;
-        pendingKey=null;pendingOperation=null;pending=false;loading.setValue(false);
+        pendingKey=null;pendingOperation=null;pendingPayload=null;recoveredWrite=null;transferRecovery.setValue(null);
+        pending=false;loading.setValue(false);
         message.setValue(code);
         loadHousehold();
     }
@@ -274,9 +282,12 @@ final class HouseholdViewModel extends ViewModel {
                 for(PendingWrite write:writes) {
                     if(isTransferOperation(write.operationId)) {
                         if(!joined||!Objects.equals(home,write.householdId)){forget(write.key);continue;}
-                        pendingKey=write.key;pendingOperation=write.operationId;
-                        recovering.setValue(write.operationId);
-                        retry(write);
+                        pendingKey=write.key;pendingOperation=write.operationId;pendingPayload=write.canonicalPayload;
+                        recoveredWrite=write;
+                        // Never replay a historical write automatically: the request may already have
+                        // changed ownership or been rejected. Show the current state and let the user
+                        // explicitly continue with the original key (or discard it).
+                        transferRecovery.setValue(write.operationId);
                         return;
                     }
                     boolean setup="createHousehold".equals(write.operationId)||"joinHousehold".equals(write.operationId);
@@ -292,9 +303,26 @@ final class HouseholdViewModel extends ViewModel {
         });
     }
 
+    void continueRecoveredTransfer() {
+        if(recoveredWrite==null||pending||!current())return;
+        PendingWrite write=recoveredWrite;
+        recoveredWrite=null;transferRecovery.setValue(null);
+        retry(write);
+    }
+
+    void abandonRecoveredTransfer() {
+        if(recoveredWrite==null)return;
+        String key=recoveredWrite.key;
+        recoveredWrite=null;transferRecovery.setValue(null);
+        pendingKey=null;pendingOperation=null;pendingPayload=null;
+        forget(key);
+        message.setValue("TRANSFER_RECOVERY_DISCARDED");
+    }
+
     private void retry(PendingWrite write) {
         pending=true;loading.setValue(true);
         String payload=write.canonicalPayload;
+        pendingPayload=payload;
         switch(write.operationId) {
             case "requestOwnershipTransfer" -> calls.enqueue(api.household().requestOwnershipTransfer(homeId(),
                     UUID.fromString(pendingKey),new CreateOwnershipTransferRequest().targetUserId(UUID.fromString(payload))),

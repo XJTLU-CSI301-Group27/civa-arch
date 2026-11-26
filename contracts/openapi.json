@@ -5750,7 +5750,7 @@
             }
           },
           "409": {
-            "description": "IDEMPOTENCY_KEY_REUSED, VERSION_CONFLICT, PLAN_LOCKED",
+            "description": "IDEMPOTENCY_KEY_REUSED, VERSION_CONFLICT, PLAN_SLOT_LOCKED",
             "content": {
               "application/json": {
                 "schema": {
@@ -5766,7 +5766,7 @@
                           "enum": [
                             "IDEMPOTENCY_KEY_REUSED",
                             "VERSION_CONFLICT",
-                            "PLAN_LOCKED"
+                            "PLAN_SLOT_LOCKED"
                           ]
                         }
                       },
@@ -6400,7 +6400,7 @@
             }
           },
           "409": {
-            "description": "VERSION_CONFLICT, PLAN_LOCKED",
+            "description": "VERSION_CONFLICT, PLAN_SLOT_LOCKED",
             "content": {
               "application/json": {
                 "schema": {
@@ -6415,7 +6415,7 @@
                           "type": "string",
                           "enum": [
                             "VERSION_CONFLICT",
-                            "PLAN_LOCKED"
+                            "PLAN_SLOT_LOCKED"
                           ]
                         }
                       },

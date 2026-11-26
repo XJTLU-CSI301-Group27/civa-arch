@@ -139,7 +139,13 @@
     <string name="ef_transfer_not_pending">该请求已处理或失效，已为你刷新。</string>
     <string name="ef_transfer_missing">转移请求不存在或已被取消。</string>
     <string name="ef_transfer_not_target">这条请求不是发给你的，无法操作。</string>
+    <string name="ef_transfer_invalid_target">不能选择自己或无效成员。</string>
     <string name="ef_invalid_transfer_target">不能选择自己或无效成员。</string>
+    <string name="ef_transfer_recovery_title">有未完成的房主操作</string>
+    <string name="ef_transfer_recovery_message">上次房主转移或解散操作的结果未知。继续会使用原请求重试，不会创建新操作；放弃不会回滚服务器。</string>
+    <string name="ef_transfer_recovery_continue">继续上次操作</string>
+    <string name="ef_transfer_recovery_discard">放弃</string>
+    <string name="ef_transfer_recovery_discarded">已放弃本地待处理记录。</string>
 
     <string name="ef_household_version_conflict">家庭成员信息已更新，请重试。</string>
 

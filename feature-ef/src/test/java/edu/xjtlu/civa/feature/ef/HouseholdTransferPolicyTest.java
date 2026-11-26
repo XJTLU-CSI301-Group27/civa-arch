@@ -41,6 +41,16 @@ public class HouseholdTransferPolicyTest {
         assertFalse(HouseholdTransferPolicy.isTarget(null, OTHER));
     }
 
+    @Test public void sameKeyIsOnlyReusedForTheExactSameIntent() {
+        assertTrue(HouseholdTransferPolicy.sameIntent(
+                "requestOwnershipTransfer", OTHER, "requestOwnershipTransfer", OTHER));
+        assertFalse(HouseholdTransferPolicy.sameIntent(
+                "requestOwnershipTransfer", OTHER, "requestOwnershipTransfer", ME));
+        assertFalse(HouseholdTransferPolicy.sameIntent(
+                "requestOwnershipTransfer", OTHER, "acceptOwnershipTransfer", OTHER));
+        assertFalse(HouseholdTransferPolicy.sameIntent(null, null, "requestOwnershipTransfer", OTHER));
+    }
+
     private static Membership member(String userId, boolean active) {
         Membership member = new Membership();
         member.setUserId(UUID.fromString(userId));

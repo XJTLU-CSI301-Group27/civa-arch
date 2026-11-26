@@ -139,7 +139,13 @@
     <string name="ef_transfer_not_pending">This request was already handled or expired; the page has been refreshed.</string>
     <string name="ef_transfer_missing">The transfer request no longer exists.</string>
     <string name="ef_transfer_not_target">This request is not addressed to you.</string>
+    <string name="ef_transfer_invalid_target">Choose another active member, not yourself.</string>
     <string name="ef_invalid_transfer_target">Choose another active member, not yourself.</string>
+    <string name="ef_transfer_recovery_title">Unfinished ownership action</string>
+    <string name="ef_transfer_recovery_message">The result of the last ownership transfer or dissolve is unknown. Continue retries the original request without creating a new one; Discard does not roll back the server.</string>
+    <string name="ef_transfer_recovery_continue">Continue original</string>
+    <string name="ef_transfer_recovery_discard">Discard</string>
+    <string name="ef_transfer_recovery_discarded">Local pending record discarded.</string>
 
     <string name="ef_household_version_conflict">Household member info has been updated. Try again.</string>
 

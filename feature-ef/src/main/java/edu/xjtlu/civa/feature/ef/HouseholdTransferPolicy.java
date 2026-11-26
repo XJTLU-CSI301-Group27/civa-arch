@@ -35,4 +35,11 @@ public final class HouseholdTransferPolicy {
         return request != null && request.getTargetUserId() != null && currentUserId != null
                 && currentUserId.equals(request.getTargetUserId().toString());
     }
+
+    /** A pending idempotency key may only be reused for the exact same operation and payload. */
+    public static boolean sameIntent(String pendingOperation, String pendingPayload,
+                                     String operation, String payload) {
+        return pendingOperation != null && pendingPayload != null
+                && pendingOperation.equals(operation) && pendingPayload.equals(payload);
+    }
 }
