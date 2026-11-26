@@ -65,6 +65,18 @@
   ],
   "symbols": [
     {
+      "type": "edu.xjtlu.civa.feature.ac.plan.PlanFragment",
+      "kind": "class",
+      "owner": "A",
+      "consumers": [
+        "app"
+      ],
+      "thread": "main",
+      "members": [
+        "PlanFragment()"
+      ]
+    },
+    {
       "type": "edu.xjtlu.civa.feature.bd.BdTodayPlanReader",
       "kind": "class",
       "owner": "BD",

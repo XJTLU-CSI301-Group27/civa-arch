@@ -45,11 +45,6 @@ public class ApiExceptionHandler {
         return response(400, "VALIDATION_ERROR", request, new HttpHeaders());
     }
 
-    @ExceptionHandler(AuthController.NotImplemented.class)
-    ResponseEntity<Map<String, Object>> notImplemented(HttpServletRequest request) {
-        return response(501, "CONTRACT_NOT_IMPLEMENTED", request, new HttpHeaders());
-    }
-
     @ExceptionHandler(DataAccessException.class)
     ResponseEntity<Map<String, Object>> databaseFailure(HttpServletRequest request) {
         return response(500, "INTERNAL_ERROR", request, new HttpHeaders());

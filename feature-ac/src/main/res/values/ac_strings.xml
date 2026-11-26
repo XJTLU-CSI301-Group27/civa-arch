@@ -137,6 +137,24 @@
     <string name="ac_diary_home_pick">至少选一样冰箱食材</string>
     <string name="ac_diary_home_too_much">用量超过了冰箱里现有数量</string>
     <string name="ac_diary_home_consume_failed">扣减冰箱失败，未记食记</string>
+    <!-- Household meal plan -->
+    <string name="ac_plan_title">家庭计划</string>
+    <string name="ac_plan_subtitle">%1$s – %2$s · 早餐 / 午餐 / 晚餐</string>
+    <string name="ac_plan_loading">正在加载计划…</string>
+    <string name="ac_plan_error">计划加载失败，请下拉刷新或稍后重试</string>
+    <string name="ac_plan_join_home">先加入家庭，再和家人一起排餐吧</string>
+    <string name="ac_plan_refresh">刷新计划</string>
+    <string name="ac_plan_choose">选菜</string>
+    <string name="ac_plan_clear">清空</string>
+    <string name="ac_plan_lock">锁定</string>
+    <string name="ac_plan_unlock">解锁</string>
+    <string name="ac_plan_locked">这道餐次已锁定，先解锁再改</string>
+    <string name="ac_plan_no_recipes">家庭菜谱还是空的，先去菜谱写一道吧</string>
+    <string name="ac_plan_saved">计划已保存</string>
+    <string name="ac_plan_conflict">计划已被家人修改，已为你刷新</string>
+    <string name="ac_plan_choose_title">%1$s 选一道菜</string>
+    <string name="ac_plan_empty">未安排</string>
+    <string name="ac_plan_unknown_dish">未知菜谱</string>
 </resources>
 
 

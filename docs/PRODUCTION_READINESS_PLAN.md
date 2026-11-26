@@ -118,6 +118,21 @@ M0（基线，可并行）
 
 ## 5. 进度记录（倒序）
 
+### 2026-11-26（第六轮：契约 57/57 全部实现）
+
+- ✅ 家庭计划（planning 4）：listPlanSlots（14 天分页）、
+eplacePlanSlot（版本/锁定校验）、
+  setPlanSlotLock、commitPlan（幂等、保留锁定餐次、事务提交）。新增 PlanHttpIntegrationTest。
+- ✅ 媒体（media 2）：uploadMedia（jpeg/png、1B–5MB、个人/家庭 scope、幂等）、getMediaContent
+  （仅本人或家庭成员可读）。新增 MediaHttpIntegrationTest；服务端 multipart 上限 6MB。
+- ✅ 口味偏好（preferences 2）：getPreferences / updatePreferences（标签、忌口食材、版本冲突）。
+  新增 PreferencesHttpIntegrationTest。
+- ✅ 客户端「家庭计划」页：今天页右上角「计划」进入；14 天 × 三餐，选菜/清空/锁定/解锁；
+  与家庭成员共享同一计划；冲突时提示。演示已验证（DINNER 选 TomatoEgg 并锁定，服务端
+  返回 version=2 / locked=true）。
+- ⏳ 仍缺客户端界面：图片媒体的选图/显示、口味偏好编辑页（接口均已实现）。
+- 契约进度：**57 / 57** 操作全部实现（不再有 501 占位）；服务端测试 66/66、Android 134 项、CI 全绿。
+
 ### 2026-11-26（第五轮）
 
 - ✅ 记一餐先选场景：**在家吃（用冰箱食材）** / **在外面吃**。

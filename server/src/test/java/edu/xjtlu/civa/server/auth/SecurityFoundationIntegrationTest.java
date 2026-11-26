@@ -60,13 +60,13 @@ class SecurityFoundationIntegrationTest {
         http.perform(get("/api/v1/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(userId));
         http.perform(get("/api/v1/me/preferences").header("Authorization", "Bearer " + token))
-                .andExpect(status().isNotImplemented()).andExpect(jsonPath("$.code").value("CONTRACT_NOT_IMPLEMENTED"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
         http.perform(get("/api/v1/me/preferences").header("Authorization", "Bearer " + token))
-                .andExpect(status().isNotImplemented()).andExpect(jsonPath("$.code").value("CONTRACT_NOT_IMPLEMENTED"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
         http.perform(get("/api/v1/media/{id}/content", UUID.randomUUID()).header("Authorization", "Bearer " + token)
                         .accept(MediaType.IMAGE_PNG))
-                .andExpect(status().isNotImplemented()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.code").value("CONTRACT_NOT_IMPLEMENTED"));
+                .andExpect(status().isNotFound()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
         String otherName = "u_" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         AuthService.User other = auth.register(otherName, "Other", "long-password", "UTC");
         AuthService.Login otherLogin = auth.login(otherName, "long-password");

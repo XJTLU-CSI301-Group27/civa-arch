@@ -8,6 +8,7 @@ import edu.xjtlu.civa.server.api.model.Preference;
 import edu.xjtlu.civa.server.api.model.RegisterRequest;
 import edu.xjtlu.civa.server.api.model.UpdatePreferenceRequest;
 import edu.xjtlu.civa.server.api.model.User;
+import edu.xjtlu.civa.server.profile.PreferencesService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -22,9 +23,14 @@ import org.springframework.web.bind.annotation.RestController;
 class AuthController implements AuthApi, ProfileApi {
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
     private final AuthService auth;
+    private final PreferencesService preferences;
     private final HttpServletRequest request;
 
-    AuthController(AuthService auth, HttpServletRequest request) { this.auth = auth; this.request = request; }
+    AuthController(AuthService auth, PreferencesService preferences, HttpServletRequest request) {
+        this.auth = auth;
+        this.preferences = preferences;
+        this.request = request;
+    }
 
     @Override public ResponseEntity<User> register(RegisterRequest input) {
         return ResponseEntity.status(HttpStatus.CREATED).body(toWire(auth.register(
@@ -47,8 +53,17 @@ class AuthController implements AuthApi, ProfileApi {
         return ResponseEntity.ok(toWire(auth.findUser(userId)));
     }
 
-    @Override public ResponseEntity<Preference> getPreferences() { throw new NotImplemented(); }
-    @Override public ResponseEntity<Preference> updatePreferences(UpdatePreferenceRequest input) { throw new NotImplemented(); }
+    @Override public ResponseEntity<Preference> getPreferences() {
+        return ResponseEntity.ok(preferences.get(actor()));
+    }
+
+    @Override public ResponseEntity<Preference> updatePreferences(UpdatePreferenceRequest input) {
+        return ResponseEntity.ok(preferences.update(actor(), input));
+    }
+
+    private static UUID actor() {
+        return (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
 
     private static User toWire(AuthService.User user) {
         return new User(user.id, time(user.createdAt), time(user.updatedAt), user.username, user.displayName, user.zoneId, user.householdId);
@@ -56,5 +71,4 @@ class AuthController implements AuthApi, ProfileApi {
 
     private static String time(Instant instant) { return TIME.format(instant); }
 
-    static final class NotImplemented extends RuntimeException { }
 }

@@ -66,6 +66,8 @@ public final class BdHomeFragment extends Fragment {
         rendered = null;
         PressBounce.bindButtons(view);
         view.findViewById(R.id.bd_home_calendar).setOnClickListener(ignored -> showCalendar());
+        view.findViewById(R.id.bd_home_plan).setOnClickListener(ignored ->
+                ((BdHost) requireActivity()).navigate(edu.xjtlu.civa.core.ui.Route.PLAN, null));
         model.changes.observe(getViewLifecycleOwner(), ignored -> render());
         Fragment restoredPicker = getChildFragmentManager().findFragmentByTag(CALENDAR);
         if (restoredPicker instanceof MaterialDatePicker<?>) bindCalendar((MaterialDatePicker<?>) restoredPicker);

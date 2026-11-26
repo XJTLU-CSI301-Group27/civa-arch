@@ -9,7 +9,8 @@
                 </LinearLayout>
                 <TextView android:id="@+id/bd_home_date" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textSize="10sp" android:textColor="@color/civa_muted" android:letterSpacing="0.14" tools:text="2026.11.20" />
             </LinearLayout>
-            <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/bd_home_calendar" android:layout_width="48dp" android:layout_height="48dp" android:padding="10dp" android:background="@drawable/bd_home_calendar_background" app:srcCompat="@drawable/bd_ic_calendar" android:contentDescription="@string/bd_home_calendar" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/bd_home_plan" style="@style/BdWidget.AddDish" android:layout_width="wrap_content" android:layout_height="48dp" android:layout_marginEnd="6dp" android:text="@string/bd_home_plan" />
+    <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/bd_home_calendar" android:layout_width="48dp" android:layout_height="48dp" android:padding="10dp" android:background="@drawable/bd_home_calendar_background" app:srcCompat="@drawable/bd_ic_calendar" android:contentDescription="@string/bd_home_calendar" />
         </LinearLayout>
         <FrameLayout android:id="@+id/bd_home_hero" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:paddingVertical="3dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:layout_gravity="center" android:orientation="horizontal" android:gravity="center">

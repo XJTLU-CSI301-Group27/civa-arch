@@ -14,4 +14,5 @@
     <string name="bd_home_confirm_date">选好这一天</string>
     <string name="bd_home_cancel">取消</string>
     <string name="bd_home_selected_date">打开日历，当前为%1$s，%2$s的食谱</string>
+    <string name="bd_home_plan">计划</string>
 </resources>
