@@ -335,6 +335,19 @@ final class ImportReviewDialog {
                 reason.setText(R.string.ac_import_reason_choose);
                 return;
             }
+            if (state.isTracked()) {
+                int position = trackedSpinner.getSelectedItemPosition();
+                Ingredient selected = position > 0 && position - 1 < dictionary.size()
+                        ? dictionary.get(position - 1) : null;
+                String original = state.line().source() == null ? "" : state.line().source().name();
+                if (state.line().ingredientId() == null && selected != null
+                        && original != null && !original.trim().isEmpty()
+                        && !original.trim().equalsIgnoreCase(selected.getName())) {
+                    reason.setText(context.getString(R.string.ac_import_reason_name_replaced,
+                            original.trim(), selected.getName()));
+                    return;
+                }
+            }
             ImportRowState.Error error = state.validate(new HashSet<>(), dictionary);
             reason.setText(error == ImportRowState.Error.NONE
                     ? R.string.ac_import_recognized : message(context, error));

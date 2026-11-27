@@ -120,6 +120,7 @@
     <string name="ac_import_reason_choose">请选择计入库存或仅用于菜谱说明</string>
     <string name="ac_import_reason_recipe_name">请填写辅料名称</string>
     <string name="ac_import_reason_too_long">文本过长，请缩短后再保存</string>
+    <string name="ac_import_reason_name_replaced">原始“%1$s”将替换为规范食材“%2$s”，请确认这是你要的选择。</string>
     <string name="ac_import_pending_title">有待确认的创建请求</string>
     <string name="ac_import_pending_message">已有一条创建请求结果不确定。请先在家庭菜谱中处理原请求，不要直接再次导入，以免重复创建。</string>
     <string name="ac_import_pending_unavailable">本地待确认记录不可用，暂时不能安全导入。</string>

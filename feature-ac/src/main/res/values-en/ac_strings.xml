@@ -120,6 +120,7 @@
     <string name="ac_import_reason_choose">Choose count in stock or description only</string>
     <string name="ac_import_reason_recipe_name">Enter a description-only name</string>
     <string name="ac_import_reason_too_long">Text is too long; shorten it before saving</string>
+    <string name="ac_import_reason_name_replaced">Original “%1$s” will be replaced by canonical “%2$s”; confirm this is intentional.</string>
     <string name="ac_import_pending_title">A create request is awaiting confirmation</string>
     <string name="ac_import_pending_message">A previous create has an uncertain result. Resolve the original request in household recipes before importing again to avoid duplicates.</string>
     <string name="ac_import_pending_unavailable">The local pending record is unavailable; import is paused for safety.</string>
