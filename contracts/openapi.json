@@ -18622,6 +18622,30 @@
           "trackStock"
         ]
       },
+      "RecipeOnlyIngredient": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "amountText": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "nullable": true
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
       "Recipe": {
         "type": "object",
         "additionalProperties": false,
@@ -18663,8 +18687,16 @@
             "items": {
               "$ref": "#/components/schemas/RecipeIngredient"
             },
-            "minItems": 1,
+            "minItems": 0,
             "maxItems": 100
+          },
+          "recipeOnlyIngredients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecipeOnlyIngredient"
+            },
+            "maxItems": 100,
+            "nullable": true
           },
           "yieldServings": {
             "type": "string",
@@ -19599,8 +19631,16 @@
             "items": {
               "$ref": "#/components/schemas/RecipeIngredient"
             },
-            "minItems": 1,
+            "minItems": 0,
             "maxItems": 100
+          },
+          "recipeOnlyIngredients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecipeOnlyIngredient"
+            },
+            "maxItems": 100,
+            "nullable": true
           },
           "yieldServings": {
             "type": "string",
@@ -19662,8 +19702,16 @@
             "items": {
               "$ref": "#/components/schemas/RecipeIngredient"
             },
-            "minItems": 1,
+            "minItems": 0,
             "maxItems": 100
+          },
+          "recipeOnlyIngredients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecipeOnlyIngredient"
+            },
+            "maxItems": 100,
+            "nullable": true
           },
           "yieldServings": {
             "type": "string",

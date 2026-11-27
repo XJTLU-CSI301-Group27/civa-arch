@@ -263,6 +263,9 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                     .yieldServings(request.getYieldServings())
                     .durationMinutes(request.getDurationMinutes())
                     .tags(request.getTags())
+                    // B1 has no recipe-only editor yet; omit the field so an old recipe's
+                    // descriptive ingredients are preserved by the server.
+                    .recipeOnlyIngredients(null)
                     .imageId(imageId)
                     .expectedVersion(existing.getVersion());
             host.calls().enqueue(host.api().recipe().updateRecipe(home, existing.getId(), update),

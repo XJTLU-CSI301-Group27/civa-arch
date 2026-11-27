@@ -6,5 +6,6 @@
   "useTags": true,
   "skipDefaultInterface": true,
   "openApiNullable": false,
+  "containerDefaultToNull": true,
   "hideGenerationTimestamp": true
 }
