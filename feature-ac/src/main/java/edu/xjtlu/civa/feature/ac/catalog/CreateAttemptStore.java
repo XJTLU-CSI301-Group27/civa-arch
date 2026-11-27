@@ -36,6 +36,11 @@ final class CreateAttemptStore {
 
     /** Account-scoped; returns at most one matching create for the current household. Never sends. */
     void recover(String userId, UUID householdId, ApiCallback<CreateAttempt> callback) {
+        recover(userId, householdId, null, callback);
+    }
+
+    void recover(String userId, UUID householdId, CreateAttempt.Source required,
+                 ApiCallback<CreateAttempt> callback) {
         try {
             store.listPending(userId, new ApiCallback<List<PendingWrite>>() {
                 @Override public void onSuccess(List<PendingWrite> value) {
@@ -48,6 +53,7 @@ final class CreateAttemptStore {
                                         "Pending create record is corrupt", null, Collections.emptyList()));
                                 return;
                             }
+                            if (required != null && attempt.source != required) continue;
                             if (householdId != null && householdId.equals(attempt.householdId)) {
                                 callback.onSuccess(attempt);
                                 return;
@@ -69,6 +75,7 @@ final class CreateAttemptStore {
         persisted.version = 1;
         persisted.operation = OPERATION;
         persisted.fingerprint = attempt.fingerprint;
+        persisted.source = attempt.source == null ? CreateAttempt.Source.MANUAL.name() : attempt.source.name();
         persisted.payload = attempt.payload;
         return GSON.toJson(persisted);
     }
@@ -85,9 +92,16 @@ final class CreateAttemptStore {
         if (persisted == null || persisted.version != 1 || persisted.payload == null
                 || persisted.fingerprint == null) return null;
         try {
+            CreateAttempt.Source source;
+            try {
+                source = persisted.source == null ? CreateAttempt.Source.MANUAL
+                        : CreateAttempt.Source.valueOf(persisted.source);
+            } catch (IllegalArgumentException invalid) {
+                return null;
+            }
             return CreateAttempt.recovered(UUID.fromString(write.key), persisted.payload,
                     persisted.fingerprint, UUID.fromString(write.userId),
-                    UUID.fromString(write.householdId));
+                    UUID.fromString(write.householdId), source);
         } catch (IllegalArgumentException invalid) {
             return null;
         }
@@ -102,6 +116,7 @@ final class CreateAttemptStore {
         int version;
         String operation;
         String fingerprint;
+        String source;
         CreateRecipeRequest payload;
     }
 }

@@ -61,6 +61,9 @@ public final class RecipeCatalogDetailFragment extends Fragment {
     private boolean household;
     private boolean favorite;
     private RecordSubmissionViewModel submissions;
+    private CreateAttemptStore createStore;
+    private CreateAttempt importAttempt;
+    private boolean importing;
 
     public static RecipeCatalogDetailFragment create(@Nullable String recipeId) {
         RecipeCatalogDetailFragment fragment = new RecipeCatalogDetailFragment();
@@ -79,6 +82,11 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         viewCallbacks.startView();
         host = (AcHost) requireActivity();
         submissions = new ViewModelProvider(requireActivity()).get(RecordSubmissionViewModel.class);
+        try {
+            createStore = new CreateAttemptStore(host.calls());
+        } catch (RuntimeException unavailable) {
+            createStore = null;
+        }
         view.findViewById(R.id.ac_detail_close).setOnClickListener(ignored -> host.navigate(Route.RECIPES, null));
         entityId = getArguments() == null ? null : getArguments().getString(ARG_ID);
         if (entityId == null) {
@@ -106,6 +114,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             loadCatalog(view);
         }
         resumeCooking();
+        if (household) resumeImportPending();
     }
 
     private void loadCatalog(View view) {
@@ -680,26 +689,87 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             List<String> finalSteps = steps;
             String finalYield = sourceYield;
             Integer finalDuration = sourceDuration;
-            ImportReviewDialog.show(requireContext(), result.lines(), dictionaryNow,
+            Runnable show = () -> ImportReviewDialog.show(requireContext(), result.lines(), dictionaryNow,
                     finalYield, finalDuration,
-                    (ingredients, yield, duration) -> createImported(home, finalName, finalSteps,
-                            ingredients, yield, duration));
+                    (tracked, recipeOnly, yield, duration) -> createImported(home, finalName, finalSteps,
+                            tracked, recipeOnly, yield, duration));
+            ensureNoPendingCreate(home, show);
+        });
+    }
+
+    private void ensureNoPendingCreate(java.util.UUID home, Runnable then) {
+        String user = userId();
+        if (createStore == null) {
+            // No local pending store means we cannot guarantee import recovery; do not pretend.
+            toast(R.string.ac_import_pending_unavailable);
+            return;
+        }
+        if (user == null || !isAdded()) return;
+        createStore.recover(user, home, null, new ApiCallback<CreateAttempt>() {
+            @Override public void onSuccess(@Nullable CreateAttempt value) {
+                if (!isAdded()) return;
+                if (value != null) {
+                    new MaterialAlertDialogBuilder(requireContext())
+                            .setTitle(R.string.ac_import_pending_title)
+                            .setMessage(R.string.ac_import_pending_message)
+                            .setPositiveButton(android.R.string.ok, null)
+                            .show();
+                    return;
+                }
+                then.run();
+            }
+
+            @Override public void onError(ApiError error) {
+                if (!isAdded()) return;
+                toast(R.string.ac_import_pending_unavailable);
+            }
         });
     }
 
     private void createImported(java.util.UUID home, String name, List<String> steps,
-                                List<edu.xjtlu.civa.api.model.RecipeIngredient> ingredients,
+                                List<edu.xjtlu.civa.api.model.RecipeIngredient> tracked,
+                                List<edu.xjtlu.civa.api.model.RecipeOnlyIngredient> recipeOnly,
                                 String yield, int duration) {
-        if (!isAdded()) return;
-        CreateRecipeRequest request = HouseholdRecipes.verifiedRequest(name, steps, ingredients,
-                yield, duration, dictionary == null ? List.of() : dictionary);
+        if (!isAdded() || importing) return;
+        if (tracked.isEmpty() && recipeOnly.isEmpty()) {
+            toast(R.string.ac_import_invalid);
+            return;
+        }
+        CreateRecipeRequest request = ImportRequest.build(name, steps, tracked, recipeOnly, yield, duration);
         if (request == null) {
             toast(R.string.ac_import_invalid);
             return;
         }
-        host.calls().enqueue(host.api().recipe().createRecipe(home, UUID.randomUUID(), request),
+        String user = userId();
+        if (user == null || createStore == null) {
+            toast(R.string.ac_import_pending_unavailable);
+            return;
+        }
+        importAttempt = CreateAttempt.start(UUID.randomUUID(), request, java.util.UUID.fromString(user),
+                home, CreateAttempt.Source.IMPORT);
+        importing = true;
+        createStore.record(importAttempt, new ApiCallback<Void>() {
+            @Override public void onSuccess(@Nullable Void value) {
+                if (!isAdded()) return;
+                sendImport(importAttempt);
+            }
+
+            @Override public void onError(ApiError error) {
+                importing = false;
+                if (isAdded()) toast(R.string.ac_import_pending_unavailable);
+            }
+        });
+    }
+
+    private void sendImport(CreateAttempt attempt) {
+        if (!isAdded() || attempt == null) return;
+        importing = true;
+        host.calls().enqueue(host.api().recipe().createRecipe(attempt.householdId, attempt.key, attempt.payload),
                 viewCallbacks.bind(new ApiCallback<Recipe>() {
                     @Override public void onSuccess(@Nullable Recipe value) {
+                        importing = false;
+                        attempt.confirmed();
+                        if (createStore != null) createStore.confirm(attempt, importStorageCallback());
                         if (!isAdded()) return;
                         toast(R.string.ac_catalog_added_to_home);
                         if (value != null && value.getId() != null) {
@@ -708,10 +778,77 @@ public final class RecipeCatalogDetailFragment extends Fragment {
                     }
 
                     @Override public void onError(ApiError error) {
-                        if (!isAdded()) return;
-                        toast(R.string.ac_catalog_error);
+                        importing = false;
+                        if (definitiveImportFailure(error)) {
+                            attempt.failedNotExecuted();
+                            if (createStore != null) createStore.confirm(attempt, importStorageCallback());
+                            if (isAdded()) toast(R.string.ac_catalog_error);
+                        } else {
+                            attempt.unknown();
+                            if (createStore != null) createStore.markUnknown(attempt, importStorageCallback());
+                            if (isAdded()) showImportRetry(attempt);
+                        }
                     }
                 }));
+    }
+
+    private void showImportRetry(CreateAttempt attempt) {
+        if (!isAdded()) return;
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.ac_import_pending_title)
+                .setMessage(R.string.ac_import_unknown_message)
+                .setCancelable(false)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.ac_import_retry, (dialog, which) -> retryImport(attempt))
+                .show();
+    }
+
+    private void retryImport(CreateAttempt attempt) {
+        String user = userId();
+        if (attempt == null || user == null
+                || !attempt.matches(java.util.UUID.fromString(user), currentHousehold())) {
+            toast(R.string.ac_recipe_attempt_identity);
+            return;
+        }
+        attempt.retrying();
+        sendImport(attempt);
+    }
+
+    private void resumeImportPending() {
+        java.util.UUID home = currentHousehold();
+        String user = userId();
+        if (home == null || user == null || createStore == null) return;
+        createStore.recover(user, home, CreateAttempt.Source.IMPORT, new ApiCallback<CreateAttempt>() {
+            @Override public void onSuccess(@Nullable CreateAttempt value) {
+                if (!isAdded() || value == null) return;
+                importAttempt = value;
+                showImportRetry(value);
+            }
+
+            @Override public void onError(ApiError error) { }
+        });
+    }
+
+    @Nullable private java.util.UUID currentHousehold() {
+        return host == null || host.sessions() == null ? null : uuidOrNull(host.sessions().currentHouseholdId());
+    }
+
+    private static boolean definitiveImportFailure(ApiError error) {
+        if (error == null || error.code == null) return false;
+        return switch (error.code) {
+            case "VALIDATION_ERROR", "NOT_FOUND", "FORBIDDEN", "HOUSEHOLD_REQUIRED",
+                    "INVALID_INGREDIENT" -> true;
+            default -> false;
+        };
+    }
+
+    private ApiCallback<Void> importStorageCallback() {
+        return new ApiCallback<Void>() {
+            @Override public void onSuccess(@Nullable Void value) { }
+            @Override public void onError(ApiError error) {
+                if (isAdded()) toast(R.string.ac_import_pending_unavailable);
+            }
+        };
     }
 
     private static String validYield(String value) {

@@ -17,7 +17,7 @@ import androidx.appcompat.app.AlertDialog;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import edu.xjtlu.civa.api.model.Ingredient;
 import edu.xjtlu.civa.api.model.RecipeIngredient;
-import edu.xjtlu.civa.api.model.Unit;
+import edu.xjtlu.civa.api.model.RecipeOnlyIngredient;
 import edu.xjtlu.civa.feature.ac.AcText;
 import edu.xjtlu.civa.feature.ac.R;
 import java.math.BigDecimal;
@@ -29,12 +29,13 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Small import verification sheet: A/B rows are prefilled, C rows must be corrected, and nothing is
- * created until every row has an ingredient, a positive quantity and a confirmed yield/duration.
+ * Import verification sheet. A/B default to TRACKED, C starts undecided, and either type can be
+ * chosen explicitly. RECIPE_ONLY keeps the original free text and never fabricates an amount.
  */
 final class ImportReviewDialog {
     interface Listener {
-        void onConfirm(List<RecipeIngredient> ingredients, String yield, int duration);
+        void onConfirm(List<RecipeIngredient> tracked, List<RecipeOnlyIngredient> recipeOnly,
+                       String yield, int duration);
     }
 
     private ImportReviewDialog() { }
@@ -43,8 +44,7 @@ final class ImportReviewDialog {
                      List<Ingredient> dictionary, String initialYield, Integer initialDuration,
                      Listener listener) {
         if (context == null || lines == null || lines.isEmpty()) return;
-        State state = new State(context, lines, dictionary, initialYield, initialDuration, listener);
-        state.show();
+        new State(context, lines, dictionary, initialYield, initialDuration, listener).show();
     }
 
     private static final class State {
@@ -84,7 +84,6 @@ final class ImportReviewDialog {
             content.addView(numbers);
 
             for (Row row : rows) content.addView(row.root);
-
             content.addView(error);
             ScrollView scroll = new ScrollView(context);
             scroll.setFillViewport(true);
@@ -106,38 +105,53 @@ final class ImportReviewDialog {
             error.setVisibility(View.GONE);
             BigDecimal yieldValue = IngredientImportParser.number(yield.getText().toString());
             if (yieldValue == null || yieldValue.signum() <= 0) {
-                fail();
+                fail(R.string.ac_import_invalid);
                 return;
             }
             int minutes;
             try {
                 minutes = Integer.parseInt(duration.getText().toString().trim());
             } catch (NumberFormatException invalid) {
-                fail();
+                fail(R.string.ac_import_invalid);
                 return;
             }
             if (minutes < 1 || minutes > 1440) {
-                fail();
+                fail(R.string.ac_import_invalid);
                 return;
             }
 
-            List<RecipeIngredient> ingredients = new ArrayList<>();
+            List<RecipeIngredient> tracked = new ArrayList<>();
+            List<RecipeOnlyIngredient> only = new ArrayList<>();
             Set<UUID> ids = new HashSet<>();
             int invalid = 0;
             Row firstInvalid = null;
             for (Row row : rows) {
                 if (row.removed) continue;
-                int reason = row.validate(ids);
-                if (reason != 0) {
+                ImportRowState.Error reason = row.state.validate(ids, dictionary);
+                if (reason != ImportRowState.Error.NONE) {
                     row.markInvalid(reason);
                     invalid++;
                     if (firstInvalid == null) firstInvalid = row;
+                    continue;
+                }
+                if (row.state.isTracked()) {
+                    RecipeIngredient item = row.state.toTracked(dictionary);
+                    if (item == null) {
+                        row.markInvalid(ImportRowState.Error.INGREDIENT);
+                        invalid++;
+                        if (firstInvalid == null) firstInvalid = row;
+                    } else {
+                        tracked.add(item);
+                    }
                 } else {
-                    Ingredient ingredient = row.selected();
-                    BigDecimal quantity = IngredientImportParser.number(row.quantity.getText().toString());
-                    ingredients.add(new RecipeIngredient().ingredientId(ingredient.getId())
-                            .quantity(IngredientImportParser.text(quantity))
-                            .unit(ingredient.getUnit()).trackStock(true));
+                    RecipeOnlyIngredient item = row.state.toRecipeOnly();
+                    if (item == null) {
+                        row.markInvalid(ImportRowState.Error.NAME);
+                        invalid++;
+                        if (firstInvalid == null) firstInvalid = row;
+                    } else {
+                        only.add(item);
+                    }
                 }
             }
             if (invalid > 0) {
@@ -146,193 +160,245 @@ final class ImportReviewDialog {
                 if (firstInvalid != null) firstInvalid.root.requestFocus();
                 return;
             }
-            if (ingredients.isEmpty() || dictionary.isEmpty()) {
-                error.setText(R.string.ac_import_no_rows);
-                error.setVisibility(View.VISIBLE);
+            if (tracked.isEmpty() && only.isEmpty()) {
+                fail(R.string.ac_import_no_rows);
                 return;
             }
             String confirmedYield = IngredientImportParser.text(yieldValue);
             confirmed = true;
             dialog.dismiss();
-            listener.onConfirm(ingredients, confirmedYield, minutes);
+            listener.onConfirm(tracked, only, confirmedYield, minutes);
         }
 
-        private void fail() {
-            error.setText(R.string.ac_import_invalid);
+        private void fail(int message) {
+            error.setText(message);
             error.setVisibility(View.VISIBLE);
-        }
-
-        private LinearLayout.LayoutParams weight() {
-            return new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         }
     }
 
     private static final class Row {
         final LinearLayout root;
-        final Spinner spinner;
-        final EditText quantity;
-        final TextView unit;
-        final TextView reason;
-        final TextView action;
+        final ImportRowState state;
         final List<Ingredient> dictionary;
-        final String initialReason;
+        final Spinner mode, trackedSpinner;
+        final EditText quantity, recipeName, amount, note;
+        final TextView unit, reason, action, preview;
         boolean removed;
 
         Row(Context context, IngredientImportParser.Line line, List<Ingredient> dictionary) {
             this.dictionary = dictionary;
+            this.state = new ImportRowState(line);
             root = column(context);
             root.setPadding(0, dp(10), 0, dp(6));
             root.addView(text(context, context.getString(R.string.ac_import_source,
                     source(line.source())), 12, android.graphics.Color.GRAY));
 
-            LinearLayout selection = row(context);
-            selection.setPadding(0, dp(6), 0, 0);
-            spinner = new Spinner(context);
+            mode = new Spinner(context);
+            List<String> modes = new ArrayList<>();
+            modes.add(context.getString(R.string.ac_import_mode_choose));
+            modes.add(context.getString(R.string.ac_import_mode_tracked));
+            modes.add(context.getString(R.string.ac_import_mode_recipe_only));
+            ArrayAdapter<String> modeAdapter = new ArrayAdapter<>(context,
+                    android.R.layout.simple_spinner_item, modes);
+            modeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            mode.setAdapter(modeAdapter);
+            mode.setSelection(modeIndex(state.mode()), false);
+            mode.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                    state.mode(modeFrom(position));
+                    updateControls(context);
+                }
+                @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+            });
+            root.addView(mode, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            LinearLayout tracked = row(context);
+            tracked.setPadding(0, dp(4), 0, 0);
+            trackedSpinner = new Spinner(context);
             List<String> choices = new ArrayList<>();
             choices.add(context.getString(R.string.ac_import_choose));
             for (Ingredient ingredient : dictionary) choices.add(ingredient.getName());
             ArrayAdapter<String> adapter = new ArrayAdapter<>(context,
                     android.R.layout.simple_spinner_item, choices);
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spinner.setAdapter(adapter);
-            selection.addView(spinner, new LinearLayout.LayoutParams(0,
+            trackedSpinner.setAdapter(adapter);
+            trackedSpinner.setSelection(indexOf(dictionary, state.trackedId()), false);
+            trackedSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                    state.trackedId(position > 0 && position - 1 < dictionary.size()
+                            ? dictionary.get(position - 1).getId() : null);
+                    updateUnit(context);
+                    updateReason(context);
+                }
+                @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
+            });
+            tracked.addView(trackedSpinner, new LinearLayout.LayoutParams(0,
                     ViewGroup.LayoutParams.WRAP_CONTENT, 1.4f));
-
-            quantity = field(context, R.string.ac_import_quantity,
-                    line.quantity() == null ? "" : line.quantity(), false);
-            selection.addView(quantity, new LinearLayout.LayoutParams(0,
+            quantity = field(context, R.string.ac_import_quantity, state.quantity() == null ? "" : state.quantity(), false);
+            quantity.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+                @Override public void afterTextChanged(Editable s) {
+                    state.quantity(s.toString());
+                    updateReason(context);
+                }
+            });
+            tracked.addView(quantity, new LinearLayout.LayoutParams(0,
                     ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             unit = text(context, "", 13, 0);
-            selection.addView(unit);
-            root.addView(selection);
+            tracked.addView(unit);
+            root.addView(tracked);
 
-            reason = text(context, reasonText(context, line), 12,
-                    line.ready() ? android.graphics.Color.GRAY : 0);
-            initialReason = reason.getText().toString();
+            LinearLayout free = column(context);
+            free.setPadding(0, dp(4), 0, 0);
+            recipeName = fieldText(context, R.string.ac_import_recipe_only_name, state.recipeName());
+            recipeName.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+                @Override public void afterTextChanged(Editable s) {
+                    state.recipeName(s.toString());
+                    updatePreview(context);
+                    updateReason(context);
+                }
+            });
+            free.addView(recipeName);
+            amount = fieldText(context, R.string.ac_import_amount, state.amountText());
+            amount.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+                @Override public void afterTextChanged(Editable s) {
+                    state.amountText(s.toString());
+                    updatePreview(context);
+                    updateReason(context);
+                }
+            });
+            free.addView(amount);
+            note = fieldText(context, R.string.ac_import_note, state.note());
+            note.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+                @Override public void afterTextChanged(Editable s) {
+                    state.note(s.toString());
+                    updatePreview(context);
+                    updateReason(context);
+                }
+            });
+            free.addView(note);
+            root.addView(free);
+
+            preview = text(context, "", 12, android.graphics.Color.GRAY);
+            root.addView(preview);
+            reason = text(context, "", 12, android.graphics.Color.GRAY);
             root.addView(reason);
-
-            action = text(context, context.getString(R.string.ac_import_remove), 12,
-                    android.graphics.Color.GRAY);
+            action = text(context, context.getString(R.string.ac_import_remove), 12, android.graphics.Color.GRAY);
             action.setPadding(0, dp(4), 0, 0);
             action.setOnClickListener(ignored -> toggleRemoved());
             root.addView(action);
 
-            int selected = indexOf(dictionary, line.ingredientId());
-            spinner.setSelection(selected, false);
-            spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-                @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                    updateUnit(context);
-                    updateReason(context);
-                }
+            updateControls(context);
+        }
 
-                @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {
-                    unit.setText("—");
-                }
-            });
-            quantity.addTextChangedListener(new TextWatcher() {
-                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-
-                @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
-
-                @Override public void afterTextChanged(Editable s) {
-                    updateReason(context);
-                }
-            });
+        private void updateControls(Context context) {
+            boolean tracked = state.isTracked();
+            boolean only = state.isRecipeOnly();
+            trackedSpinner.setEnabled(tracked);
+            quantity.setEnabled(tracked);
+            recipeName.setEnabled(only);
+            amount.setEnabled(only);
+            note.setEnabled(only);
+            if (state.hasDecision()) {
+                root.setAlpha(1f);
+            } else {
+                root.setAlpha(0.95f);
+            }
             updateUnit(context);
+            updatePreview(context);
+            updateReason(context);
+        }
+
+        private void updatePreview(Context context) {
+            if (!state.isRecipeOnly()) {
+                preview.setText("");
+                return;
+            }
+            RecipeOnlyIngredient value = state.toRecipeOnly();
+            preview.setText(value == null ? "" : context.getString(R.string.ac_import_final_text,
+                    value.getName()
+                            + (value.getAmountText() == null ? "" : " " + value.getAmountText())
+                            + (value.getNote() == null ? "" : " (" + value.getNote() + ")")));
         }
 
         private void updateReason(Context context) {
-            int selected = spinner.getSelectedItemPosition();
             reason.setTextColor(android.graphics.Color.GRAY);
-            if (selected <= 0) {
-                reason.setText(initialReason);
+            if (state.mode() == ImportRowState.Mode.NONE) {
+                reason.setText(R.string.ac_import_reason_choose);
                 return;
             }
-            String value = quantity.getText().toString().trim();
-            if (value.isEmpty()) {
-                reason.setText(R.string.ac_import_reason_missing_quantity);
-                return;
-            }
-            BigDecimal number = IngredientImportParser.number(value);
-            reason.setText(number == null || number.signum() <= 0
-                    ? R.string.ac_import_reason_invalid_quantity : R.string.ac_import_recognized);
+            ImportRowState.Error error = state.validate(new HashSet<>(), dictionary);
+            reason.setText(error == ImportRowState.Error.NONE
+                    ? R.string.ac_import_recognized : message(context, error));
         }
 
-        Ingredient selected() {
-            int selected = spinner.getSelectedItemPosition();
-            return selected > 0 && selected - 1 < dictionary.size() ? dictionary.get(selected - 1) : null;
+        void markInvalid(ImportRowState.Error error) {
+            reason.setText(message(root.getContext(), error));
+            reason.setTextColor(0xFFB00020);
         }
 
-        int validate(Set<UUID> ids) {
-            Ingredient ingredient = selected();
-            if (ingredient == null || ingredient.getUnit() == null) {
-                return R.string.ac_import_reason_no_ingredient;
-            }
-            String value = quantity.getText().toString().trim();
-            if (value.isEmpty()) return R.string.ac_import_reason_missing_quantity;
-            BigDecimal number = IngredientImportParser.number(value);
-            if (number == null || number.signum() <= 0) return R.string.ac_import_reason_invalid_quantity;
-            if (!ids.add(ingredient.getId())) return R.string.ac_import_reason_duplicate;
-            return 0;
-        }
-
-        void markInvalid(int reason) {
-            this.reason.setText(reason);
-            this.reason.setTextColor(0xFFB00020);
+        private void updateUnit(Context context) {
+            int selected = trackedSpinner.getSelectedItemPosition();
+            Ingredient ingredient = selected > 0 && selected - 1 < dictionary.size()
+                    ? dictionary.get(selected - 1) : null;
+            unit.setText(ingredient == null || ingredient.getUnit() == null ? "—"
+                    : AcText.unit(context.getResources(), ingredient.getUnit(), ingredient.getName()));
         }
 
         private void toggleRemoved() {
             removed = !removed;
             root.setAlpha(removed ? 0.45f : 1f);
-            spinner.setEnabled(!removed);
-            quantity.setEnabled(!removed);
+            mode.setEnabled(!removed);
+            trackedSpinner.setEnabled(!removed && state.isTracked());
+            quantity.setEnabled(!removed && state.isTracked());
+            recipeName.setEnabled(!removed && state.isRecipeOnly());
+            amount.setEnabled(!removed && state.isRecipeOnly());
+            note.setEnabled(!removed && state.isRecipeOnly());
             action.setText(removed ? R.string.ac_import_restore : R.string.ac_import_remove);
         }
+    }
 
-        private void updateUnit(Context context) {
-            int selected = spinner.getSelectedItemPosition();
-            Ingredient ingredient = selected > 0 && selected - 1 < dictionary.size()
-                    ? dictionary.get(selected - 1) : null;
-            if (ingredient == null || ingredient.getUnit() == null) {
-                unit.setText("—");
-                return;
-            }
-            unit.setText(AcText.unit(context.getResources(), ingredient.getUnit(), ingredient.getName()));
-        }
+    private static int modeIndex(ImportRowState.Mode mode) {
+        return switch (mode) {
+            case NONE -> 0;
+            case TRACKED -> 1;
+            case RECIPE_ONLY -> 2;
+        };
+    }
+
+    private static ImportRowState.Mode modeFrom(int position) {
+        return switch (position) {
+            case 1 -> ImportRowState.Mode.TRACKED;
+            case 2 -> ImportRowState.Mode.RECIPE_ONLY;
+            default -> ImportRowState.Mode.NONE;
+        };
+    }
+
+    private static int message(Context context, ImportRowState.Error error) {
+        return switch (error) {
+            case CHOOSE -> R.string.ac_import_reason_choose;
+            case INGREDIENT -> R.string.ac_import_reason_no_ingredient;
+            case QUANTITY -> R.string.ac_import_reason_invalid_quantity;
+            case UNIT -> R.string.ac_import_reason_missing_unit;
+            case DUPLICATE -> R.string.ac_import_reason_duplicate;
+            case NAME -> R.string.ac_import_reason_recipe_name;
+            case AMOUNT, NOTE -> R.string.ac_import_reason_too_long;
+            case NONE -> R.string.ac_import_recognized;
+        };
     }
 
     private static int indexOf(List<Ingredient> dictionary, UUID id) {
         if (id == null) return 0;
-        for (int i = 0; i < dictionary.size(); i++) {
-            if (id.equals(dictionary.get(i).getId())) return i + 1;
-        }
+        for (int i = 0; i < dictionary.size(); i++) if (id.equals(dictionary.get(i).getId())) return i + 1;
         return 0;
-    }
-
-    private static String reasonText(Context context, IngredientImportParser.Line line) {
-        if (line.ready()) {
-            if (line.kind() == IngredientImportParser.Kind.CONVERT) {
-                String target = line.unit() == null ? "" : AcText.unit(context.getResources(),
-                        line.unit(), line.ingredientName());
-                return context.getString(R.string.ac_import_converted,
-                        line.quantity() + " " + target);
-            }
-            return context.getString(R.string.ac_import_recognized);
-        }
-        return switch (line.reason()) {
-            case NO_INGREDIENT -> context.getString(R.string.ac_import_reason_no_ingredient);
-            case AMBIGUOUS_INGREDIENT -> context.getString(R.string.ac_import_reason_ambiguous);
-            case MISSING_QUANTITY -> context.getString(R.string.ac_import_reason_missing_quantity);
-            case INVALID_QUANTITY -> context.getString(R.string.ac_import_reason_invalid_quantity);
-            case MISSING_UNIT -> context.getString(R.string.ac_import_reason_missing_unit);
-            case UNKNOWN_UNIT -> context.getString(R.string.ac_import_reason_unknown_unit);
-            case UNIT_MISMATCH -> context.getString(R.string.ac_import_reason_unit_mismatch);
-            case APPROXIMATE -> context.getString(R.string.ac_import_reason_approximate);
-            case DUPLICATE -> context.getString(R.string.ac_import_reason_duplicate);
-            case OUT_OF_RANGE -> context.getString(R.string.ac_import_reason_out_of_range);
-            case CONFLICTING_MEASUREMENT -> context.getString(R.string.ac_import_reason_conflict);
-            case OK -> context.getString(R.string.ac_import_recognized);
-        };
     }
 
     private static String source(IngredientImportParser.Input input) {
@@ -364,6 +430,16 @@ final class ImportReviewDialog {
         return field;
     }
 
+    private static EditText fieldText(Context context, int hint, String value) {
+        EditText field = new EditText(context);
+        field.setHint(hint);
+        field.setText(value == null ? "" : value);
+        field.setTextSize(14);
+        field.setSingleLine(true);
+        field.setPadding(0, 0, 0, dp(6));
+        return field;
+    }
+
     private static TextView text(Context context, String value, int size, int color) {
         TextView text = new TextView(context);
         text.setText(value);
@@ -382,6 +458,10 @@ final class ImportReviewDialog {
         LinearLayout layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.HORIZONTAL);
         return layout;
+    }
+
+    private static LinearLayout.LayoutParams weight() {
+        return new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
     }
 
     private static int dp(float value) {

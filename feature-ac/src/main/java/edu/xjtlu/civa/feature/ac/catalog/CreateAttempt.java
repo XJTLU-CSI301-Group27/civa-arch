@@ -10,33 +10,47 @@ import java.util.UUID;
  */
 final class CreateAttempt {
     enum Phase { SENDING, CONFIRMED, FAILED_NOT_EXECUTED, UNKNOWN }
+    enum Source { MANUAL, IMPORT }
 
     final UUID key;
     final CreateRecipeRequest payload;
     final String fingerprint;
     final UUID userId;
     final UUID householdId;
+    final Source source;
     private Phase phase;
 
     private CreateAttempt(UUID key, CreateRecipeRequest payload, String fingerprint, UUID userId,
-                          UUID householdId, Phase phase) {
+                          UUID householdId, Source source, Phase phase) {
         this.key = key;
         this.payload = payload;
         this.fingerprint = fingerprint;
         this.userId = userId;
         this.householdId = householdId;
+        this.source = source;
         this.phase = phase;
     }
 
     static CreateAttempt start(UUID key, CreateRecipeRequest payload, UUID userId, UUID householdId) {
+        return start(key, payload, userId, householdId, Source.MANUAL);
+    }
+
+    static CreateAttempt start(UUID key, CreateRecipeRequest payload, UUID userId, UUID householdId,
+                               Source source) {
         return new CreateAttempt(key, payload, new Gson().toJson(payload), userId, householdId,
-                Phase.SENDING);
+                source == null ? Source.MANUAL : source, Phase.SENDING);
     }
 
     /** A persisted SENDING intent is recovered conservatively as UNKNOWN, never auto-replayed. */
     static CreateAttempt recovered(UUID key, CreateRecipeRequest payload, String fingerprint,
                                    UUID userId, UUID householdId) {
-        return new CreateAttempt(key, payload, fingerprint, userId, householdId, Phase.UNKNOWN);
+        return recovered(key, payload, fingerprint, userId, householdId, Source.MANUAL);
+    }
+
+    static CreateAttempt recovered(UUID key, CreateRecipeRequest payload, String fingerprint,
+                                   UUID userId, UUID householdId, Source source) {
+        return new CreateAttempt(key, payload, fingerprint, userId, householdId,
+                source == null ? Source.MANUAL : source, Phase.UNKNOWN);
     }
 
     Phase phase() { return phase; }
