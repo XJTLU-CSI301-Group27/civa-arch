@@ -5,7 +5,7 @@
 > 1. 演示电脑开启 Docker Desktop（Postgres）。
 > 2. 项目根目录运行 `start-civa.bat`（或 `run-backend.ps1`），等到 8080 可用。
 > 3. 模拟器/平板安装 `app-debug.apk`（`./gradlew :app:assembleDebug`，或 release 包）。
-> 4. 测试账号：`verify_1209` / `Passw0rd2026`（家庭 `OurHome`，已有 9 个冰箱批次、若干家庭菜谱、1 条食记、做饭历史）。
+> 4. 测试账号由项目维护者单独提供，不写入公开仓库（家庭 `OurHome`，已有 9 个冰箱批次、若干家庭菜谱、1 条食记、做饭历史）。
 >    第二账号可现场注册，用于家庭邀请/共享验证。
 >
 > 每项检查后打勾；如不通过，记录步骤、截图/日志和版本。
