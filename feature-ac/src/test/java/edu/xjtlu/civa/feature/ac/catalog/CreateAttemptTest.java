@@ -47,6 +47,14 @@ public class CreateAttemptTest {
         assertFalse(attempt.matches(user, UUID.randomUUID()));
     }
 
+    @Test public void recoveredSendingIntentIsUnknownAndNotAutoStarted() {
+        CreateAttempt attempt = CreateAttempt.recovered(key, request(), "fingerprint", user, home);
+        assertEquals(CreateAttempt.Phase.UNKNOWN, attempt.phase());
+        assertTrue(attempt.canRetryOriginal());
+        assertFalse(attempt.canStartNew());
+        assertEquals("fingerprint", attempt.fingerprint);
+    }
+
     private static CreateRecipeRequest request() {
         return new CreateRecipeRequest().name("probe").steps(List.of("x"))
                 .ingredients(List.of()).recipeOnlyIngredients(List.of())

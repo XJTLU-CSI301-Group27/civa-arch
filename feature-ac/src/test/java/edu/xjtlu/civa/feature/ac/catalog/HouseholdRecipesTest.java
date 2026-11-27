@@ -8,6 +8,7 @@ import edu.xjtlu.civa.api.model.CreateRecipeRequest;
 import edu.xjtlu.civa.api.model.Ingredient;
 import edu.xjtlu.civa.api.model.Recipe;
 import edu.xjtlu.civa.api.model.RecipeIngredient;
+import edu.xjtlu.civa.api.model.RecipeOnlyIngredient;
 import edu.xjtlu.civa.api.model.Unit;
 import java.util.List;
 import java.util.Map;
@@ -118,5 +119,17 @@ public class HouseholdRecipesTest {
                 .version(1L);
         String display = HouseholdRecipes.display(recipe, Map.of(eggId, "鸡蛋"));
         assertTrue(display.contains("鸡蛋 3 COUNT"));
+    }
+
+    @Test public void recipeOnlyLinesKeepNameAmountAndOptionalNote() {
+        Recipe recipe = new Recipe().id(UUID.randomUUID()).name("only").steps(List.of("x"))
+                .ingredients(List.of())
+                .recipeOnlyIngredients(List.of(
+                        new RecipeOnlyIngredient().name("食盐").amountText("适量"),
+                        new RecipeOnlyIngredient().name("香菜").amountText(null).note("根据个人口味"),
+                        new RecipeOnlyIngredient().name("胡椒粉").amountText(" ")))
+                .version(1L);
+        List<String> lines = HouseholdRecipes.recipeOnlyLines(recipe);
+        assertEquals(List.of("食盐 适量", "香菜 (根据个人口味)", "胡椒粉"), lines);
     }
 }

@@ -35,6 +35,14 @@ public class PendingWriteStoreTest {
         assertEquals(1, writes.size());
         assertEquals("confirmCooking", writes.get("key-a").operationId);
 
+        store.markForReview("a", "key-a", new ApiCallback<Void>() {
+            @Override public void onSuccess(Void value) { }
+            @Override public void onError(ApiError error) { fail("mark failed: " + error.code); }
+        });
+        runIo(io);
+        runMain(main);
+        assertTrue(writes.get("key-a").needsReview);
+
         AtomicReference<ApiError> duplicate = new AtomicReference<>();
         store.record("key-a", "a", "home", "confirmCooking", "{\"recipeId\":\"r2\"}", null, null, new ApiCallback<Void>() {
             @Override public void onSuccess(Void value) { fail("duplicate key accepted"); }
@@ -79,6 +87,26 @@ public class PendingWriteStoreTest {
         assertTrue(writes.isEmpty());
     }
 
+    @Test public void recordFailureIsReportedInsteadOfPretendingRecovery() throws Exception {
+        Queue<Runnable> io = new ArrayDeque<>();
+        BlockingQueue<Runnable> main = new LinkedBlockingQueue<>();
+        LocalDataDao dao = (LocalDataDao) Proxy.newProxyInstance(LocalDataDao.class.getClassLoader(),
+                new Class<?>[]{LocalDataDao.class}, (proxy, method, args) -> {
+                    if (method.getName().equals("insertPending")) throw new IllegalStateException("disk full");
+                    throw new UnsupportedOperationException(method.getName());
+                });
+        PendingWriteStore store = new PendingWriteStore(dao, io::add, main::add);
+        AtomicReference<ApiError> error = new AtomicReference<>();
+        store.record("key", "user", "home", "CREATE_HOUSEHOLD_RECIPE", "{}", null, null,
+                new ApiCallback<Void>() {
+                    @Override public void onSuccess(Void value) { fail("storage failure reported success"); }
+                    @Override public void onError(ApiError value) { error.set(value); }
+                });
+        runIo(io);
+        runMain(main);
+        assertEquals("LOCAL_STORAGE_ERROR", error.get().code);
+    }
+
     private static ApiCallback<Void> noop() {
         return new ApiCallback<Void>() {
             @Override public void onSuccess(Void value) { }
@@ -99,6 +127,16 @@ public class PendingWriteStoreTest {
                     List<PendingWrite> result = new ArrayList<>();
                     for (PendingWrite w : writes.values()) if (w.userId.equals(args[0])) result.add(w);
                     return result;
+                }
+                case "markPendingForReview": {
+                    PendingWrite item = writes.get(args[1]);
+                    if (item != null && item.userId.equals(args[0])) {
+                        writes.put(item.key, new PendingWrite(item.key, item.userId, item.householdId,
+                                item.operationId, item.canonicalPayload, item.createdAt, true,
+                                item.mediaPrivatePath, item.mediaSha256));
+                        return 1;
+                    }
+                    return 0;
                 }
                 case "deletePending": {
                     PendingWrite item = writes.get(args[1]);

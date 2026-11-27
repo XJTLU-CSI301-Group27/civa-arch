@@ -215,6 +215,9 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         TextView tags = view.findViewById(R.id.ac_detail_tags);
         TextView description = view.findViewById(R.id.ac_detail_description);
         LinearLayout ingredients = view.findViewById(R.id.ac_detail_ingredients);
+        TextView ingredientsHeader = view.findViewById(R.id.ac_detail_ingredients_header);
+        LinearLayout recipeOnly = view.findViewById(R.id.ac_detail_recipe_only);
+        TextView recipeOnlyHeader = view.findViewById(R.id.ac_detail_recipe_only_header);
         LinearLayout steps = view.findViewById(R.id.ac_detail_steps);
         LinearLayout nutrition = view.findViewById(R.id.ac_detail_nutrition);
         if (value == null) {
@@ -273,12 +276,25 @@ public final class RecipeCatalogDetailFragment extends Fragment {
         description.setVisibility(hasDescription ? View.VISIBLE : View.GONE);
 
         ingredients.removeAllViews();
+        recipeOnly.removeAllViews();
         if (value instanceof Recipe recipe) {
             java.util.Map<UUID, String> names = HouseholdRecipes.names(dictionary == null ? List.of() : dictionary);
-            String display = HouseholdRecipes.display(getResources(), recipe, names);
-            ingredients.addView(line(display.isEmpty() ? getString(R.string.ac_catalog_missing) : display, 15,
-                    R.color.ac_catalog_ink));
+            List<String> tracked = HouseholdRecipes.trackedLines(getResources(), recipe, names);
+            List<String> described = HouseholdRecipes.recipeOnlyLines(getResources(), recipe);
+            ingredientsHeader.setVisibility(tracked.isEmpty() && described.isEmpty() ? View.VISIBLE : (tracked.isEmpty() ? View.GONE : View.VISIBLE));
+            ingredients.setVisibility(tracked.isEmpty() && described.isEmpty() ? View.VISIBLE : (tracked.isEmpty() ? View.GONE : View.VISIBLE));
+            for (String item : tracked) ingredients.addView(line(item, 15, R.color.ac_catalog_ink));
+            if (tracked.isEmpty() && described.isEmpty()) {
+                ingredients.addView(line(getString(R.string.ac_catalog_missing), 15, R.color.ac_catalog_ink));
+            }
+            recipeOnlyHeader.setVisibility(described.isEmpty() ? View.GONE : View.VISIBLE);
+            recipeOnly.setVisibility(described.isEmpty() ? View.GONE : View.VISIBLE);
+            for (String item : described) recipeOnly.addView(line(item, 15, R.color.ac_catalog_ink));
         } else {
+            ingredientsHeader.setVisibility(View.VISIBLE);
+            ingredients.setVisibility(View.VISIBLE);
+            recipeOnlyHeader.setVisibility(View.GONE);
+            recipeOnly.setVisibility(View.GONE);
             for (Object item : ingredientList) ingredients.addView(line(display(item), 15, R.color.ac_catalog_ink));
         }
         steps.removeAllViews();

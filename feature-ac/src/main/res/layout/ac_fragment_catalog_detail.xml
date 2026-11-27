@@ -71,6 +71,7 @@
             android:textSize="15sp" />
 
         <TextView
+            android:id="@+id/ac_detail_ingredients_header"
             style="@style/CivaText.Section"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -83,6 +84,23 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:orientation="vertical" />
+
+        <TextView
+            android:id="@+id/ac_detail_recipe_only_header"
+            style="@style/CivaText.Section"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/ac_catalog_section_recipe_only"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/ac_detail_recipe_only"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="vertical"
+            android:visibility="gone" />
 
         <TextView
             style="@style/CivaText.Section"

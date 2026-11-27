@@ -27,6 +27,7 @@
     <string name="ac_catalog_fat100">脂肪 / 100g</string>
     <string name="ac_catalog_no_nutrition">暂无营养数据（未知值不按 0 显示）</string>
     <string name="ac_catalog_section_ingredients">食材</string>
+    <string name="ac_catalog_section_recipe_only">仅说明辅料</string>
     <string name="ac_catalog_section_steps">做法</string>
     <string name="ac_catalog_section_nutrition">营养</string>
     <string name="ac_catalog_readonly">公共菜谱，只读；收藏、加入家庭与编辑将在后续版本提供。</string>
@@ -80,6 +81,7 @@
     <string name="ac_recipe_attempt_failed">上次创建未执行，可以修改后重新保存。</string>
     <string name="ac_recipe_attempt_sending">正在保存，请稍候…</string>
     <string name="ac_recipe_attempt_identity">账号或家庭已切换，不能重试旧创建请求。</string>
+    <string name="ac_recipe_attempt_corrupt">待确认创建记录损坏，暂时不能创建；请核对本地数据后再试。</string>
     <string name="ac_ingredient_convert_title">转换食材类型</string>
     <string name="ac_ingredient_convert_message">将保留已填写内容，但保存后食材会按新的类型提交。继续吗？</string>
     <string name="ac_ingredient_convert_confirm">转换</string>

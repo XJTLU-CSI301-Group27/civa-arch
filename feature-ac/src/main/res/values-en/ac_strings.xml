@@ -27,6 +27,7 @@
     <string name="ac_catalog_fat100">Fat / 100g</string>
     <string name="ac_catalog_no_nutrition">No nutrition data yet (unknown values are not shown as 0)</string>
     <string name="ac_catalog_section_ingredients">Ingredients</string>
+    <string name="ac_catalog_section_recipe_only">Description-only ingredients</string>
     <string name="ac_catalog_section_steps">Steps</string>
     <string name="ac_catalog_section_nutrition">Nutrition</string>
     <string name="ac_catalog_readonly">Public recipe, read-only. Favorites, adding to household, and editing will come in a later version.</string>
@@ -80,6 +81,7 @@
     <string name="ac_recipe_attempt_failed">The last create was not executed; edit and save again.</string>
     <string name="ac_recipe_attempt_sending">Saving…</string>
     <string name="ac_recipe_attempt_identity">The account or household changed; the old create request cannot be retried.</string>
+    <string name="ac_recipe_attempt_corrupt">A pending create record is corrupt; creating is paused until it is checked.</string>
     <string name="ac_ingredient_convert_title">Convert ingredient type</string>
     <string name="ac_ingredient_convert_message">Entered values are kept, but the ingredient will be submitted as the new type. Continue?</string>
     <string name="ac_ingredient_convert_confirm">Convert</string>

@@ -35,14 +35,43 @@ final class HouseholdRecipes {
 
     /** Localized ingredient summary for the detail screen. */
     static String display(Resources resources, Recipe recipe, Map<UUID, String> names) {
-        List<String> parts = new ArrayList<>();
+        return AcText.join(resources, trackedLines(resources, recipe, names));
+    }
+
+    /** One display line per tracked ingredient; legacy trackStock=false rows are deliberately kept. */
+    static List<String> trackedLines(Resources resources, Recipe recipe, Map<UUID, String> names) {
+        List<String> result = new ArrayList<>();
         for (RecipeIngredient item : recipe.getIngredients() == null ? List.<RecipeIngredient>of() : recipe.getIngredients()) {
             String name = names.getOrDefault(item.getIngredientId(),
                     resources.getString(R.string.ac_l10n_ingredient_fallback));
-            parts.add(name + " " + item.getQuantity() + " "
+            result.add(name + " " + item.getQuantity() + " "
                     + AcText.unit(resources, item.getUnit(), name));
         }
-        return AcText.join(resources, parts);
+        return result;
+    }
+
+    /** One display line per description-only ingredient; blank amounts are not replaced by "to taste". */
+    static List<String> recipeOnlyLines(Resources resources, Recipe recipe) {
+        return recipeOnlyLines(recipe);
+    }
+
+    static List<String> recipeOnlyLines(Recipe recipe) {
+        List<String> result = new ArrayList<>();
+        for (edu.xjtlu.civa.api.model.RecipeOnlyIngredient item
+                : recipe.getRecipeOnlyIngredients() == null
+                ? List.<edu.xjtlu.civa.api.model.RecipeOnlyIngredient>of()
+                : recipe.getRecipeOnlyIngredients()) {
+            if (item == null || item.getName() == null || item.getName().trim().isEmpty()) continue;
+            String line = item.getName().trim();
+            if (item.getAmountText() != null && !item.getAmountText().trim().isEmpty()) {
+                line += " " + item.getAmountText().trim();
+            }
+            if (item.getNote() != null && !item.getNote().trim().isEmpty()) {
+                line += " (" + item.getNote().trim() + ")";
+            }
+            result.add(line);
+        }
+        return result;
     }
 
     /** Legacy text-only summary kept for JVM unit tests; the detail screen uses display(Resources, ...). */

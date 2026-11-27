@@ -1,6 +1,7 @@
 package edu.xjtlu.civa.feature.ac.catalog;
 
 import edu.xjtlu.civa.api.model.CreateRecipeRequest;
+import com.google.gson.Gson;
 import java.util.UUID;
 
 /**
@@ -28,7 +29,14 @@ final class CreateAttempt {
     }
 
     static CreateAttempt start(UUID key, CreateRecipeRequest payload, UUID userId, UUID householdId) {
-        return new CreateAttempt(key, payload, String.valueOf(payload), userId, householdId, Phase.SENDING);
+        return new CreateAttempt(key, payload, new Gson().toJson(payload), userId, householdId,
+                Phase.SENDING);
+    }
+
+    /** A persisted SENDING intent is recovered conservatively as UNKNOWN, never auto-replayed. */
+    static CreateAttempt recovered(UUID key, CreateRecipeRequest payload, String fingerprint,
+                                   UUID userId, UUID householdId) {
+        return new CreateAttempt(key, payload, fingerprint, userId, householdId, Phase.UNKNOWN);
     }
 
     Phase phase() { return phase; }

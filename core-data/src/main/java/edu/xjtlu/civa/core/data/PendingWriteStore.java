@@ -43,6 +43,20 @@ public final class PendingWriteStore {
         });
     }
 
+    /** Marks an in-flight intent as requiring review after an uncertain result. */
+    public void markForReview(String userId, String key, ApiCallback<Void> callback) {
+        require(userId, "userId");
+        require(key, "key");
+        io.execute(() -> {
+            try {
+                dao.markPendingForReview(userId, key);
+                deliver(() -> callback.onSuccess(null));
+            } catch (RuntimeException ex) {
+                deliver(() -> callback.onError(storageError()));
+            }
+        });
+    }
+
     /** Account-scoped recovery list. Callers re-check permission via getMe before acting; never auto-replay. */
     public void listPending(String userId, ApiCallback<List<PendingWrite>> callback) {
         require(userId, "userId");

@@ -55,6 +55,9 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
     private RecyclerView trackedRecycler, recipeOnlyRecycler;
     private TrackedIngredientAdapter trackedAdapter;
     private RecipeOnlyIngredientAdapter recipeOnlyAdapter;
+    private CreateAttemptStore attemptStore;
+    private boolean restoring;
+    private boolean recoveryBlocked;
     private UUID imageId;
     private boolean uploading;
     private final ActivityResultLauncher<String> imagePicker = registerForActivityResult(
@@ -76,6 +79,11 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
     @Override public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         host = (AcHost) requireActivity();
+        try {
+            attemptStore = new CreateAttemptStore(host.calls());
+        } catch (RuntimeException unavailable) {
+            attemptStore = null;
+        }
         vm = new ViewModelProvider(this).get(IngredientEditorViewModel.class);
         String entityId = getArguments() == null ? null : getArguments().getString(ARG_ID);
         home = host.sessions() == null ? null : houseId(host.sessions().currentHouseholdId());
@@ -149,6 +157,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                 vm.state = IngredientEditorState.empty(vm.dictionary);
                 vm.initialized = true;
                 bindState();
+                restorePendingCreate();
             }
         });
     }
@@ -236,7 +245,13 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         attemptStatus.setVisibility(View.GONE);
         attemptRetry.setVisibility(View.GONE);
         if (attempt == null) {
-            save.setEnabled(!Boolean.TRUE.equals(vm.saving.getValue()) && vm.state != null);
+            if (recoveryBlocked) {
+                attemptStatus.setText(R.string.ac_recipe_attempt_corrupt);
+                attemptStatus.setVisibility(View.VISIBLE);
+                save.setEnabled(false);
+                return;
+            }
+            save.setEnabled(!Boolean.TRUE.equals(vm.saving.getValue()) && !restoring && vm.state != null);
             return;
         }
         switch (attempt.phase()) {
@@ -258,6 +273,35 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
             }
             case CONFIRMED -> save.setEnabled(false);
         }
+    }
+
+    private void restorePendingCreate() {
+        if (recipeId != null || vm.createAttempt != null || attemptStore == null || home == null) return;
+        String user = host.sessions() == null ? null : host.sessions().currentUserId();
+        if (user == null) return;
+        restoring = true;
+        save.setEnabled(false);
+        attemptStore.recover(user, home, new ApiCallback<CreateAttempt>() {
+            @Override public void onSuccess(@Nullable CreateAttempt value) {
+                if (!isAdded()) return;
+                restoring = false;
+                recoveryBlocked = false;
+                if (value != null) {
+                    vm.createAttempt = value;
+                    bindAttempt();
+                } else {
+                    bindState();
+                }
+            }
+
+            @Override public void onError(ApiError error) {
+                if (!isAdded()) return;
+                restoring = false;
+                recoveryBlocked = true;
+                bindAttempt();
+                toast(R.string.ac_recipe_attempt_corrupt);
+            }
+        });
     }
 
     private void observeSaveState() {
@@ -372,7 +416,39 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         });
     }
 
-    private void sendCreate(CreateAttempt attempt) {
+    private void beginCreate(CreateAttempt attempt) {
+        save.setEnabled(false);
+        vm.saving.setValue(true);
+        SubmitButton.start(save);
+        bindAttempt();
+        if (attemptStore == null) {
+            attempt.failedNotExecuted();
+            vm.saving.setValue(false);
+            vm.error.setValue(R.string.ac_l10n_error_local_storage);
+            if (isAdded()) {
+                SubmitButton.stop(save);
+                bindAttempt();
+            }
+            return;
+        }
+        attemptStore.record(attempt, new ApiCallback<Void>() {
+            @Override public void onSuccess(@Nullable Void value) {
+                transmitCreate(attempt);
+            }
+
+            @Override public void onError(ApiError error) {
+                attempt.failedNotExecuted();
+                vm.saving.setValue(false);
+                vm.error.setValue(R.string.ac_l10n_error_local_storage);
+                if (isAdded()) {
+                    SubmitButton.stop(save);
+                    bindAttempt();
+                }
+            }
+        });
+    }
+
+    private void transmitCreate(CreateAttempt attempt) {
         save.setEnabled(false);
         vm.saving.setValue(true);
         SubmitButton.start(save);
@@ -382,11 +458,19 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                     @Override public void onSuccess(@Nullable Recipe value) {
                         attempt.confirmed();
                         vm.saved.setValue(true);
+                        if (attemptStore != null) {
+                            attemptStore.confirm(attempt, storageCallback());
+                        }
                     }
 
                     @Override public void onError(ApiError error) {
-                        if (definitelyNotExecuted(error)) attempt.failedNotExecuted();
-                        else attempt.unknown();
+                        if (definitelyNotExecuted(error)) {
+                            attempt.failedNotExecuted();
+                            if (attemptStore != null) attemptStore.confirm(attempt, storageCallback());
+                        } else {
+                            attempt.unknown();
+                            if (attemptStore != null) attemptStore.markUnknown(attempt, storageCallback());
+                        }
                         vm.saving.setValue(false);
                         vm.error.setValue(R.string.ac_catalog_error);
                         if (isAdded()) {
@@ -397,6 +481,15 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                 });
     }
 
+    private ApiCallback<Void> storageCallback() {
+        return new ApiCallback<Void>() {
+            @Override public void onSuccess(@Nullable Void value) { }
+            @Override public void onError(ApiError error) {
+                if (isAdded()) toast(R.string.ac_l10n_error_local_storage);
+            }
+        };
+    }
+
     private void retryCreate() {
         CreateAttempt attempt = vm.createAttempt;
         if (attempt == null || !attempt.canRetryOriginal()) return;
@@ -405,7 +498,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
             return;
         }
         attempt.retrying();
-        sendCreate(attempt);
+        transmitCreate(attempt);
     }
 
     private static boolean definitelyNotExecuted(ApiError error) {
@@ -477,14 +570,19 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                     .imageId(imageId);
             CreateAttempt attempt = prior;
             if (attempt == null || attempt.phase() == CreateAttempt.Phase.FAILED_NOT_EXECUTED) {
-                attempt = CreateAttempt.start(UUID.randomUUID(), request, currentUserId(), home);
+                UUID user = currentUserId();
+                if (user == null) {
+                    toast(R.string.ac_recipe_attempt_identity);
+                    return;
+                }
+                attempt = CreateAttempt.start(UUID.randomUUID(), request, user, home);
                 vm.createAttempt = attempt;
-                sendCreate(attempt);
+                beginCreate(attempt);
                 return;
             }
             if (attempt.phase() == CreateAttempt.Phase.SENDING
                     || attempt.phase() == CreateAttempt.Phase.CONFIRMED) return;
-            sendCreate(attempt);
+            beginCreate(attempt);
             return;
         }
 
