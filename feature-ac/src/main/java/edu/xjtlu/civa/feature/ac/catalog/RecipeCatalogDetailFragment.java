@@ -114,7 +114,7 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             loadCatalog(view);
         }
         resumeCooking();
-        if (household) resumeImportPending();
+        resumeImportPending();
     }
 
     private void loadCatalog(View view) {
@@ -709,11 +709,15 @@ public final class RecipeCatalogDetailFragment extends Fragment {
             @Override public void onSuccess(@Nullable CreateAttempt value) {
                 if (!isAdded()) return;
                 if (value != null) {
-                    new MaterialAlertDialogBuilder(requireContext())
-                            .setTitle(R.string.ac_import_pending_title)
-                            .setMessage(R.string.ac_import_pending_message)
-                            .setPositiveButton(android.R.string.ok, null)
-                            .show();
+                    if (value.source == CreateAttempt.Source.IMPORT) {
+                        showImportRetry(value);
+                    } else {
+                        new MaterialAlertDialogBuilder(requireContext())
+                                .setTitle(R.string.ac_import_pending_title)
+                                .setMessage(R.string.ac_import_pending_message)
+                                .setPositiveButton(android.R.string.ok, null)
+                                .show();
+                    }
                     return;
                 }
                 then.run();
