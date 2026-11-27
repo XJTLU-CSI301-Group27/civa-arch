@@ -109,7 +109,7 @@
     <string name="ac_import_title">导入到家庭菜谱</string>
     <string name="ac_import_hint">核对食材和份数；标出的食材需要手动修正后才能导入。</string>
     <string name="ac_import_source">原始：%1$s</string>
-    <string name="ac_import_choose">请选择食材</string>
+    <string name="ac_import_choose">选择食材</string>
     <string name="ac_import_mode_choose">请选择处理方式</string>
     <string name="ac_import_mode_tracked">计入库存（TRACKED）</string>
     <string name="ac_import_mode_recipe_only">仅用于菜谱说明（RECIPE_ONLY）</string>
