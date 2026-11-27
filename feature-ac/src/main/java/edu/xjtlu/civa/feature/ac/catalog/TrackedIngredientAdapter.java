@@ -5,15 +5,11 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.Spinner;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
-import edu.xjtlu.civa.api.model.Ingredient;
 import edu.xjtlu.civa.feature.ac.AcText;
 import edu.xjtlu.civa.feature.ac.R;
 import java.util.ArrayList;
@@ -24,11 +20,11 @@ import java.util.Map;
 /** Renders tracked rows from IngredientEditorState; no business data lives in a ViewHolder. */
 final class TrackedIngredientAdapter extends RecyclerView.Adapter<TrackedIngredientAdapter.Holder> {
     interface Host {
-        List<Ingredient> ingredients();
-        void onTrackedSelected(long rowId, Ingredient ingredient);
+        void onPickIngredient(long rowId);
         void onQuantity(long rowId, String text);
         void onRemove(long rowId);
         void onConvert(long rowId);
+        boolean dictionaryHas(long rowId);
     }
 
     private final Host host;
@@ -60,36 +56,19 @@ final class TrackedIngredientAdapter extends RecyclerView.Adapter<TrackedIngredi
         holder.remove.setVisibility(legacy ? View.GONE : View.VISIBLE);
         holder.legacy.setVisibility(legacy ? View.VISIBLE : View.GONE);
 
-        List<Ingredient> ingredients = host.ingredients();
-        List<String> choices = new ArrayList<>();
-        choices.add(holder.itemView.getContext().getString(R.string.ac_household_recipe_row_name));
-        for (Ingredient ingredient : ingredients) choices.add(ingredient.getName());
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(holder.itemView.getContext(),
-                android.R.layout.simple_spinner_item, choices);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        holder.name.setAdapter(adapter);
-        holder.name.setEnabled(!legacy);
-        int selected = 0;
-        for (int i = 0; i < ingredients.size(); i++) {
-            if (ingredients.get(i).getId().equals(row.ingredientId)) {
-                selected = i + 1;
-                break;
-            }
+        String name;
+        if (row.ingredientId == null) {
+            name = holder.itemView.getContext().getString(R.string.ac_ingredient_choose);
+        } else if (!host.dictionaryHas(row.id)) {
+            name = holder.itemView.getContext().getString(R.string.ac_ingredient_missing);
+        } else {
+            name = row.trackedName;
         }
-        holder.name.setSelection(selected, false);
+        holder.name.setText(name);
+        holder.name.setEnabled(!legacy);
+        holder.name.setOnClickListener(legacy ? null : v -> host.onPickIngredient(row.id));
         holder.unit.setText(row.unit == null ? "—" : AcText.unit(holder.itemView.getResources(),
                 row.unit, row.trackedName));
-        holder.name.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (holder.binding || position <= 0 || position > ingredients.size()) return;
-                Ingredient ingredient = ingredients.get(position - 1);
-                host.onTrackedSelected(row.id, ingredient);
-                holder.unit.setText(ingredient.getUnit() == null ? "—"
-                        : AcText.unit(holder.itemView.getResources(), ingredient.getUnit(), ingredient.getName()));
-            }
-
-            @Override public void onNothingSelected(AdapterView<?> parent) { }
-        });
 
         holder.quantityWatcher = new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
@@ -111,7 +90,7 @@ final class TrackedIngredientAdapter extends RecyclerView.Adapter<TrackedIngredi
     @Override public int getItemCount() { return rows.size(); }
 
     static final class Holder extends RecyclerView.ViewHolder {
-        final Spinner name;
+        final TextView name;
         final EditText quantity;
         final TextView unit, legacy, error;
         final MaterialButton remove, convert;

@@ -13,12 +13,20 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <Spinner
+        <TextView
             android:id="@+id/ac_row_name"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:paddingHorizontal="8dp" />
+            android:background="@drawable/ac_catalog_search"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="44dp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
+            android:textColor="@color/civa_text"
+            android:textSize="14sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/ac_row_remove"

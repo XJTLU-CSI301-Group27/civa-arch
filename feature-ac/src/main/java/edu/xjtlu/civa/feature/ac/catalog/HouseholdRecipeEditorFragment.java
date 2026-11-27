@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import edu.xjtlu.civa.api.model.CreateRecipeRequest;
 import edu.xjtlu.civa.api.model.Ingredient;
 import edu.xjtlu.civa.api.model.IngredientPage;
@@ -48,14 +49,14 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
     private Recipe existing;
     private IngredientEditorViewModel vm;
     private EditText name, steps, yield, duration;
-    private MaterialButton save, pickImage, removeImage;
+    private MaterialButton save, pickImage, removeImage, addTracked;
+    private TextView dictionaryError;
     private ImageView image;
     private RecyclerView trackedRecycler, recipeOnlyRecycler;
     private TrackedIngredientAdapter trackedAdapter;
     private RecipeOnlyIngredientAdapter recipeOnlyAdapter;
     private UUID imageId;
     private boolean uploading;
-    private boolean saving;
     private final ActivityResultLauncher<String> imagePicker = registerForActivityResult(
             new ActivityResultContracts.GetContent(), this::uploadImage);
 
@@ -88,6 +89,8 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         image = view.findViewById(R.id.ac_household_recipe_image);
         pickImage = view.findViewById(R.id.ac_household_recipe_image_pick);
         removeImage = view.findViewById(R.id.ac_household_recipe_image_remove);
+        addTracked = view.findViewById(R.id.ac_household_recipe_add_tracked);
+        dictionaryError = view.findViewById(R.id.ac_household_recipe_dictionary_error);
         trackedRecycler = view.findViewById(R.id.ac_household_recipe_tracked_rows);
         recipeOnlyRecycler = view.findViewById(R.id.ac_household_recipe_recipe_only_rows);
         trackedAdapter = new TrackedIngredientAdapter(trackedHost);
@@ -122,6 +125,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         });
         save.setOnClickListener(ignored -> submit());
 
+        observeSaveState();
         if (vm.initialized) {
             existing = vm.existing;
             imageId = vm.imageId;
@@ -216,9 +220,28 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
 
     private void bindState() {
         if (vm.state == null) return;
+        boolean dictionaryReady = !vm.dictionary.isEmpty();
+        dictionaryError.setVisibility(dictionaryReady ? View.GONE : View.VISIBLE);
+        addTracked.setEnabled(dictionaryReady);
         trackedAdapter.submit(vm.state.trackedRows(), Map.of());
         recipeOnlyAdapter.submit(vm.state.recipeOnlyRows(), Map.of());
-        save.setEnabled(!saving);
+        save.setEnabled(!Boolean.TRUE.equals(vm.saving.getValue()) && vm.state != null);
+    }
+
+    private void observeSaveState() {
+        vm.saving.observe(getViewLifecycleOwner(), value -> {
+            if (save != null) save.setEnabled(!Boolean.TRUE.equals(value) && vm.state != null);
+        });
+        vm.error.observe(getViewLifecycleOwner(), value -> {
+            if (value == null || !isAdded()) return;
+            toast(value);
+            vm.error.setValue(null);
+        });
+        vm.saved.observe(getViewLifecycleOwner(), value -> {
+            if (!Boolean.TRUE.equals(value)) return;
+            vm.saved.setValue(false);
+            if (isAdded()) getParentFragmentManager().popBackStack();
+        });
     }
 
     private void scrollToTracked(long id) {
@@ -237,10 +260,16 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
     }
 
     private final TrackedIngredientAdapter.Host trackedHost = new TrackedIngredientAdapter.Host() {
-        @Override public List<Ingredient> ingredients() { return vm.dictionary; }
+        @Override public void onPickIngredient(long rowId) {
+            IngredientPickerDialog.show(requireContext(), vm.dictionary, ingredient -> {
+                vm.state.selectTrackedIngredient(rowId, ingredient);
+                bindState();
+            });
+        }
 
-        @Override public void onTrackedSelected(long rowId, Ingredient ingredient) {
-            vm.state.selectTrackedIngredient(rowId, ingredient);
+        @Override public boolean dictionaryHas(long rowId) {
+            IngredientEditorState.Row row = vm.state.row(rowId);
+            return row != null && row.ingredientId != null && byId(row.ingredientId) != null;
         }
 
         @Override public void onQuantity(long rowId, String text) {
@@ -253,8 +282,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         }
 
         @Override public void onConvert(long rowId) {
-            vm.state.convert(rowId);
-            bindState();
+            confirmConvert(rowId);
         }
     };
 
@@ -269,10 +297,26 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         }
 
         @Override public void onConvert(long rowId) {
-            vm.state.convert(rowId);
-            bindState();
+            confirmConvert(rowId);
         }
     };
+
+    private void confirmConvert(long rowId) {
+        if (vm.state == null) return;
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.ac_ingredient_convert_title)
+                .setMessage(R.string.ac_ingredient_convert_message)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.ac_ingredient_convert_confirm, (dialog, which) -> {
+                    vm.state.convert(rowId);
+                    bindState();
+                })
+                .show();
+    }
+    private Ingredient byId(UUID id) {
+        for (Ingredient ingredient : vm.dictionary) if (ingredient.getId().equals(id)) return ingredient;
+        return null;
+    }
 
     private void uploadImage(@Nullable Uri uri) {
         if (uri == null || home == null || !isAdded()) return;
@@ -295,7 +339,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
     }
 
     private void submit() {
-        if (saving || vm.state == null) return;
+        if (Boolean.TRUE.equals(vm.saving.getValue()) || vm.state == null) return;
         if (home == null) {
             toast(R.string.ac_catalog_home_missing);
             return;
@@ -332,7 +376,7 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         List<RecipeIngredient> tracked = vm.state.recipeIngredients();
         List<RecipeOnlyIngredient> recipeOnly = vm.state.recipeOnlyIngredients();
         save.setEnabled(false);
-        saving = true;
+        vm.saving.setValue(true);
         SubmitButton.start(save);
         if (existing == null) {
             CreateRecipeRequest request = new CreateRecipeRequest()
@@ -344,20 +388,18 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                     .durationMinutes(minutes)
                     .tags(new LinkedHashSet<>(List.of("家庭菜谱")))
                     .imageId(imageId);
-            host.calls().enqueue(host.api().recipe().createRecipe(home, UUID.randomUUID(), request),
+            host.calls().enqueue(host.api().recipe().createRecipe(home, vm.createKey, request),
                     new ApiCallback<Recipe>() {
                         @Override public void onSuccess(@Nullable Recipe value) {
                             if (!isAdded()) return;
-                            toast(R.string.ac_editor_saved);
-                            getParentFragmentManager().popBackStack();
+                            vm.saved.setValue(true);
                         }
 
                         @Override public void onError(ApiError error) {
                             if (!isAdded()) return;
-                            saving = false;
-                            save.setEnabled(true);
+                            vm.saving.setValue(false);
+                            vm.error.setValue(R.string.ac_catalog_error);
                             SubmitButton.stop(save);
-                            toast(R.string.ac_catalog_error);
                         }
                     });
             return;
@@ -377,16 +419,14 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                 new ApiCallback<Recipe>() {
                     @Override public void onSuccess(@Nullable Recipe value) {
                         if (!isAdded()) return;
-                        toast(R.string.ac_editor_saved);
-                        getParentFragmentManager().popBackStack();
+                        vm.saved.setValue(true);
                     }
 
                     @Override public void onError(ApiError error) {
                         if (!isAdded()) return;
-                        saving = false;
-                        save.setEnabled(true);
+                        vm.saving.setValue(false);
+                        vm.error.setValue(R.string.ac_catalog_error);
                         SubmitButton.stop(save);
-                        toast(R.string.ac_catalog_error);
                     }
                 });
     }

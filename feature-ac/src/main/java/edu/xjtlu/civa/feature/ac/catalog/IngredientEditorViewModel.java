@@ -1,5 +1,6 @@
 package edu.xjtlu.civa.feature.ac.catalog;
 
+import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import edu.xjtlu.civa.api.model.Ingredient;
 import edu.xjtlu.civa.api.model.Recipe;
@@ -12,5 +13,9 @@ public final class IngredientEditorViewModel extends ViewModel {
     Recipe existing;
     List<Ingredient> dictionary = List.of();
     UUID imageId;
+    UUID createKey = UUID.randomUUID();
     boolean initialized;
+    final MutableLiveData<Boolean> saving = new MutableLiveData<>(false);
+    final MutableLiveData<Integer> error = new MutableLiveData<>();
+    final MutableLiveData<Boolean> saved = new MutableLiveData<>(false);
 }
