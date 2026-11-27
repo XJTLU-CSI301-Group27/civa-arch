@@ -49,8 +49,8 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
     private Recipe existing;
     private IngredientEditorViewModel vm;
     private EditText name, steps, yield, duration;
-    private MaterialButton save, pickImage, removeImage, addTracked;
-    private TextView dictionaryError;
+    private MaterialButton save, pickImage, removeImage, addTracked, attemptRetry;
+    private TextView dictionaryError, attemptStatus;
     private ImageView image;
     private RecyclerView trackedRecycler, recipeOnlyRecycler;
     private TrackedIngredientAdapter trackedAdapter;
@@ -91,6 +91,9 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         removeImage = view.findViewById(R.id.ac_household_recipe_image_remove);
         addTracked = view.findViewById(R.id.ac_household_recipe_add_tracked);
         dictionaryError = view.findViewById(R.id.ac_household_recipe_dictionary_error);
+        attemptStatus = view.findViewById(R.id.ac_household_recipe_attempt_status);
+        attemptRetry = view.findViewById(R.id.ac_household_recipe_attempt_retry);
+        attemptRetry.setOnClickListener(ignored -> retryCreate());
         trackedRecycler = view.findViewById(R.id.ac_household_recipe_tracked_rows);
         recipeOnlyRecycler = view.findViewById(R.id.ac_household_recipe_recipe_only_rows);
         trackedAdapter = new TrackedIngredientAdapter(trackedHost);
@@ -225,12 +228,43 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         addTracked.setEnabled(dictionaryReady);
         trackedAdapter.submit(vm.state.trackedRows(), Map.of());
         recipeOnlyAdapter.submit(vm.state.recipeOnlyRows(), Map.of());
-        save.setEnabled(!Boolean.TRUE.equals(vm.saving.getValue()) && vm.state != null);
+        bindAttempt();
+    }
+
+    private void bindAttempt() {
+        CreateAttempt attempt = vm.createAttempt;
+        attemptStatus.setVisibility(View.GONE);
+        attemptRetry.setVisibility(View.GONE);
+        if (attempt == null) {
+            save.setEnabled(!Boolean.TRUE.equals(vm.saving.getValue()) && vm.state != null);
+            return;
+        }
+        switch (attempt.phase()) {
+            case SENDING -> {
+                attemptStatus.setText(R.string.ac_recipe_attempt_sending);
+                attemptStatus.setVisibility(View.VISIBLE);
+                save.setEnabled(false);
+            }
+            case UNKNOWN -> {
+                attemptStatus.setText(R.string.ac_recipe_attempt_unknown);
+                attemptStatus.setVisibility(View.VISIBLE);
+                attemptRetry.setVisibility(View.VISIBLE);
+                save.setEnabled(false);
+            }
+            case FAILED_NOT_EXECUTED -> {
+                attemptStatus.setText(R.string.ac_recipe_attempt_failed);
+                attemptStatus.setVisibility(View.VISIBLE);
+                save.setEnabled(vm.state != null);
+            }
+            case CONFIRMED -> save.setEnabled(false);
+        }
     }
 
     private void observeSaveState() {
         vm.saving.observe(getViewLifecycleOwner(), value -> {
-            if (save != null) save.setEnabled(!Boolean.TRUE.equals(value) && vm.state != null);
+            if (save == null) return;
+            if (vm.createAttempt != null) bindAttempt();
+            else save.setEnabled(!Boolean.TRUE.equals(value) && vm.state != null);
         });
         vm.error.observe(getViewLifecycleOwner(), value -> {
             if (value == null || !isAdded()) return;
@@ -338,6 +372,56 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         });
     }
 
+    private void sendCreate(CreateAttempt attempt) {
+        save.setEnabled(false);
+        vm.saving.setValue(true);
+        SubmitButton.start(save);
+        bindAttempt();
+        host.calls().enqueue(host.api().recipe().createRecipe(attempt.householdId, attempt.key, attempt.payload),
+                new ApiCallback<Recipe>() {
+                    @Override public void onSuccess(@Nullable Recipe value) {
+                        attempt.confirmed();
+                        vm.saved.setValue(true);
+                    }
+
+                    @Override public void onError(ApiError error) {
+                        if (definitelyNotExecuted(error)) attempt.failedNotExecuted();
+                        else attempt.unknown();
+                        vm.saving.setValue(false);
+                        vm.error.setValue(R.string.ac_catalog_error);
+                        if (isAdded()) {
+                            SubmitButton.stop(save);
+                            bindAttempt();
+                        }
+                    }
+                });
+    }
+
+    private void retryCreate() {
+        CreateAttempt attempt = vm.createAttempt;
+        if (attempt == null || !attempt.canRetryOriginal()) return;
+        if (!attempt.matches(currentUserId(), home)) {
+            toast(R.string.ac_recipe_attempt_identity);
+            return;
+        }
+        attempt.retrying();
+        sendCreate(attempt);
+    }
+
+    private static boolean definitelyNotExecuted(ApiError error) {
+        if (error == null || error.code == null) return false;
+        return switch (error.code) {
+            case "VALIDATION_ERROR", "NOT_FOUND", "FORBIDDEN", "HOUSEHOLD_REQUIRED",
+                    "INVALID_INGREDIENT" -> true;
+            default -> false;
+        };
+    }
+
+    private UUID currentUserId() {
+        if (host == null || host.sessions() == null) return null;
+        return uuidOrNull(host.sessions().currentUserId());
+    }
+
     private void submit() {
         if (Boolean.TRUE.equals(vm.saving.getValue()) || vm.state == null) return;
         if (home == null) {
@@ -375,10 +459,13 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
 
         List<RecipeIngredient> tracked = vm.state.recipeIngredients();
         List<RecipeOnlyIngredient> recipeOnly = vm.state.recipeOnlyIngredients();
-        save.setEnabled(false);
-        vm.saving.setValue(true);
-        SubmitButton.start(save);
         if (existing == null) {
+            CreateAttempt prior = vm.createAttempt;
+            if (prior != null && prior.phase() == CreateAttempt.Phase.UNKNOWN) {
+                toast(R.string.ac_recipe_attempt_unknown);
+                bindAttempt();
+                return;
+            }
             CreateRecipeRequest request = new CreateRecipeRequest()
                     .name(recipeName)
                     .steps(stepList)
@@ -388,23 +475,22 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
                     .durationMinutes(minutes)
                     .tags(new LinkedHashSet<>(List.of("家庭菜谱")))
                     .imageId(imageId);
-            host.calls().enqueue(host.api().recipe().createRecipe(home, vm.createKey, request),
-                    new ApiCallback<Recipe>() {
-                        @Override public void onSuccess(@Nullable Recipe value) {
-                            if (!isAdded()) return;
-                            vm.saved.setValue(true);
-                        }
-
-                        @Override public void onError(ApiError error) {
-                            if (!isAdded()) return;
-                            vm.saving.setValue(false);
-                            vm.error.setValue(R.string.ac_catalog_error);
-                            SubmitButton.stop(save);
-                        }
-                    });
+            CreateAttempt attempt = prior;
+            if (attempt == null || attempt.phase() == CreateAttempt.Phase.FAILED_NOT_EXECUTED) {
+                attempt = CreateAttempt.start(UUID.randomUUID(), request, currentUserId(), home);
+                vm.createAttempt = attempt;
+                sendCreate(attempt);
+                return;
+            }
+            if (attempt.phase() == CreateAttempt.Phase.SENDING
+                    || attempt.phase() == CreateAttempt.Phase.CONFIRMED) return;
+            sendCreate(attempt);
             return;
         }
 
+        save.setEnabled(false);
+        vm.saving.setValue(true);
+        SubmitButton.start(save);
         UpdateRecipeRequest update = new UpdateRecipeRequest()
                 .name(recipeName)
                 .steps(stepList)
@@ -418,15 +504,13 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
         host.calls().enqueue(host.api().recipe().updateRecipe(home, existing.getId(), update),
                 new ApiCallback<Recipe>() {
                     @Override public void onSuccess(@Nullable Recipe value) {
-                        if (!isAdded()) return;
                         vm.saved.setValue(true);
                     }
 
                     @Override public void onError(ApiError error) {
-                        if (!isAdded()) return;
                         vm.saving.setValue(false);
                         vm.error.setValue(R.string.ac_catalog_error);
-                        SubmitButton.stop(save);
+                        if (isAdded()) SubmitButton.stop(save);
                     }
                 });
     }
@@ -457,6 +541,11 @@ public final class HouseholdRecipeEditorFragment extends Fragment {
     }
 
     private static UUID houseId(String value) {
+        if (value == null || value.isEmpty()) return null;
+        try { return UUID.fromString(value); } catch (IllegalArgumentException invalid) { return null; }
+    }
+
+    private static UUID uuidOrNull(String value) {
         if (value == null || value.isEmpty()) return null;
         try { return UUID.fromString(value); } catch (IllegalArgumentException invalid) { return null; }
     }

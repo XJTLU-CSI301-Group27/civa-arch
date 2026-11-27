@@ -185,6 +185,23 @@
             android:textColorHint="@color/civa_muted"
             android:textSize="15sp" />
 
+        <TextView
+            android:id="@+id/ac_household_recipe_attempt_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@color/civa_primary_dark"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_household_recipe_attempt_retry"
+            style="@style/CivaWidget.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ac_recipe_attempt_retry"
+            android:visibility="gone" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/ac_household_recipe_save"
             style="@style/CivaWidget.PrimaryButton"

@@ -13,7 +13,7 @@ public final class IngredientEditorViewModel extends ViewModel {
     Recipe existing;
     List<Ingredient> dictionary = List.of();
     UUID imageId;
-    UUID createKey = UUID.randomUUID();
+    CreateAttempt createAttempt;
     boolean initialized;
     final MutableLiveData<Boolean> saving = new MutableLiveData<>(false);
     final MutableLiveData<Integer> error = new MutableLiveData<>();

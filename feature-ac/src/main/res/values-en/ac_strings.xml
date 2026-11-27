@@ -75,6 +75,11 @@
     <string name="ac_household_recipe_legacy">Legacy: not stock-tracked</string>
     <string name="ac_household_recipe_convert_to_recipe_only">Convert to description-only</string>
     <string name="ac_household_recipe_convert_to_tracked">Convert to stock ingredient</string>
+    <string name="ac_recipe_attempt_retry">Retry original request</string>
+    <string name="ac_recipe_attempt_unknown">The last create result is uncertain. Retry the original request; changed content will not be sent with the old request.</string>
+    <string name="ac_recipe_attempt_failed">The last create was not executed; edit and save again.</string>
+    <string name="ac_recipe_attempt_sending">Saving…</string>
+    <string name="ac_recipe_attempt_identity">The account or household changed; the old create request cannot be retried.</string>
     <string name="ac_ingredient_convert_title">Convert ingredient type</string>
     <string name="ac_ingredient_convert_message">Entered values are kept, but the ingredient will be submitted as the new type. Continue?</string>
     <string name="ac_ingredient_convert_confirm">Convert</string>
