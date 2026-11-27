@@ -22,7 +22,7 @@ CSI301 小组项目：Android（Java + Views，7 个模块）与 Spring Boot 3 �
 | ![我的](docs/screenshots/profile.png) | | |
 | ![食记](docs/screenshots/diary.png) | | |
 
-截图来自真实运行的 debug 包（Android 模拟器）。
+截图来自真实运行的小米平板（Xiaomi Mi Pad 4 Plus，1200×1920，Android debug 包）。
 
 ## 现在能做什么
 
@@ -55,15 +55,17 @@ graph TD
     ui[":core-ui<br/>视觉系统 + UI 基元<br/>Route / NavHost / ApiError"]
     data[":core-data<br/>SessionStore / ApiCalls / 缓存 / 幂等写入 / JsonPost"]
     api[":api-client<br/>由 OpenAPI 生成的 Retrofit 客户端"]
-    contract[["contracts/openapi.json<br/>33 paths / 41 operations / 64 schemas"]]
-    server[["server/ Spring Boot<br/>auth · household · inventory · nutrition · recipe · 22 个 501 占位"]]
+    contract[["contracts/openapi.json<br/>47 paths / 64 operations / 86 schemas"]]
+    server[["server/ Spring Boot<br/>auth · household · inventory · nutrition · recipe · records · plan"]]
+    db[("PostgreSQL<br/>Flyway migrations")]
 
     app --> ef & bd & ac & ui & data
     ef --> ui & data
     bd --> ui & data
     data --> ui & api
-    api -. 生成 .-> contract
-    server -. 生成 .-> contract
+    contract -. 生成 .-> api
+    contract -. 契约约束 .-> server
+    server --> db
 ```
 
 规则（由测试强制执行）：
