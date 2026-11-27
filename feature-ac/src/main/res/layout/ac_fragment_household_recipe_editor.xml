@@ -71,7 +71,6 @@
                 android:textSize="15sp" />
         </LinearLayout>
 
-
         <TextView
             style="@style/CivaText.Section"
             android:layout_width="wrap_content"
@@ -117,40 +116,42 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:text="@string/ac_household_recipe_ingredients_label" />
+            android:text="@string/ac_household_recipe_tracked_section" />
 
-        <EditText
-            android:id="@+id/ac_household_recipe_ingredients"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/ac_household_recipe_tracked_rows"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:background="@drawable/ac_catalog_search"
-            android:gravity="top"
-            android:hint="@string/ac_household_recipe_ingredients_hint"
-            android:inputType="textMultiLine"
-            android:minLines="3"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="12dp"
-            android:textColor="@color/civa_text"
-            android:textColorHint="@color/civa_muted"
-            android:textSize="15sp" />
+            android:nestedScrollingEnabled="false"
+            android:overScrollMode="never" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_household_recipe_add_tracked"
+            style="@style/CivaWidget.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ac_household_recipe_add_tracked" />
 
         <TextView
-            android:layout_width="match_parent"
+            style="@style/CivaText.Section"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="@string/ac_household_recipe_unit_hint"
-            android:textColor="@color/civa_muted"
-            android:textSize="12sp" />
+            android:layout_marginTop="10dp"
+            android:text="@string/ac_household_recipe_recipe_only_section" />
 
-        <TextView
-            android:id="@+id/ac_household_recipe_units"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/ac_household_recipe_recipe_only_rows"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:textColor="@color/civa_muted"
-            android:textSize="12sp"
-            android:visibility="gone" />
+            android:nestedScrollingEnabled="false"
+            android:overScrollMode="never" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/ac_household_recipe_add_recipe_only"
+            style="@style/CivaWidget.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ac_household_recipe_add_recipe_only" />
 
         <TextView
             style="@style/CivaText.Section"
