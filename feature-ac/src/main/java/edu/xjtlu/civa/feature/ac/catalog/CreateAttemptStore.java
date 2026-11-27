@@ -81,16 +81,26 @@ final class CreateAttemptStore {
     }
 
     private static CreateAttempt decode(PendingWrite write) {
-        if (!OPERATION.equals(write.operationId)) return null;
-        if (write.userId == null || write.householdId == null || write.canonicalPayload == null) return null;
+        return decode(write.key, write.userId, write.householdId, write.operationId,
+                write.canonicalPayload);
+    }
+
+    /** Package-visible codec seam for the six corrupt-record tests. */
+    static CreateAttempt decode(String key, String userId, String householdId, String operationId,
+                                String canonicalPayload) {
+        if (!OPERATION.equals(operationId)) return null;
+        if (userId == null || householdId == null || canonicalPayload == null) return null;
         Persisted persisted;
         try {
-            persisted = GSON.fromJson(write.canonicalPayload, Persisted.class);
+            persisted = GSON.fromJson(canonicalPayload, Persisted.class);
         } catch (RuntimeException invalid) {
             return null;
         }
         if (persisted == null || persisted.version != 1 || persisted.payload == null
                 || persisted.fingerprint == null) return null;
+        if (!OPERATION.equals(persisted.operation)) return null;
+        // The fingerprint is the integrity binding between this key and this payload.
+        if (!GSON.toJson(persisted.payload).equals(persisted.fingerprint)) return null;
         try {
             CreateAttempt.Source source;
             try {
@@ -99,9 +109,9 @@ final class CreateAttemptStore {
             } catch (IllegalArgumentException invalid) {
                 return null;
             }
-            return CreateAttempt.recovered(UUID.fromString(write.key), persisted.payload,
-                    persisted.fingerprint, UUID.fromString(write.userId),
-                    UUID.fromString(write.householdId), source);
+            return CreateAttempt.recovered(UUID.fromString(key), persisted.payload,
+                    persisted.fingerprint, UUID.fromString(userId),
+                    UUID.fromString(householdId), source);
         } catch (IllegalArgumentException invalid) {
             return null;
         }
